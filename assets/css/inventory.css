@@ -1,0 +1,128 @@
+/* Basic Reset */
+* {
+  box-sizing: border-box;
+}
+
+body,
+html {
+  background: #f3f3f3;
+}
+
+.mainContent {
+  padding: 20px; /* optional: add space around the table card */
+  background: #f3f3f3;
+}
+
+/* The "card" that encloses the inventory table */
+.inventory-card {
+  max-width: 1200px;
+  margin: 0 auto; /* center horizontally if narrower than .mainContent */
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  margin: 0;
+}
+
+/* Header row with buttons & filters */
+.inventory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+/* Buttons (Material-inspired) */
+.md-btn {
+  background: #e0e0e0;
+  border: none;
+  padding: 8px 16px;
+  margin-right: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+.md-btn:hover {
+  background: #d0d0d0;
+}
+.md-btn.md-primary {
+  background: #8bc34a; /* greenish Material color */
+  color: white;
+}
+.md-btn.md-primary:hover {
+  background: #7cb342;
+}
+
+/* Icon-only button for search, next/prev, etc. */
+.md-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+.md-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Filters (select + search icon) */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Material-like select */
+.md-select {
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+.md-select:hover {
+  border-color: #999;
+}
+
+/* Data Table */
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.md-table thead {
+  background: #f5f5f5;
+}
+.md-table th,
+.md-table td {
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+  border-bottom: 1px solid #ddd;
+}
+.md-table th {
+  color: #666;
+  font-weight: 600;
+}
+
+/* Pagination area */
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+.pagination-info {
+  font-size: 14px;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
