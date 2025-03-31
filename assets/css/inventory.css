@@ -13,6 +13,12 @@ html {
   background: #f3f3f3;
 }
 
+.logo-image{
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
 /* The "card" that encloses the inventory table */
 .inventory-card {
   max-width: 1200px;
