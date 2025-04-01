@@ -1,0 +1,178 @@
+/* ========== Reset / Base ========== */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Trebuchet MS", Arial, sans-serif;
+  background: linear-gradient(135deg, #fff8fd, #ecf3ff);
+  color: #333;
+  overflow-x: hidden;
+}
+
+/* ========== Hero Section ========== */
+.hero-section {
+  position: relative;
+  min-height: 80vh; /* Full screen height */
+  padding: 60px 0 40px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.hero-text h1 {
+  color: #222;
+  font-weight: 700;
+}
+.hero-text .highlight {
+  color: #e56ad5;
+}
+
+.hero-image {
+  max-width: 100%;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  animation: floatUp 3s ease-in-out infinite; /* Faster cycle */
+}
+
+/* More noticeable floating */
+@keyframes floatUp {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px); /* Increased from -10px */
+  }
+}
+
+/* ========== Scroll Button ========== */
+.scroll-button {
+  text-align: center;
+  margin-top: -30px;
+  padding-bottom: 60px;
+}
+
+/* ========== Features Section ========== */
+.feature-section {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.06);
+  margin: 50px auto;
+  padding: 50px;
+}
+.feature-section h5 {
+  color: #444;
+  font-weight: 600;
+}
+.feature-section p {
+  font-size: 15px;
+  color: #555;
+}
+
+/* ========== Decorative Shapes ========== */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  z-index: -1;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+body::before {
+  top: -100px;
+  left: -100px;
+  background: radial-gradient(circle, #ffdffe80, transparent 70%);
+}
+body::after {
+  bottom: -100px;
+  right: -100px;
+  background: radial-gradient(circle, #c8e2f680, transparent 70%);
+}
+
+/* ========== Responsive Tweaks ========== */
+@media (max-width: 768px) {
+  .nav-menu {
+    position: absolute;
+    top: 100px; /* adjust based on your navbar height */
+    left: 0;
+    width: 100%;
+    background-color: white;
+    z-index: 999;
+    display: none;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-menu.active {
+    display: flex;
+  }
+
+  .hero-section {
+    margin-top: 0; /* Prevent extra margin */
+  }
+}
+
+/* Floating Scroll Button at Bottom Center */
+.scroll-float-button {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+  }
+  
+  /* Button Styling */
+  .btn-scroll-down {
+    background-color: #e56ad5;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 30px;
+    cursor: pointer;
+    animation: bounce 2s infinite;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease;
+  }
+  
+  .btn-scroll-down:hover {
+    background-color: #c84abb;
+  }
+  
+  /* Bounce Animation */
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    50% {
+      transform: translateX(-50%) translateY(10px);
+    }
+  }
+  
+
+  .shop-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    background-color: #e56ad5;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  
+  .shop-btn:hover {
+    background-color: #c84abb;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+  
