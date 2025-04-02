@@ -44,12 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
-            $mail->Username = 'emp';
-            $mail->Password = 'emp'; // App password
+            $mail->Username = 'monochromecell@gmail.com';
+            $mail->Password = 'eknj ybgw kmqc krga'; // App password
             $mail->SMTPSecure = 'tls';
             $mail->Port = 587;
 
-            $mail->setFrom('emp', 'emp');
+            $mail->setFrom('monochromecell@gmail.com', 'Bunniwinkle');
             $mail->addAddress($email, $user['name'] ?? '');
             $mail->isHTML(true);
             $mail->Subject = 'Bunniwinkle - Password Reset Link';

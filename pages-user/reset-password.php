@@ -14,7 +14,7 @@ if (!$token || !$email) {
 $valid = false;
 $user_id = null;
 
-// Skip strict validation
+// Check token
 $stmt = $pdo->prepare("
     SELECT pr.user_id 
     FROM password_resets pr
@@ -34,15 +34,24 @@ if ($row) {
 }
 
 $success = false;
+$error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
-    $newPassword = $_POST['password'] ?? '';
-    $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirmPassword'] ?? '';
 
-    $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?")->execute([$hashed, $user_id]);
-    $pdo->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$user_id]);
-
-    $success = true;
+    // ✅ Backend validations
+    if (strlen($password) < 8) {
+        $error = "Password must be at least 8 characters.";
+    } elseif ($password !== $confirmPassword) {
+        $error = "Passwords do not match.";
+    } else {
+        // Save password
+        $hashed = password_hash($password, PASSWORD_DEFAULT);
+        $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?")->execute([$hashed, $user_id]);
+        $pdo->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$user_id]);
+        $success = true;
+    }
 }
 ?>
 
@@ -64,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
             </div>
 
             <?php if ($success): ?>
-                <div class="alert alert-success text-center" role="alert" id="successAlert">
+                <div class="alert alert-success text-center" role="alert">
                     ✅ Password has been reset successfully. Redirecting to login...
                 </div>
             <?php else: ?>
@@ -72,8 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
                     <h2>Reset Your Password</h2>
                     <p>Enter your new password below.</p>
 
+                    <?php if ($error): ?>
+                        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+                    <?php endif; ?>
+
                     <label for="password">New Password</label>
-                    <input type="password" name="password" id="password" placeholder="New password" class="form-control mb-3" required>
+                    <input type="password" name="password" id="password" placeholder="New password" class="form-control mb-3" required minlength="8">
 
                     <label for="confirmPassword">Confirm Password</label>
                     <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirm password" class="form-control mb-2" required>
@@ -103,7 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
             cpw.type = type;
         }
 
-        // Redirect after success
         <?php if ($success): ?>
         setTimeout(() => {
             window.location.href = "../pages/login.php";
@@ -111,5 +123,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
         <?php endif; ?>
     </script>
 </body>
-
 </html>
