@@ -88,7 +88,7 @@ unset($_SESSION['login_error']);
           </div>
 
           <div class="forgot-link">
-            <a href="forgot_password.php">Forgot your password?</a>
+            <a href="../pages-user/forgot-password.php">Forgot your password?</a>
           </div>
         </div>
 
