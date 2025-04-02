@@ -19,7 +19,7 @@
       <li>
         <div class="listDiv">
           <img src="/assets/images/order.png" class="imgIcon">
-          <a href="/pages/customer-order.php" class="menuDashboard">ORDERS</a>
+          <a href="../pages/customer-order.php" class="menuDashboard">ORDERS</a>
         </div>
       </li>
 

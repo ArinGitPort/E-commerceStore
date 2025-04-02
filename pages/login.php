@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // Role-based redirection
   switch ($user['role_name']) {
     case 'Admin':
-      header("Location: ../admin/dashboard.php"); break; // placeholder
+      header("Location: ../pages/inventory.php"); break; // placeholder
     case 'Member':
       header("Location: ../member/home.php"); break; // placeholder
     case 'Customer':
