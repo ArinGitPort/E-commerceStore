@@ -1,4 +1,5 @@
 <?php
+// inventory.php
 session_start();
 require_once '../config/db_connection.php';
 
@@ -20,7 +21,7 @@ $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 // Build query
 $query = "SELECT SQL_CALC_FOUND_ROWS p.*, c.category_name, 
-          (SELECT image_url FROM product_images WHERE product_id = p.product_id AND is_primary = 1 LIMIT 1) as primary_image
+          (SELECT image_url FROM product_images WHERE product_id = p.product_id AND is_primary = 1 LIMIT 1) AS primary_image
           FROM products p
           JOIN categories c ON p.category_id = c.category_id
           WHERE 1=1";
@@ -48,60 +49,47 @@ $query .= " ORDER BY p.product_name LIMIT ? OFFSET ?";
 $params[] = $rowsPerPage;
 $params[] = $offset;
 
-// Get products
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count
+// Get total count and calculate pages
 $totalRows = $pdo->query("SELECT FOUND_ROWS()")->fetchColumn();
 $totalPages = ceil($totalRows / $rowsPerPage);
 
 // Get categories for filter dropdown
 $categories = $pdo->query("SELECT * FROM categories ORDER BY category_name")->fetchAll(PDO::FETCH_ASSOC);
 
-// Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if (isset($_POST['delete_products'])) {
-    // Delete selected products
-    $selectedIds = $_POST['selected_products'] ?? [];
-    if (!empty($selectedIds)) {
-      $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
-
-      // Start transaction
-      $pdo->beginTransaction();
-
-      try {
-        // First delete images
-        $stmt = $pdo->prepare("DELETE FROM product_images WHERE product_id IN ($placeholders)");
-        $stmt->execute($selectedIds);
-
-        // Then delete products
-        $stmt = $pdo->prepare("DELETE FROM products WHERE product_id IN ($placeholders)");
-        $stmt->execute($selectedIds);
-
-        $pdo->commit();
-        $_SESSION['message'] = count($selectedIds) . " product(s) deleted successfully.";
-
-        // Log the action
-        $logMessage = "Deleted products: " . implode(', ', $selectedIds);
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$_SESSION['user_id'], $logMessage, 'products', 0]);
-      } catch (PDOException $e) {
-        $pdo->rollBack();
-        $_SESSION['error'] = "Error deleting products: " . $e->getMessage();
-      }
-
-      header("Location: inventory.php");
-      exit;
+// Handle bulk deletion (this form posts to the same file)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
+  $selectedIds = $_POST['selected_products'] ?? [];
+  if (!empty($selectedIds)) {
+    $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+    $pdo->beginTransaction();
+    try {
+      // Delete images then products
+      $stmt = $pdo->prepare("DELETE FROM product_images WHERE product_id IN ($placeholders)");
+      $stmt->execute($selectedIds);
+      $stmt = $pdo->prepare("DELETE FROM products WHERE product_id IN ($placeholders)");
+      $stmt->execute($selectedIds);
+      $pdo->commit();
+      $_SESSION['message'] = count($selectedIds) . " product(s) deleted successfully.";
+      // Log the action
+      $logMessage = "Deleted products: " . implode(', ', $selectedIds);
+      $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)");
+      $stmt->execute([$_SESSION['user_id'], $logMessage, 'products', 0]);
+    } catch (PDOException $e) {
+      $pdo->rollBack();
+      $_SESSION['error'] = "Error deleting products: " . $e->getMessage();
     }
+    header("Location: inventory.php");
+    exit;
   }
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Inventory Management - BunniShop</title>
@@ -110,12 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico">
 </head>
-
 <body>
-
   <div class="pageWrapper">
     <?php include '../includes/sidebar.php'; ?>
-
     <div class="mainContent">
       <div class="inventory-card">
         <!-- Message Display -->
@@ -126,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
           <?php unset($_SESSION['message']); ?>
         <?php endif; ?>
-
         <?php if (isset($_SESSION['error'])): ?>
           <div class="alert alert-danger alert-dismissible fade show">
             <?= $_SESSION['error'] ?>
@@ -139,7 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <button class="md-btn md-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
             <i class="fas fa-plus"></i> ADD PRODUCT
           </button>
-
           <div class="btn-group">
             <button class="md-btn" data-bs-toggle="modal" data-bs-target="#importModal">
               <i class="fas fa-file-import"></i> IMPORT
@@ -151,7 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <i class="fas fa-trash"></i> DELETE
             </button>
           </div>
-
           <div class="filters">
             <form method="get" class="filter-form">
               <select name="category" class="md-select" onchange="this.form.submit()">
@@ -162,14 +144,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </option>
                 <?php endforeach; ?>
               </select>
-
               <select name="stock" class="md-select" onchange="this.form.submit()">
                 <option value="">All Items</option>
-                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10) < /option>
+                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)</option>
                 <option value="out_of_stock" <?= $stockFilter === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
               </select>
-
-              <div class="search-box">
+              <div class="search-box" style="margin-top: 10px;">
                 <input type="text" name="search" placeholder="Search products..." value="<?= htmlspecialchars($searchTerm) ?>">
                 <button type="submit"><i class="fas fa-search"></i></button>
               </div>
@@ -218,7 +198,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php else: ?>
                       <span class="badge bg-success">In Stock</span>
                     <?php endif; ?>
-
                     <?php if ($product['is_exclusive']): ?>
                       <span class="badge bg-info mt-1">Exclusive</span>
                     <?php endif; ?>
@@ -241,7 +220,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php endforeach; ?>
             </tbody>
           </table>
-
           <input type="hidden" name="delete_products" value="1">
         </form>
 
@@ -257,14 +235,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <option value="25" <?= $rowsPerPage == 25 ? 'selected' : '' ?>>25</option>
               <option value="50" <?= $rowsPerPage == 50 ? 'selected' : '' ?>>50</option>
             </select>
-
             <button class="md-icon-btn" <?= $currentPage == 1 ? 'disabled' : '' ?>
               onclick="goToPage(<?= $currentPage - 1 ?>)">
               &lt;
             </button>
-
             <span>Page <?= $currentPage ?> of <?= $totalPages ?></span>
-
             <button class="md-icon-btn" <?= $currentPage >= $totalPages ? 'disabled' : '' ?>
               onclick="goToPage(<?= $currentPage + 1 ?>)">
               &gt;
@@ -275,6 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
+  <!-- Modals -->
   <!-- Add Product Modal -->
   <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -282,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form action="inventory_actions.php" method="post" enctype="multipart/form-data">
           <div class="modal-header">
             <h5 class="modal-title">Add New Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="row">
@@ -341,20 +317,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- Edit Product Modal (will be populated via AJAX) -->
+  <!-- Edit Product Modal (loaded via AJAX) -->
   <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <!-- Content loaded via AJAX -->
+        <!-- AJAX loaded content -->
       </div>
     </div>
   </div>
 
-  <!-- View Product Modal (will be populated via AJAX) -->
+  <!-- View Product Modal (loaded via AJAX) -->
   <div class="modal fade" id="viewProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <!-- Content loaded via AJAX -->
+        <!-- AJAX loaded content -->
       </div>
     </div>
   </div>
@@ -366,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form action="inventory_actions.php" method="post" enctype="multipart/form-data">
           <div class="modal-header">
             <h5 class="modal-title">Import Products</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
@@ -394,66 +370,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Toggle all checkboxes
-    function toggleAll(source) {
-      const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
-      checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Toggle all checkboxes in the table
+  function toggleAll(source) {
+    const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+    checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+  }
+  // Update rows per page and reset to the first page
+  function updateRowsPerPage(select) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('rows', select.value);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+  }
+  // Pagination navigation
+  function goToPage(page) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', page);
+    window.location.href = url.toString();
+  }
+  // Delete selected products (bulk deletion)
+  document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+    const selectedCount = document.querySelectorAll('tbody input[type="checkbox"]:checked').length;
+    if (selectedCount === 0) {
+      alert('Please select at least one product to delete');
+      return;
     }
-
-    // Update rows per page
-    function updateRowsPerPage(select) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('rows', select.value);
-      url.searchParams.set('page', 1); // Reset to first page
-      window.location.href = url.toString();
+    if (confirm(`Are you sure you want to delete ${selectedCount} selected product(s)?`)) {
+      document.getElementById('inventoryForm').submit();
     }
+  });
+  // Trigger export by setting the 'export' parameter in the URL
+  document.getElementById('exportBtn').addEventListener('click', function() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('export', '1');
+    window.location.href = 'inventory_actions.php?export=1';
 
-    // Pagination navigation
-    function goToPage(page) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('page', page);
-      window.location.href = url.toString();
-    }
-
-    // Delete selected products
-    document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
-      const selectedCount = document.querySelectorAll('tbody input[type="checkbox"]:checked').length;
-      if (selectedCount === 0) {
-        alert('Please select at least one product to delete');
-        return;
-      }
-
-      if (confirm(`Are you sure you want to delete ${selectedCount} selected product(s)?`)) {
-        document.getElementById('inventoryForm').submit();
-      }
+  });
+  // Load edit modal content via AJAX
+  $('.edit-btn').click(function() {
+    const productId = $(this).data('id');
+    $.get('inventory_actions.php?action=get_product&id=' + productId, function(data) {
+      $('#editProductModal .modal-content').html(data);
     });
-
-    // Export functionality
-    document.getElementById('exportBtn').addEventListener('click', function() {
-      const url = new URL(window.location.href);
-      url.searchParams.set('export', '1');
-      window.location.href = url.toString();
+  });
+  // Load view modal content via AJAX
+  $('.view-btn').click(function() {
+    const productId = $(this).data('id');
+    $.get('inventory_actions.php?action=view_product&id=' + productId, function(data) {
+      $('#viewProductModal .modal-content').html(data);
     });
-
-    // Load edit modal content via AJAX
-    $('.edit-btn').click(function() {
-      const productId = $(this).data('id');
-      $.get('inventory_actions.php?action=get_product&id=' + productId, function(data) {
-        $('#editProductModal .modal-content').html(data);
-      });
-    });
-
-    // Load view modal content via AJAX
-    $('.view-btn').click(function() {
-      const productId = $(this).data('id');
-      $.get('inventory_actions.php?action=view_product&id=' + productId, function(data) {
-        $('#viewProductModal .modal-content').html(data);
-      });
-    });
-  </script>
+  });
+</script>
 </body>
-
 </html>

@@ -55,7 +55,8 @@
       <li>
         <div class="listDiv">
           <img src="/assets/images/logout.png" class="imgIcon">
-          <a href="logout.php" class="menuDashboard">LOG-OUT</a>
+          <!-- Logout link now points to logout.php -->
+          <a href="../pages/logout.php" class="menuDashboard">LOG-OUT</a>
         </div>
       </li>
     </ul>
