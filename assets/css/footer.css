@@ -12,36 +12,40 @@ body > .footer {
   margin-top: auto;
 }
 
-
 .footer {
     background: linear-gradient(to right, #c8e2f6, #ffdffe);
-    color: black; /* ✅ Make all text inside footer black */
-    padding-top: 40px;
-    padding-bottom: 20px;
-  }
-  
-  .footer-link {
-    color: black; /* ✅ Black links */
+    color: black; /* Make all text inside footer black */
+    padding: 10px 0;  /* Reduced top and bottom padding for a shorter footer */
+}
+
+.footer-link {
+    color: black; /* Black links */
     text-decoration: none;
     transition: color 0.3s;
-  }
-  
-  .footer-link:hover {
+}
+
+.footer-link:hover {
     color: #333; /* Slightly darker hover */
     text-decoration: underline;
-  }
-  
-  .footer-icon {
-    color: black; /* ✅ Black icons */
+}
+
+.footer-icon {
+    color: black; /* Black icons */
     font-size: 1.25rem;
     transition: transform 0.3s ease;
-  }
-  
-  .footer-icon:hover {
+}
+
+.footer-icon:hover {
     color: #000;
     transform: scale(1.1);
-  }
-  
-  h5, h4, p{
+}
+
+h5, h4, p {
     color: black;
-  }
+}
+
+/* Custom HR styling: modify thickness */
+hr {
+  background-color: black; /* Set the desired color */
+  margin: 0;
+}

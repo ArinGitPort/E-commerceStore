@@ -3,20 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <title>Bunniwinkle Footer</title>
-
-  <!-- ✅ Bootstrap CSS (optional for layout styling) -->
+  <!-- Bootstrap CSS (optional for layout styling) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- ✅ Font Awesome for social icons -->
+  <!-- Font Awesome for social icons -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-  <!-- ✅ Custom Footer Styles -->
+  <!-- Custom Footer Styles -->
   <link rel="stylesheet" href="../assets/css/footer.css" />
 </head>
 <body>
 
-  <!-- ✅ Footer Container -->
-  <footer id="site-footer" class="footer mt-auto py-4 text-white">
+  <!-- Footer Container -->
+  <footer id="site-footer" class="footer mt-auto text-white">
     <div class="container text-center text-md-start">
       <div class="row align-items-start">
 
@@ -48,7 +45,7 @@
 
       </div>
 
-      <hr class="my-4" />
+      <hr  />
 
       <!-- Copyright -->
       <div class="text-center small" style="color: black;">
@@ -57,7 +54,7 @@
     </div>
   </footer>
 
-  <!-- ✅ Bootstrap Bundle (Optional if already included globally) -->
+  <!-- Bootstrap Bundle JS (optional if already included globally) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

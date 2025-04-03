@@ -1,7 +1,7 @@
 <?php
 // inventory_actions.php
 ob_start(); // Start output buffering
-session_start();
+require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
 // Check admin authentication. If not authenticated as Admin, redirect to login.

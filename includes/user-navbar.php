@@ -1,5 +1,7 @@
-
-
+<?php
+require_once __DIR__ . '/../includes/session-init.php';
+require_once '../config/db_connection.php'; // Add this if using database in navbar
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +18,7 @@
   <div class="nav-inner">
 
     <!-- Logo -->
-    <a href="../pages-user/homepage.php">
+    <a href="../pages-user/homepage.php">  <!-- Changed to likely correct homepage -->
       <img src="../assets/images/company assets/bunniwinkelanotherlogo.jpg" alt="Bunniwinkle Logo" class="nav-logo" />
     </a>
 
@@ -30,34 +32,33 @@
     <!-- Navigation Links -->
     <ul class="nav-menu" id="navMenu">
       <li class="nav-item"><a href="../pages-user/shop.php" class="nav-link">Shop</a></li>
-      <li class="nav-item"><a href="#" class="nav-link">About Us</a></li>
-      <li class="nav-item"><a href="#" class="nav-link">Contact Us</a></li>
+      <li class="nav-item"><a href="../pages-user/about.php" class="nav-link">About Us</a></li>
+      <li class="nav-item"><a href="../pages-user/contact.php" class="nav-link">Contact Us</a></li>
       <li class="nav-item dropdown">
         <a href="#" class="nav-link">Others <span class="dropdown-icon">▼</span></a>
         <ul class="dropdown-menu">
-          <li class="dropdown-item"><a href="#">FAQ</a></li>
-          <li class="dropdown-item"><a href="#">Blog</a></li>
-          <li class="dropdown-item"><a href="#">Resources</a></li>
+          <li class="dropdown-item"><a href="../pages-user/faq.php">FAQ</a></li>
+          <li class="dropdown-item"><a href="../pages-user/blog.php">Blog</a></li>
         </ul>
       </li>
     </ul>
 
     <!-- Icon Section -->
     <div class="nav-icons">
-      <a href="#" class="icon"><i class="fas fa-search"></i></a>
-      <a href="#" class="icon"><i class="fas fa-user"></i></a>
+      <a href="../pages-user/search.php" class="icon"><i class="fas fa-search"></i></a>
+      <a href="../pages-user/account.php" class="icon"><i class="fas fa-user"></i></a>
       <div class="cart-dropdown">
         <a href="../pages-user/cart.php" class="icon cart-icon">
           <i class="fas fa-shopping-bag"></i>
           <span class="cart-count"><?= isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0 ?></span>
         </a>
+        <?php if (isset($pdo)): // Only show if DB connected ?>
         <div class="cart-dropdown-content">
           <?php if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])): ?>
             <div class="cart-items">
               <?php 
               $total = 0;
               foreach ($_SESSION['cart'] as $product_id => $quantity):
-                // Get product details from database
                 $stmt = $pdo->prepare("SELECT product_name, price FROM products WHERE product_id = ?");
                 $stmt->execute([$product_id]);
                 $product = $stmt->fetch();
@@ -89,6 +90,7 @@
             </div>
           <?php endif; ?>
         </div>
+        <?php endif; ?>
       </div>
     </div>
 
@@ -107,19 +109,20 @@
     const cartIcon = document.querySelector('.cart-icon');
     const cartDropdown = document.querySelector('.cart-dropdown-content');
     
-    cartIcon.addEventListener('click', function(e) {
-      if (window.innerWidth > 768) { // Only prevent default on desktop
-        e.preventDefault();
-        cartDropdown.classList.toggle('show');
-      }
-    });
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.cart-dropdown')) {
-        cartDropdown.classList.remove('show');
-      }
-    });
+    if (cartIcon && cartDropdown) {
+      cartIcon.addEventListener('click', function(e) {
+        if (window.innerWidth > 768) {
+          e.preventDefault();
+          cartDropdown.classList.toggle('show');
+        }
+      });
+      
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.cart-dropdown')) {
+          cartDropdown.classList.remove('show');
+        }
+      });
+    }
   });
 </script>
 

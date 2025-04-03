@@ -46,6 +46,11 @@
 .nav-item {
   margin-left: 25px;
   position: relative;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.nav-item:hover {
+  transform: translateY(-2px); /* slight lift effect */
 }
 
 .nav-link {
@@ -62,6 +67,7 @@
 .nav-link:hover {
   color: #2b374b;
 }
+
 
 .dropdown-icon {
   margin-left: 5px;
