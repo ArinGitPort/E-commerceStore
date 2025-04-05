@@ -166,7 +166,7 @@ unset($_SESSION['message']);
         <i class="fas fa-shopping-cart fa-4x text-muted mb-4"></i>
         <h2 class="mb-3">Your cart is empty</h2>
         <p class="text-muted mb-4">Browse our products and add some items to your cart</p>
-        <a href="../shop.php" class="btn btn-primary px-4 py-2">
+        <a href="../pages-user/shop.php" class="btn btn-primary px-4 py-2">
           <i class="fas fa-arrow-left me-2"></i> Continue Shopping
         </a>
       </div>
