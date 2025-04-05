@@ -1,8 +1,9 @@
 <?php
+require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
 if (!isset($_GET['product_id'])) {
-    die("Product ID not specified");
+    die(json_encode(['error' => 'Product ID not specified']));
 }
 
 $product_id = (int)$_GET['product_id'];

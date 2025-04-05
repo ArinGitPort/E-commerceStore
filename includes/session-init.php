@@ -1,15 +1,27 @@
 <?php
 // Prevent direct access
-defined('ROOT_PATH') || define('ROOT_PATH', realpath(__DIR__ . '/..'));
+defined('ROOT_PATH') || define('ROOT_PATH', realpath(dirname(__DIR__)));
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_lifetime' => 86400, // 1 day
-        'read_and_close'  => false
+// Only start session if headers not already sent
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+    session_set_cookie_params([
+        'lifetime' => 86400, // 1 day
+        'path' => '/',
+        'domain' => $_SERVER['HTTP_HOST'] ?? '',
+        'secure' => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
     ]);
+    
+    session_start();
+    
+    // Initialize cart if not exists or if it's not an array
+    if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
+        $_SESSION['cart'] = [];
+    }
+    
+    // Set default currency if not exists
+    if (!isset($_SESSION['currency'])) {
+        $_SESSION['currency'] = '₱';
+    }
 }
-
-// Initialize common session variables
-$_SESSION['cart'] = $_SESSION['cart'] ?? [];
-$_SESSION['currency'] = $_SESSION['currency'] ?? '₱';

@@ -85,6 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
         exit;
     }
 
+    
+
     // Check for exclusive product access
     if ($product['is_exclusive'] && !$hasMembershipAccess) {
         $_SESSION['cart_message'] = "You need a membership to purchase exclusive items!";
@@ -231,76 +233,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Fixed quantity buttons - prevent event bubbling
-        $(document).on('click', '.quantity-btn', function(e) {
-            e.stopPropagation(); // Prevent event from bubbling up
-            const input = $(this).siblings('.quantity-input');
+$(document).ready(function() {
+    // Quick view click handler
+    $(document).on('click', '.quick-view', function() {
+        const productId = $(this).data('product-id');
+        showQuickView(productId);
+    });
+
+    // Show quick view modal
+    function showQuickView(productId) {
+        $.ajax({
+            url: 'quick-view.php',
+            type: 'GET',
+            data: { product_id: productId },
+            success: function(response) {
+                $('#quickViewModal .modal-content').html(response);
+                $('#quickViewModal').modal('show');
+                
+                // Initialize modal functionality
+                initQuickViewModal();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading quick view:', error);
+                alert('Error loading product details. Please try again.');
+            }
+        });
+    }
+
+    // Initialize quick view modal functionality
+    function initQuickViewModal() {
+        // Quantity buttons
+        $('.modal-quantity-btn').off('click').on('click', function() {
+            const input = $(this).siblings('.modal-quantity-input');
             let value = parseInt(input.val());
             const max = parseInt(input.attr('max')) || 999;
+            const min = parseInt(input.attr('min')) || 1;
 
-            if ($(this).hasClass('plus') && value < max) {
+            if ($(this).hasClass('modal-plus') && value < max) {
                 input.val(value + 1);
-            } else if ($(this).hasClass('minus') && value > 1) {
+            } else if ($(this).hasClass('modal-minus') && value > min) {
                 input.val(value - 1);
             }
         });
 
-        // Show quick view when clicking Add to Cart
-        function showQuickView(productId, form) {
+        // Form submission
+        $('.add-to-cart-form').off('submit').on('submit', function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const formData = form.serialize();
+            
             $.ajax({
-                url: 'quick-view.php',
-                type: 'GET',
-                data: {
-                    product_id: productId
-                },
+                url: 'shop.php', // Submit to the same page
+                type: 'POST',
+                data: formData,
                 success: function(response) {
-                    $('#quickViewModal .modal-content').html(response);
-                    $('#quickViewModal').modal('show');
-
-                    // Set up the form submission in the modal
-                    $('#quickViewModal').off('submit', '.add-to-cart-form').on('submit', '.add-to-cart-form', function(e) {
-                        e.preventDefault();
-                        const formData = $(this).serialize();
-
-                        $.ajax({
-                            url: 'shop.php',
-                            type: 'POST',
-                            data: formData,
-                            success: function() {
-                                $('#quickViewModal').modal('hide');
-                                // Reload to show updated cart
-                                window.location.reload();
-                            }
-                        });
-                    });
-
-                    // Initialize quantity buttons in modal
-                    $('#quickViewModal').off('click', '.modal-quantity-btn').on('click', '.modal-quantity-btn', function(e) {
-                        e.stopPropagation();
-                        const modalInput = $(this).siblings('.modal-quantity-input');
-                        let value = parseInt(modalInput.val());
-                        const max = parseInt(modalInput.attr('max')) || 999;
-
-                        if ($(this).hasClass('modal-plus') && value < max) {
-                            modalInput.val(value + 1);
-                        } else if ($(this).hasClass('modal-minus') && value > 1) {
-                            modalInput.val(value - 1);
-                        }
-                    });
+                    // Close the modal
+                    $('#quickViewModal').modal('hide');
+                    
+                    // Show success message
+                    showAlert('Item added to cart!', 'success');
+                    
+                    // Optional: Update cart count in navbar
+                    updateCartCount();
                 },
-                error: function() {
-                    $('#quickViewModal .modal-content').html('<div class="modal-body"><p>Error loading product details</p></div>');
-                    $('#quickViewModal').modal('show');
+                error: function(xhr, status, error) {
+                    console.error('Error adding to cart:', error);
+                    showAlert('Error adding to cart. Please try again.', 'danger');
                 }
             });
-        }
-
-        // Original quick view click handler
-        $(document).on('click', '.quick-view', function() {
-            const productId = $(this).data('product-id');
-            showQuickView(productId);
         });
-    </script>
+    }
+
+    // Helper function to show alerts
+    function showAlert(message, type) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show text-center" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Prepend to container or show in a fixed position
+        $('.shop-container').prepend(alertHtml);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            $('.alert').alert('close');
+        }, 3000);
+    }
+
+    // Optional: Update cart count in navbar
+    function updateCartCount() {
+        $.get('get-cart-count.php', function(count) {
+            $('.cart-count').text(count);
+        });
+    }
+});
+</script>
 </body>
 
 </html>

@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
 // Check if user is logged in
