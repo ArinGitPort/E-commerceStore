@@ -1,27 +1,142 @@
 <?php
-// Prevent direct access
+// session-init.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
 defined('ROOT_PATH') || define('ROOT_PATH', realpath(dirname(__DIR__)));
 
-// Only start session if headers not already sent
-if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+// Start session with secure settings
+if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
-        'lifetime' => 86400, // 1 day
+        'lifetime' => 86400,
         'path' => '/',
-        'domain' => $_SERVER['HTTP_HOST'] ?? '',
         'secure' => isset($_SERVER['HTTPS']),
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
     
+    session_name('BUNNISHOP_SESS');
     session_start();
-    
-    // Initialize cart if not exists or if it's not an array
-    if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
-        $_SESSION['cart'] = [];
-    }
-    
-    // Set default currency if not exists
-    if (!isset($_SESSION['currency'])) {
-        $_SESSION['currency'] = '₱';
+}
+
+// Initialize core session variables
+$_SESSION['user_id'] = $_SESSION['user_id'] ?? null;
+$_SESSION['cart'] = $_SESSION['cart'] ?? [];
+$_SESSION['csrf_token'] = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
+
+// Database connection
+try {
+    $pdo = new PDO(
+        "mysql:host=localhost;dbname=bunnishop;charset=utf8mb4",
+        "root",
+        "1234",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    );
+} catch (PDOException $e) {
+    error_log("Database connection failed: " . $e->getMessage());
+    die("Database connection error. Please try again later.");
+}
+
+/**
+ * Sync cart between session and database
+ */
+function sync_cart(PDO $pdo): void {
+    if (!isset($_SESSION['user_id'])) return;
+
+    try {
+        // Sync database to session
+        $stmt = $pdo->prepare("SELECT product_id, quantity FROM cart_items WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $_SESSION['cart'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (PDOException $e) {
+        error_log("Cart sync error: " . $e->getMessage());
     }
 }
+
+/**
+ * Get cart items with full product details
+ */
+function get_cart_details(PDO $pdo): array {
+    $items = [];
+    
+    try {
+        if (isset($_SESSION['user_id'])) {
+            // Database cart for logged-in users
+            $stmt = $pdo->prepare("
+                SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
+                       ci.quantity, pi.image_url as image, c.category_name
+                FROM cart_items ci
+                JOIN products p ON ci.product_id = p.product_id
+                JOIN categories c ON p.category_id = c.category_id
+                LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+                WHERE ci.user_id = ?
+            ");
+            $stmt->execute([$_SESSION['user_id']]);
+            $items = $stmt->fetchAll();
+        } else {
+            // Session cart for guests
+            if (!empty($_SESSION['cart'])) {
+                $placeholders = implode(',', array_fill(0, count($_SESSION['cart']), '?'));
+                $stmt = $pdo->prepare("
+                    SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
+                           pi.image_url as image, c.category_name
+                    FROM products p
+                    JOIN categories c ON p.category_id = c.category_id
+                    LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+                    WHERE p.product_id IN ($placeholders)
+                ");
+                $stmt->execute(array_keys($_SESSION['cart']));
+                $items = $stmt->fetchAll();
+                
+                foreach ($items as &$item) {
+                    $item['quantity'] = $_SESSION['cart'][$item['product_id']];
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        error_log("Cart details error: " . $e->getMessage());
+    }
+    
+    return $items;
+}
+
+// Sync cart on every page load for logged-in users
+if (isset($_SESSION['user_id'])) {
+    sync_cart($pdo);
+}
+
+/**
+ * Generate (or retrieve) the CSRF token.
+ *
+ * @return string The CSRF token.
+ */
+function generate_csrf_token(): string {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Validate CSRF token.
+ *
+ * This function verifies that the token provided matches the one stored in the session.
+ */
+function validate_csrf_token(string $token): bool {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Get the total count of items in the cart.
+ *
+ * Returns the sum of the quantities stored in the session's cart.
+ */
+function get_cart_count(PDO $pdo): int {
+    return !empty($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
+}
+?>

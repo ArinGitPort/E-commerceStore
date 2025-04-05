@@ -52,12 +52,11 @@ if ($category_id) {
     $params[] = $category_id;
 }
 
-// Hide exclusive products for guests
+// Hide exclusive products if no membership
 if (!$showExclusive) {
     $query .= " AND p.is_exclusive = FALSE";
 }
 
-// Sort by most recently created
 $query .= " ORDER BY p.created_at DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
@@ -68,6 +67,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Shop - BunniShop</title>
@@ -76,6 +76,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico">
 </head>
+
 <body>
     <?php include '../includes/user-navbar.php'; ?>
 
@@ -91,7 +92,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
             <form method="GET" class="search-filter d-flex justify-content-center align-items-center gap-3 mt-3">
                 <div class="search-box">
                     <input type="text" name="search" class="form-control" placeholder="Search products..."
-                           value="<?= htmlspecialchars($search) ?>">
+                        value="<?= htmlspecialchars($search) ?>">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
                 </div>
                 <div class="filter-dropdown">
@@ -132,17 +133,17 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                             <div class="product-image position-relative">
                                 <?php if ($product['primary_image']): ?>
                                     <img src="../assets/images/products/<?= htmlspecialchars($product['primary_image']) ?>"
-                                         alt="<?= htmlspecialchars($product['product_name']) ?>"
-                                         class="img-fluid">
+                                        alt="<?= htmlspecialchars($product['product_name']) ?>"
+                                        class="img-fluid">
                                 <?php else: ?>
                                     <div class="no-image-placeholder bg-light d-flex align-items-center justify-content-center"
-                                         style="height:200px;">
+                                        style="height:200px;">
                                         <i class="fas fa-image fa-3x text-muted"></i>
                                     </div>
                                 <?php endif; ?>
 
                                 <div class="quick-view position-absolute top-50 start-50 translate-middle bg-light p-2 rounded"
-                                     data-product-id="<?= $product['product_id'] ?>" style="cursor:pointer;">
+                                    data-product-id="<?= $product['product_id'] ?>" style="cursor:pointer;">
                                     <i class="fas fa-eye"></i> Quick View
                                 </div>
                             </div>
@@ -172,49 +173,92 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Load product details into quick view modal
-    $(document).on('click', '.quick-view', function () {
-        const productId = $(this).data('product-id');
-        $.get('quick-view.php', { product_id: productId }, function (response) {
-            $('#quickViewModal .modal-content').html(response);
-            $('#quickViewModal').modal('show');
-        });
-    });
+        $(document).ready(function() {
+            // Quick View Modal
+            $(document).on('click', '.quick-view', function() {
+                const productId = $(this).data('product-id');
+                $.get('quick-view.php', { product_id: productId }, function(response) {
+                    $('#quickViewModal .modal-content').html(response);
+                    $('#quickViewModal').modal('show');
+                });
+            });
 
-    // Intercept add-to-cart form submissions from the Quick View
-    $(document).on('submit', '.add-to-cart-form', function (e) {
-        e.preventDefault();
-        const form = $(this);
-        const btn = form.find('button[type=\"submit\"]');
-        const originalText = btn.html();
+            // Add to Cart Form Submission (AJAX)
+            $(document).on('submit', '.add-to-cart-form', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const btn = form.find('button[type="submit"]');
+                const originalText = btn.html();
 
-        // Indicate loading
-        btn.prop('disabled', true).html('<span class=\"spinner-border spinner-border-sm\"></span> Adding...');
+                // Show loading state
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Adding...');
 
-        $.ajax({
-            url: 'cart_actions.php',  // separate file for cart logic
-            type: 'POST',
-            data: form.serialize(),
-            dataType: 'json',
-            success: function (response) {
-                if (response.redirect) {
-                    window.location.href = response.redirect;
-                } else if (response.success) {
-                    alert(response.message);
-                    $('#quickViewModal').modal('hide');
-                    window.location.reload();
-                } else {
-                    alert(response.error || 'Something went wrong.');
-                }
-            },
-            error: function () {
-                alert('Failed to add to cart. Please try again.');
-            },
-            complete: function () {
-                btn.prop('disabled', false).html(originalText);
+                $.ajax({
+                    url: 'cart_actions.php',
+                    type: 'POST',
+                    data: form.serialize(),
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.login_required) {
+                            // Show a modal prompting login
+                            $('#quickViewModal').modal('hide');
+                            const loginModal = `
+                                <div class="modal fade" id="loginPromptModal" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Login Required</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>${response.message}</p>
+                                                <p>Would you like to login now?</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue Shopping</button>
+                                                <a href="/pages/login.php?redirect=shop" class="btn btn-primary">Login</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            $('body').append(loginModal);
+                            $('#loginPromptModal').modal('show');
+                            return;
+                        }
+                        if (response.error) {
+                            showAlert(response.error, 'danger');
+                            return;
+                        }
+                        if (response.success) {
+                            // Update cart count in navbar
+                            $('.cart-count').text(response.cart_count);
+                            // Show success alert
+                            showAlert(response.message, 'success');
+                            // Close the quick-view modal
+                            $('#quickViewModal').modal('hide');
+                        }
+                    },
+                    error: function() {
+                        showAlert('Failed to add to cart. Please try again.', 'danger');
+                    },
+                    complete: function() {
+                        btn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
+
+            // Helper function to show alerts
+            function showAlert(message, type) {
+                const alert = $('<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
+                    message +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                    '</div>');
+                $('.alert-container').html(alert);
+                setTimeout(() => { alert.alert('close'); }, 3000);
             }
         });
-    });
     </script>
 </body>
+
 </html>

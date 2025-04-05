@@ -1,51 +1,83 @@
 <?php
 require_once __DIR__ . '/../includes/session-init.php';
-require_once '../config/db_connection.php'; // adjust if needed
+require_once '../config/db_connection.php';
 
 function clean_input($data) {
-  return htmlspecialchars(trim($data));
+    return htmlspecialchars(trim($data));
 }
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $email = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
-  $password = $_POST['password'] ?? '';
+    // Verify CSRF token
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        $_SESSION['login_error'] = "Invalid security token. Please try again.";
+        header("Location: login.php");
+        exit;
+    }
 
-  if (!$email || !$password) {
-    $_SESSION['login_error'] = "Please enter both email and password.";
-    header("Location: login.php");
-    exit;
-  }
+    $email = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
+    $password = $_POST['password'] ?? '';
 
-  $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.password, r.role_name 
-                         FROM users u
-                         JOIN roles r ON u.role_id = r.role_id
-                         WHERE u.email = ?");
-  $stmt->execute([$email]);
-  $user = $stmt->fetch();
+    if (!$email || !$password) {
+        $_SESSION['login_error'] = "Please enter both email and password.";
+        header("Location: login.php");
+        exit;
+    }
 
-  if (!$user || !password_verify($password, $user['password'])) {
-    $_SESSION['login_error'] = "Invalid email or password.";
-    header("Location: login.php");
-    exit;
-  }
+    try {
+        $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.email, u.password, r.role_name 
+                             FROM users u
+                             JOIN roles r ON u.role_id = r.role_id
+                             WHERE u.email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
 
-  // Set session data
-  $_SESSION['user_id'] = $user['user_id'];
-  $_SESSION['name'] = $user['name'];
-  $_SESSION['role'] = $user['role_name'];
+        if (!$user || !password_verify($password, $user['password'])) {
+            $_SESSION['login_error'] = "Invalid email or password.";
+            header("Location: login.php");
+            exit;
+        }
 
-  // Role-based redirection
-  switch ($user['role_name']) {
-    case 'Admin':
-      header("Location: ../pages/inventory.php"); break; // placeholder
-    case 'Member':
-      header("Location: ../member/home.php"); break; // placeholder
-    case 'Customer':
-    default:
-      header("Location: ../pages-user/homepage.php"); break; // placeholder
-  }
-  exit;
+        // Regenerate session ID to prevent fixation
+        session_regenerate_id(true);
+
+        // Set session data
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['name'] = $user['name'];
+        $_SESSION['email'] = $user['email'];
+        $_SESSION['role'] = $user['role_name'];
+        $_SESSION['last_login'] = time();
+        $_SESSION['last_activity'] = time();
+
+        // Verify the session was actually saved
+        session_write_close();
+        session_start();
+        
+        if (empty($_SESSION['user_id']) || $_SESSION['user_id'] != $user['user_id']) {
+            error_log('Session write verification failed for user: ' . $user['email']);
+            throw new Exception('Session storage failed');
+        }
+
+        // Role-based redirection
+        $redirect = match($user['role_name']) {
+            'Admin' => '../pages/inventory.php',
+            'Member' => '../member/home.php',
+            default => '../pages-user/homepage.php'
+        };
+
+        // Clear any redirect URL if set
+        $redirect_url = $_SESSION['redirect_url'] ?? $redirect;
+        unset($_SESSION['redirect_url']);
+        
+        header("Location: $redirect_url");
+        exit;
+
+    } catch (Exception $e) {
+        error_log('Login error: ' . $e->getMessage());
+        $_SESSION['login_error'] = "An error occurred. Please try again.";
+        header("Location: login.php");
+        exit;
+    }
 }
 
 // Display error from previous login attempt (if any)
@@ -69,12 +101,13 @@ unset($_SESSION['login_error']);
         <img class="logo-image" src="../assets/images/company assets/bunniwinkelanotherlogo.jpg" alt="Logo" />
       </div>
 
-      <!-- Error message if login fails -->
       <?php if ($error): ?>
         <div class="alert alert-danger" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
       <form action="login.php" method="POST" novalidate>
+        <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+        
         <label for="email">Email</label>
         <input type="email" name="email" id="email" required placeholder="Enter your email" />
 

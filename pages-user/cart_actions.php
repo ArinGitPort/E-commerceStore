@@ -1,70 +1,113 @@
 <?php
-// cart_actions.php
-
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
-header('Content-Type: application/json'); // Always return JSON
-
-// Make sure we have the right request
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['add_to_cart'])) {
-    echo json_encode(['error' => 'Invalid request']);
+// Only handle POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Invalid request method.']);
     exit;
 }
 
-// If user is not logged in, redirect them
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['redirect' => '../login.php?redirect=shop']);
+// Validate CSRF token
+if (!isset($_POST['csrf_token']) || !validate_csrf_token($_POST['csrf_token'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Invalid CSRF token.']);
     exit;
 }
 
-// Check membership
-$hasMembershipAccess = false;
-$stmt = $pdo->prepare("
-    SELECT mt.can_access_exclusive
-    FROM users u
-    LEFT JOIN memberships m ON u.user_id = m.user_id
-    LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
-    WHERE u.user_id = ?
-");
-$stmt->execute([$_SESSION['user_id']]);
-$result = $stmt->fetch(PDO::FETCH_ASSOC);
-$hasMembershipAccess = $result['can_access_exclusive'] ?? false;
-
-// Get product & quantity
-$product_id = (int)$_POST['product_id'];
-$quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
-
-// Check product in DB
-$stmt = $pdo->prepare("SELECT stock, is_exclusive FROM products WHERE product_id = ?");
-$stmt->execute([$product_id]);
-$product = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$product || $product['stock'] < 1) {
-    echo json_encode(['error' => 'Product not available']);
-    exit;
+// Handle update cart item action (for dynamic quantity update)
+if (isset($_POST['action']) && $_POST['action'] === 'update_cart_item') {
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $quantity = max(1, (int)($_POST['quantity'] ?? 1));
+    
+    // Check if user is logged in
+    if (!isset($_SESSION['user_id'])) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'login_required' => true,
+            'message' => 'You must be logged in to update items in the cart.'
+        ]);
+        exit;
+    }
+    
+    try {
+        // Update the cart item in the database
+        $stmt = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?");
+        $stmt->execute([$quantity, $_SESSION['user_id'], $productId]);
+        
+        // Update session cart
+        $_SESSION['cart'][$productId] = $quantity;
+        
+        // Recalculate new order total using the helper function
+        $cartItems = get_cart_details($pdo);
+        $newTotal = 0;
+        foreach ($cartItems as $item) {
+            $newTotal += $item['price'] * $item['quantity'];
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'  => true,
+            'newTotal' => $newTotal
+        ]);
+        exit;
+    } catch (PDOException $e) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+        exit;
+    }
 }
 
-// If exclusive, require membership
-if ($product['is_exclusive'] && !$hasMembershipAccess) {
-    echo json_encode(['error' => 'You need a membership to purchase exclusive items']);
-    exit;
+// Handle add to cart action
+if (isset($_POST['add_to_cart'])) {
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $quantity = max(1, (int)($_POST['quantity'] ?? 1));
+
+    // Check if user is logged in
+    if (!isset($_SESSION['user_id'])) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'login_required' => true,
+            'message' => 'You must be logged in to add items to the cart.'
+        ]);
+        exit;
+    }
+
+    try {
+        // Insert or update the cart item in the database
+        $stmt = $pdo->prepare("
+            INSERT INTO cart_items (user_id, product_id, quantity)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+        ");
+        $stmt->execute([$_SESSION['user_id'], $productId, $quantity]);
+
+        // Update session cart
+        if (!isset($_SESSION['cart'][$productId])) {
+            $_SESSION['cart'][$productId] = 0;
+        }
+        $_SESSION['cart'][$productId] += $quantity;
+        
+        // Compute distinct cart count (number of keys)
+        $cartCount = count($_SESSION['cart']);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'    => true,
+            'message'    => 'Item added to cart successfully!',
+            'cart_count' => $cartCount
+        ]);
+        exit;
+    } catch (PDOException $e) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+        exit;
+    }
 }
 
-// Update session cart
-if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
-if (isset($_SESSION['cart'][$product_id])) {
-    $_SESSION['cart'][$product_id] += $quantity;
-} else {
-    $_SESSION['cart'][$product_id] = $quantity;
-}
-
-// Return success
-echo json_encode([
-    'success' => true,
-    'cart_count' => array_sum($_SESSION['cart']),
-    'message' => 'Item added to cart!'
-]);
+// If no valid action is found, return an error
+header('Content-Type: application/json');
+echo json_encode(['error' => 'Invalid request data.']);
 exit;
+?>

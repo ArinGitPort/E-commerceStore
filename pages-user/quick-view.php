@@ -89,8 +89,9 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
 
             <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
 
-            <!-- Add to Cart Form -->
+            <!-- Add to Cart Form (handled via AJAX) -->
             <form method="POST" class="add-to-cart-form mt-4">
+                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                 <input type="hidden" name="add_to_cart" value="1">
                 <input type="hidden" name="product_id" value="<?= $product['product_id'] ?>">
 
@@ -112,6 +113,11 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?= $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' ?>
                 </button>
             </form>
+            <!--
+              Note: The form submission is caught by the global AJAX handler (from shop.php)
+              which processes the request via cart_actions.php. The response from that handler
+              updates the navbar cart icon (using get_cart_count()) to reflect the number of distinct items.
+            -->
         </div>
     </div>
 </div>
