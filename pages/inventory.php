@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Inventory Management - BunniShop</title>
@@ -97,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico">
 </head>
+
 <body>
   <div class="pageWrapper">
     <?php include '../includes/sidebar.php'; ?>
@@ -145,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
               </select>
               <select name="stock" class="md-select" onchange="this.form.submit()">
                 <option value="">All Items</option>
-                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)</option>
+                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)< /option>
                 <option value="out_of_stock" <?= $stockFilter === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
               </select>
               <div class="search-box" style="margin-top: 10px;">
@@ -177,16 +179,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                   <td><input type="checkbox" name="selected_products[]" value="<?= $product['product_id'] ?>"></td>
                   <td class="product-image-cell">
                     <?php if ($product['primary_image']): ?>
-                      <img src="../assets/images/products/<?= htmlspecialchars($product['primary_image']) ?>"
-                        alt="<?= htmlspecialchars($product['product_name']) ?>"
+                      <img src="../assets/images/products/<?= htmlspecialchars($product['primary_image'] ?? '') ?>"
+                        alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
                         class="product-thumbnail">
                     <?php else: ?>
                       <div class="no-image">No Image</div>
                     <?php endif; ?>
                   </td>
-                  <td><?= htmlspecialchars($product['product_name']) ?></td>
-                  <td><?= htmlspecialchars($product['sku']) ?></td>
-                  <td><?= htmlspecialchars($product['category_name']) ?></td>
+                  <td><?= htmlspecialchars($product['product_name'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($product['sku'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($product['category_name'] ?? '') ?></td>
                   <td>₱<?= number_format($product['price'], 2) ?></td>
                   <td><?= $product['stock'] ?></td>
                   <td>
@@ -369,60 +371,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
     </div>
   </div>
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  // Toggle all checkboxes in the table
-  function toggleAll(source) {
-    const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
-    checkboxes.forEach(checkbox => checkbox.checked = source.checked);
-  }
-  // Update rows per page and reset to the first page
-  function updateRowsPerPage(select) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('rows', select.value);
-    url.searchParams.set('page', 1);
-    window.location.href = url.toString();
-  }
-  // Pagination navigation
-  function goToPage(page) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', page);
-    window.location.href = url.toString();
-  }
-  // Delete selected products (bulk deletion)
-  document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
-    const selectedCount = document.querySelectorAll('tbody input[type="checkbox"]:checked').length;
-    if (selectedCount === 0) {
-      alert('Please select at least one product to delete');
-      return;
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Toggle all checkboxes in the table
+    function toggleAll(source) {
+      const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+      checkboxes.forEach(checkbox => checkbox.checked = source.checked);
     }
-    if (confirm(`Are you sure you want to delete ${selectedCount} selected product(s)?`)) {
-      document.getElementById('inventoryForm').submit();
+    // Update rows per page and reset to the first page
+    function updateRowsPerPage(select) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rows', select.value);
+      url.searchParams.set('page', 1);
+      window.location.href = url.toString();
     }
-  });
-  // Trigger export by setting the 'export' parameter in the URL
-  document.getElementById('exportBtn').addEventListener('click', function() {
-    const url = new URL(window.location.href);
-    url.searchParams.set('export', '1');
-    window.location.href = 'inventory_actions.php?export=1';
+    // Pagination navigation
+    function goToPage(page) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', page);
+      window.location.href = url.toString();
+    }
+    // Delete selected products (bulk deletion)
+    document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+      const selectedCount = document.querySelectorAll('tbody input[type="checkbox"]:checked').length;
+      if (selectedCount === 0) {
+        alert('Please select at least one product to delete');
+        return;
+      }
+      if (confirm(`Are you sure you want to delete ${selectedCount} selected product(s)?`)) {
+        document.getElementById('inventoryForm').submit();
+      }
+    });
+    // Trigger export by setting the 'export' parameter in the URL
+    document.getElementById('exportBtn').addEventListener('click', function() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('export', '1');
+      window.location.href = 'inventory_actions.php?export=1';
 
-  });
-  // Load edit modal content via AJAX
-  $('.edit-btn').click(function() {
-    const productId = $(this).data('id');
-    $.get('inventory_actions.php?action=get_product&id=' + productId, function(data) {
-      $('#editProductModal .modal-content').html(data);
     });
-  });
-  // Load view modal content via AJAX
-  $('.view-btn').click(function() {
-    const productId = $(this).data('id');
-    $.get('inventory_actions.php?action=view_product&id=' + productId, function(data) {
-      $('#viewProductModal .modal-content').html(data);
+    // Load edit modal content via AJAX
+    $('.edit-btn').click(function() {
+      const productId = $(this).data('id');
+      $.get('inventory_actions.php?action=get_product&id=' + productId, function(data) {
+        $('#editProductModal .modal-content').html(data);
+      });
     });
-  });
-</script>
+    // Load view modal content via AJAX
+    $('.view-btn').click(function() {
+      const productId = $(this).data('id');
+      $.get('inventory_actions.php?action=view_product&id=' + productId, function(data) {
+        $('#viewProductModal .modal-content').html(data);
+      });
+    });
+  </script>
 </body>
+
 </html>
