@@ -2,10 +2,6 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
-function clean_input($data) {
-    return htmlspecialchars(trim($data));
-}
-
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
@@ -25,20 +21,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.email, u.password, r.role_name 
-                             FROM users u
-                             JOIN roles r ON u.role_id = r.role_id
-                             WHERE u.email = ?");
+        // Fetch the user along with activation status
+        $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.email, u.password, u.is_active, r.role_name 
+                               FROM users u
+                               JOIN roles r ON u.role_id = r.role_id
+                               WHERE u.email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
+        // If user not found or password doesn't match, set error.
         if (!$user || !password_verify($password, $user['password'])) {
             $_SESSION['login_error'] = "Invalid email or password.";
             header("Location: login.php");
             exit;
         }
 
-        // Regenerate session ID to prevent fixation
+        // Check if account is activated
+        if ($user['is_active'] != 1) {
+            $_SESSION['login_error'] = "Your account is not activated. Please verify your email.";
+            header("Location: login.php");
+            exit;
+        }
+
+        // Regenerate session ID to prevent session fixation
         session_regenerate_id(true);
 
         // Set session data
@@ -52,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Verify the session was actually saved
         session_write_close();
         session_start();
-        
+
         if (empty($_SESSION['user_id']) || $_SESSION['user_id'] != $user['user_id']) {
             error_log('Session write verification failed for user: ' . $user['email']);
             throw new Exception('Session storage failed');
@@ -60,15 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Role-based redirection
         $redirect = match($user['role_name']) {
-            'Admin' => '../pages/inventory.php',
+            'Admin'  => '../pages/inventory.php',
             'Member' => '../member/home.php',
-            default => '../pages-user/homepage.php'
+            default  => '../pages-user/homepage.php'
         };
 
-        // Clear any redirect URL if set
+        // Use any stored redirect URL if present
         $redirect_url = $_SESSION['redirect_url'] ?? $redirect;
         unset($_SESSION['redirect_url']);
-        
+
         header("Location: $redirect_url");
         exit;
 

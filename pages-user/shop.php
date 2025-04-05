@@ -177,7 +177,9 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
             // Quick View Modal
             $(document).on('click', '.quick-view', function() {
                 const productId = $(this).data('product-id');
-                $.get('quick-view.php', { product_id: productId }, function(response) {
+                $.get('quick-view.php', {
+                    product_id: productId
+                }, function(response) {
                     $('#quickViewModal .modal-content').html(response);
                     $('#quickViewModal').modal('show');
                 });
@@ -203,25 +205,25 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                             // Show a modal prompting login
                             $('#quickViewModal').modal('hide');
                             const loginModal = `
-                                <div class="modal fade" id="loginPromptModal" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Login Required</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>${response.message}</p>
-                                                <p>Would you like to login now?</p>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue Shopping</button>
-                                                <a href="/pages/login.php?redirect=shop" class="btn btn-primary">Login</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
+                <div class="modal fade" id="loginPromptModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Login Required</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>${response.message}</p>
+                                <p>Would you like to login now?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue Shopping</button>
+                                <a href="/pages/login.php?redirect=shop" class="btn btn-primary">Login</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
                             $('body').append(loginModal);
                             $('#loginPromptModal').modal('show');
                             return;
@@ -233,6 +235,8 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                         if (response.success) {
                             // Update cart count in navbar
                             $('.cart-count').text(response.cart_count);
+                            // Reload the cart dropdown content to reflect new changes
+                            $('.cart-dropdown-content').load('cart_dropdown.php');
                             // Show success alert
                             showAlert(response.message, 'success');
                             // Close the quick-view modal
@@ -246,6 +250,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                         btn.prop('disabled', false).html(originalText);
                     }
                 });
+
             });
 
             // Helper function to show alerts
@@ -255,7 +260,9 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                     '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                     '</div>');
                 $('.alert-container').html(alert);
-                setTimeout(() => { alert.alert('close'); }, 3000);
+                setTimeout(() => {
+                    alert.alert('close');
+                }, 3000);
             }
         });
     </script>

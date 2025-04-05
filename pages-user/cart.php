@@ -137,7 +137,6 @@ if (isset($_SESSION['cart_message'])) {
             
             <div class="row">
                 <div class="col-lg-8">
-                    <h2 class="mb-4">Your Cart</h2>
                     
                     <?php foreach ($cartItems as $item): ?>
                     <div class="cart-item row align-items-center" data-product-id="<?= $item['product_id'] ?>">
