@@ -18,6 +18,19 @@ if (isset($_SESSION['user_id'])) {
 </head>
 <body>
 
+<!-- Logout Confirmation Modal -->
+<div class="logout-confirm" id="logoutConfirm">
+  <div class="logout-dialog">
+    <h3>Are you sure you want to logout?</h3>
+    <p>You'll need to sign in again to access your account.</p>
+    <div class="logout-actions">
+      <button class="logout-btn logout-cancel-btn" id="logoutCancel">Cancel</button>
+      <!-- This link calls logout.php which destroys the session and then redirects the user to shop.php -->
+      <a href="../pages/logout.php" class="logout-btn logout-confirm-btn">Logout</a>
+    </div>
+  </div>
+</div>
+
 <nav class="navbar">
   <div class="nav-inner">
 
@@ -44,7 +57,9 @@ if (isset($_SESSION['user_id'])) {
           <li class="dropdown-item"><a href="../pages-user/faq.php">FAQ</a></li>
           <li class="dropdown-item"><a href="../pages-user/blog.php">Blog</a></li>
           <?php if (isset($_SESSION['user_id'])): ?>
-            <li class="dropdown-item"><a href="../pages/logout.php">Logout</a></li>
+            <li class="dropdown-item"><a href="#" id="navLogout">Logout</a></li>
+          <?php else: ?>
+            <li class="dropdown-item"><a href="../pages/login.php">Login</a></li>
           <?php endif; ?>
         </ul>
       </li>
@@ -52,40 +67,43 @@ if (isset($_SESSION['user_id'])) {
 
     <!-- Icon Section -->
     <div class="nav-icons">
-      <a href="../pages-user/search.php" class="icon"><i class="fas fa-search"></i></a>
+      <a href="../pages-user/search.php" class="icon" title="Search"><i class="fas fa-search"></i></a>
       
-      <!-- Dynamic Account Icon -->
-      <a href="../pages-user/<?= isset($_SESSION['user_id']) ? 'account.php' : 'login.php' ?>" class="icon">
+      <!-- Dynamic Account Icon: profile if logged in, login if not -->
+      <a href="../pages-user/<?= isset($_SESSION['user_id']) ? 'profile.php' : '../pages/login.php' ?>" class="icon" title="<?= isset($_SESSION['user_id']) ? 'My Profile' : 'Login' ?>">
         <i class="fas fa-user"></i>
         <?php if (isset($_SESSION['user_id'])): ?>
           <span class="login-indicator"></span>
         <?php endif; ?>
       </a>
       
-      <!-- Logout Icon (visible only when logged in) -->
+      <!-- Logout / Login Icon: show logout icon if logged in, otherwise show login icon -->
       <?php if (isset($_SESSION['user_id'])): ?>
-      <a href="../pages/logout.php" class="icon" title="Logout">
-        <i class="fas fa-sign-out-alt"></i>
-      </a>
+        <a href="#" class="icon" title="Logout" id="mobileLogout">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      <?php else: ?>
+        <a href="../pages/login.php" class="icon" title="Login" id="mobileLogin">
+          <i class="fas fa-sign-in-alt"></i>
+        </a>
       <?php endif; ?>
 
       <!-- Cart Dropdown -->
       <div class="cart-dropdown">
-        <a href="cart.php" class="icon cart-icon">
+        <a href="cart.php" class="icon cart-icon" title="Cart">
           <i class="fas fa-shopping-bag"></i>
           <span class="cart-count">
             <?= get_cart_count($pdo) ?>
           </span>
         </a>
-        
         <div class="cart-dropdown-content">
           <?php 
           $cart_items = get_cart_details($pdo);
           $total = 0;
-          if (!empty($cart_items)): 
-            foreach ($cart_items as $item): 
-              $subtotal = $item['price'] * $item['quantity'];
-              $total += $subtotal;
+          if (!empty($cart_items)):
+            foreach ($cart_items as $item):
+              $subtotal_item = $item['price'] * $item['quantity'];
+              $total += $subtotal_item;
           ?>
             <div class="cart-item">
               <div class="cart-item-info">
@@ -94,7 +112,7 @@ if (isset($_SESSION['user_id'])) {
                   <?= $item['quantity'] ?> × ₱<?= number_format($item['price'], 2) ?>
                 </span>
               </div>
-              <span class="cart-item-price">₱<?= number_format($subtotal, 2) ?></span>
+              <span class="cart-item-price">₱<?= number_format($subtotal_item, 2) ?></span>
             </div>
           <?php endforeach; ?>
             <div class="cart-total">
@@ -113,17 +131,7 @@ if (isset($_SESSION['user_id'])) {
           <?php endif; ?>
         </div>
       </div>
-
-      <!-- Login Status Indicator (for debugging) -->
-      <div class="login-status" style="display: none;">
-        <?php if (isset($_SESSION['user_id'])): ?>
-          Logged in as <?= htmlspecialchars($_SESSION['name'] ?? 'User') ?>
-        <?php else: ?>
-          Not logged in
-        <?php endif; ?>
-      </div>
     </div>
-
   </div>
 </nav>
 
@@ -134,25 +142,21 @@ if (isset($_SESSION['user_id'])) {
     document.getElementById('navMenu').classList.toggle('active');
   });
 
-  // Enhanced cart dropdown
   document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced cart dropdown
     const cartIcon = document.querySelector('.cart-icon');
     const cartDropdown = document.querySelector('.cart-dropdown-content');
-    
     if (cartIcon && cartDropdown) {
       cartIcon.addEventListener('click', function(e) {
         if (window.innerWidth > 768) {
           e.preventDefault();
           cartDropdown.classList.toggle('show');
-          
           // Close other open dropdowns
-          document.querySelectorAll('.cart-dropdown-content.show')
-            .forEach(dd => {
-              if (dd !== cartDropdown) dd.classList.remove('show');
-            });
+          document.querySelectorAll('.cart-dropdown-content.show').forEach(dd => {
+            if (dd !== cartDropdown) dd.classList.remove('show');
+          });
         }
       });
-      
       // Close when clicking outside
       document.addEventListener('click', function(e) {
         if (!e.target.closest('.cart-dropdown')) {
@@ -161,15 +165,40 @@ if (isset($_SESSION['user_id'])) {
       });
     }
     
-    // Add active class to current page link
+    // Highlight current page link
     const currentPage = location.pathname.split('/').pop() || 'homepage.php';
     document.querySelectorAll('.nav-link').forEach(link => {
       if (link.getAttribute('href').includes(currentPage)) {
         link.classList.add('active');
       }
     });
+
+    // Logout confirmation
+    const logoutConfirm = document.getElementById('logoutConfirm');
+    const logoutButtons = [
+      document.getElementById('navLogout'),
+      document.getElementById('mobileLogout')
+    ].filter(btn => btn); // Filter out null if any
+
+    logoutButtons.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        logoutConfirm.style.display = 'flex';
+      });
+    });
+
+    // Cancel logout
+    document.getElementById('logoutCancel').addEventListener('click', function() {
+      logoutConfirm.style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    logoutConfirm.addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.style.display = 'none';
+      }
+    });
   });
 </script>
-
 </body>
 </html>

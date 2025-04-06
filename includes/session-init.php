@@ -6,7 +6,7 @@ ini_set('display_startup_errors', 1);
 
 defined('ROOT_PATH') || define('ROOT_PATH', realpath(dirname(__DIR__)));
 
-// Start session with secure settings
+// Start session securely
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 86400,
@@ -43,13 +43,12 @@ try {
 }
 
 /**
- * Sync cart between session and database
+ * Sync database cart to session — used for logged-in users only
  */
 function sync_cart(PDO $pdo): void {
     if (!isset($_SESSION['user_id'])) return;
 
     try {
-        // Sync database to session
         $stmt = $pdo->prepare("SELECT product_id, quantity FROM cart_items WHERE user_id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $_SESSION['cart'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -59,14 +58,14 @@ function sync_cart(PDO $pdo): void {
 }
 
 /**
- * Get cart items with full product details
+ * Get detailed cart items for checkout, cart display, etc.
  */
 function get_cart_details(PDO $pdo): array {
     $items = [];
-    
+
     try {
         if (isset($_SESSION['user_id'])) {
-            // Database cart for logged-in users
+            // Logged-in: use DB cart
             $stmt = $pdo->prepare("
                 SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
                        ci.quantity, pi.image_url as image, c.category_name
@@ -79,7 +78,7 @@ function get_cart_details(PDO $pdo): array {
             $stmt->execute([$_SESSION['user_id']]);
             $items = $stmt->fetchAll();
         } else {
-            // Session cart for guests
+            // Guest: use session cart
             if (!empty($_SESSION['cart'])) {
                 $placeholders = implode(',', array_fill(0, count($_SESSION['cart']), '?'));
                 $stmt = $pdo->prepare("
@@ -92,7 +91,7 @@ function get_cart_details(PDO $pdo): array {
                 ");
                 $stmt->execute(array_keys($_SESSION['cart']));
                 $items = $stmt->fetchAll();
-                
+
                 foreach ($items as &$item) {
                     $item['quantity'] = $_SESSION['cart'][$item['product_id']];
                 }
@@ -101,19 +100,13 @@ function get_cart_details(PDO $pdo): array {
     } catch (PDOException $e) {
         error_log("Cart details error: " . $e->getMessage());
     }
-    
+
     return $items;
 }
 
-// Sync cart on every page load for logged-in users
-if (isset($_SESSION['user_id'])) {
-    sync_cart($pdo);
-}
 
 /**
- * Generate (or retrieve) the CSRF token.
- *
- * @return string The CSRF token.
+ * CSRF token generator
  */
 function generate_csrf_token(): string {
     if (!isset($_SESSION['csrf_token'])) {
@@ -123,20 +116,29 @@ function generate_csrf_token(): string {
 }
 
 /**
- * Validate CSRF token.
- *
- * This function verifies that the token provided matches the one stored in the session.
+ * Validate CSRF token
  */
 function validate_csrf_token(string $token): bool {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
 
 /**
- * Get the total count of items in the cart.
- *
- * Returns the sum of the quantities stored in the session's cart.
+ * Count total number of product types in the cart
+ * You can modify this to return total quantity instead if preferred
  */
 function get_cart_count(PDO $pdo): int {
-    return !empty($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
+    if (!isset($_SESSION['user_id'])) {
+        return count($_SESSION['cart'] ?? []);
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM cart_items WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        return (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log("Cart count error: " . $e->getMessage());
+        return 0;
+    }
 }
+
 ?>

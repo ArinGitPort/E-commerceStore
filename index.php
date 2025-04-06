@@ -1,5 +1,5 @@
 <?php
-// index.php - Redirects to the shop page with safety checks
+// index.php - Redirects to the shop page with fallback
 
 // Check if headers have already been sent
 if (!headers_sent()) {

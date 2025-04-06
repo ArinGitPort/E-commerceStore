@@ -158,3 +158,74 @@ input:focus {
   text-decoration: underline;
   transform: scale(1.2);
 }
+
+
+.floating-shop-btn {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  animation: floatUp 1s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 50px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #ffaee7, #83a6d4);
+  color: white;
+  border: none !important; /* Force remove any borders */
+  outline: none !important; /* Remove focus outline */
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Remove any focus/active states from Bootstrap */
+.floating-shop-btn:focus,
+.floating-shop-btn:active {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  outline: none !important;
+  border: none !important;
+}
+
+/* Rest of your existing styles... */
+.floating-shop-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #6da3d6, #e091cc);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+
+.floating-shop-btn:hover::before {
+  opacity: 1;
+}
+
+.floating-shop-btn:hover {
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes floatUp {
+  0% { 
+    opacity: 0.9;
+    transform: translateX(-50%) translateY(10px);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  }
+  100% { 
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px);
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
+  }
+}
+
+.login-card {
+  margin-top: 70px;
+}
