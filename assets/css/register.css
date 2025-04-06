@@ -1,4 +1,4 @@
-/* Reset */
+
 * {
   box-sizing: border-box;
 }
@@ -21,7 +21,8 @@ html {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
+  padding: 20px;
 }
 
 /* Login Card */
@@ -30,12 +31,9 @@ html {
   border: 2px solid #354359;
   border-radius: 10px;
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
-  padding: 30px 40px;
+  padding: 30px;
   width: 100%;
-  height: auto;
-  max-height: none;
   max-width: 450px;
-  overflow-y: visible;
 }
 
 /*Login logo*/
@@ -44,13 +42,14 @@ html {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 200px;
+  margin-bottom: 20px;
 }
 
 .logo-image {
   width: 100%;
-  max-height: 300px;
-  max-width: 400px;
+  max-height: 200px;
+  max-width: 300px;
+  object-fit: contain;
 }
 
 /* Form Elements */
@@ -64,19 +63,10 @@ label {
   color: #333;
   font-weight: bold;
 }
-input[type="email"],
-input[type="text"] {
-  padding: 12px;
-  margin-bottom: 18px;
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  font-size: 16px;
-  transition: 0.3s;
-  width: 100%;
-}
 
-input[type="password"],
-input[type="text"] {
+input[type="email"],
+input[type="text"],
+input[type="password"] {
   padding: 12px;
   margin-bottom: 18px;
   border: 1px solid #aaa;
@@ -98,27 +88,14 @@ input:focus {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  flex-wrap: wrap; /* optional, allows it to stack on smaller screens */
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .checkbox-wrapper {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.forgot-link a {
-  display: inline-block;
-  color: #354359;
-  font-size: 14px;
-  text-decoration: none;
-  transition: transform 0.3s, color 0.3s;
-}
-
-.forgot-link a:hover {
-  color: #1e293b;
-  text-decoration: underline;
-  transform: scale(1.2);
 }
 
 /* Button */
@@ -132,6 +109,7 @@ input:focus {
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.3s;
+  margin-top: 10px;
 }
 
 .login-btn:hover {
@@ -156,5 +134,57 @@ input:focus {
 .register-link a:hover {
   color: #1e293b;
   text-decoration: underline;
-  transform: scale(1.2);
+  transform: scale(1.05);
+}
+
+.error-msg {
+  color: red;
+  font-size: 0.85rem;
+  display: none;
+  margin-top: -15px;
+  margin-bottom: 10px;
+}
+
+.success-msg {
+  color: green;
+  font-size: 0.85rem;
+  display: none;
+  margin-top: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .login-card {
+    padding: 20px;
+  }
+
+  .logo-image {
+    max-width: 250px;
+  }
+
+  input[type="email"],
+  input[type="text"],
+  input[type="password"] {
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  .login-btn {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .login-card {
+    padding: 15px;
+  }
+
+  .options-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logo-image {
+    max-width: 200px;
+  }
 }

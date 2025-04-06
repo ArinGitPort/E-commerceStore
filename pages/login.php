@@ -119,18 +119,25 @@ unset($_SESSION['login_error']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
+  <!-- Added viewport meta for mobile responsiveness -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Bunniwinkle</title>
   <link rel="stylesheet" href="../assets/css/login.css" />
   <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <style>
-    /* Floating shop button styles */
+    /* Apply your background gradient to the body */
+    body, html {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(0deg, rgba(255,219,254,1) 3%, rgba(200,226,246,1) 48%);
+    }
+    /* Floating shop button using your colors */
     .floating-shop-btn {
-      position: absolute;
+      position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
@@ -144,28 +151,63 @@ unset($_SESSION['login_error']);
       border: none;
       transition: all 0.3s ease;
     }
-
-
-
     @keyframes floatUp {
       from {
         opacity: 0;
         transform: translateX(-50%) translateY(20px);
       }
-
       to {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
       }
     }
-
-    /* Adjust login card position to make space for floating button */
+    /* Login wrapper */
+    .login-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    /* Login card styled with your color scheme */
     .login-card {
+      background: rgba(255,255,255,0.95);
+      border: 2px solid #354359;
+      border-radius: 10px;
+      padding: 30px 40px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 450px;
       margin-top: 70px;
+    }
+    /* Button styling using your color */
+    .login-btn {
+      background-color: #354359;
+      color: white;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .login-btn:hover {
+      background-color: #2b374b;
+    }
+    /* Responsive adjustments for small screens */
+    @media (max-width: 576px) {
+      .login-card {
+        padding: 20px;
+        margin: 0 10px;
+        margin-top: 40px;
+      }
+      .floating-shop-btn {
+        padding: 6px 16px;
+        top: 10px;
+      }
     }
   </style>
 </head>
-
 <body>
   <!-- Floating Visit Shop Button -->
   <a href="../index.php" class="btn btn-success floating-shop-btn">
@@ -174,8 +216,8 @@ unset($_SESSION['login_error']);
 
   <div class="login-wrapper">
     <div class="login-card">
-      <div class="logo-container">
-        <img class="logo-image" src="../assets/images/company assets/bunniwinkelanotherlogo.jpg" alt="Logo" />
+      <div class="logo-container text-center">
+        <img class="logo-image" src="../assets/images/company assets/bunniwinkelanotherlogo.jpg" alt="Logo" style="max-width: 100%; height: auto;" />
       </div>
 
       <?php if ($error): ?>
@@ -185,29 +227,32 @@ unset($_SESSION['login_error']);
       <form action="login.php" method="POST" novalidate>
         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
 
-        <label for="email">Email</label>
-        <input type="email" name="email" id="email" required placeholder="Enter your email" />
+        <div class="mb-3">
+          <label for="email" class="form-label" style="color: #333; font-weight: bold;">Email</label>
+          <input type="email" name="email" id="email" required placeholder="Enter your email" class="form-control" />
+        </div>
 
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password" required placeholder="Enter your password" />
+        <div class="mb-3">
+          <label for="password" class="form-label" style="color: #333; font-weight: bold;">Password</label>
+          <input type="password" name="password" id="password" required placeholder="Enter your password" class="form-control" />
+        </div>
 
-        <div class="options-row">
-          <div class="checkbox-wrapper">
-            <input type="checkbox" id="showPassword" onclick="togglePassword()" />
-            <label for="showPassword">Show Password</label>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="form-check">
+            <input type="checkbox" id="showPassword" onclick="togglePassword()" class="form-check-input" />
+            <label for="showPassword" class="form-check-label">Show Password</label>
           </div>
-
           <div class="forgot-link">
-            <a href="../pages-user/forgot-password.php">Forgot your password?</a>
+            <a href="../pages-user/forgot-password.php" style="color: #354359; font-size: 14px;">Forgot your password?</a>
           </div>
         </div>
 
-        <button type="submit" class="login-btn">Login</button>
+        <button type="submit" class="login-btn w-100">Login</button>
 
-        <div class="register-link">
+        <div class="register-link text-center mt-3" style="font-size: 16px;">
           <p>
             Don't have an account?
-            <a href="register.php">Register here</a>
+            <a href="register.php" style="color: #354359; font-weight: bold;">Register here</a>
           </p>
         </div>
       </form>
@@ -219,29 +264,25 @@ unset($_SESSION['login_error']);
       const passwordField = document.getElementById("password");
       passwordField.type = passwordField.type === "password" ? "text" : "password";
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const shopBtn = document.querySelector('.floating-shop-btn');
+      
+      // Fallback for older browsers
+      if (window.CSS && CSS.supports('position', 'sticky')) {
+        return;
+      }
+      
+      shopBtn.addEventListener('mouseenter', function() {
+        this.style.transition = 'background 0.6s ease-in-out';
+        this.style.background = 'linear-gradient(135deg, #6da3d6, #e091cc)';
+      });
+      
+      shopBtn.addEventListener('mouseleave', function() {
+        this.style.transition = 'background 0.6s ease-in-out';
+        this.style.background = 'linear-gradient(135deg, #ffaee7, #83a6d4)';
+      });
+    });
   </script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const shopBtn = document.querySelector('.floating-shop-btn');
-  
-  // For browsers that support the pseudo-element approach
-  if (window.CSS && CSS.supports('position', 'sticky')) {
-    return; // Let CSS handle it
-  }
-  
-  // Fallback for older browsers
-  shopBtn.addEventListener('mouseenter', function() {
-    this.style.transition = 'background 0.6s ease-in-out';
-    this.style.background = 'linear-gradient(135deg, #6da3d6, #e091cc)';
-  });
-  
-  shopBtn.addEventListener('mouseleave', function() {
-    this.style.transition = 'background 0.6s ease-in-out';
-    this.style.background = 'linear-gradient(135deg, #ffaee7, #83a6d4)';
-  });
-});
-</script>
 </body>
-
 </html>

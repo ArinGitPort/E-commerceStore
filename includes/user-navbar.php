@@ -183,6 +183,7 @@ if (isset($_SESSION['user_id'])) {
     logoutButtons.forEach(btn => {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         logoutConfirm.style.display = 'flex';
       });
     });
@@ -200,5 +201,6 @@ if (isset($_SESSION['user_id'])) {
     });
   });
 </script>
+
 </body>
 </html>
