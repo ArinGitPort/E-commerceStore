@@ -455,3 +455,82 @@ body.logout-modal-open {
   padding-right: 0 !important;
 }
 
+
+
+/* Login Modal Styles */
+.login-confirm {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.7);
+  z-index: 99999; /* Higher than Bootstrap's default */
+  align-items: center;
+  justify-content: center;
+}
+
+.login-dialog {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.login-btn {
+  padding: 8px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-confirm-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+}
+
+.login-confirm-btn:hover {
+  background: #0069d9;
+}
+
+.login-cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+}
+
+.login-cancel-btn:hover {
+  background: #5a6268;
+}
+
+/* Ensuring the login modal has a high z-index */
+.login-confirm {
+  z-index: 99999 !important; /* Higher than Bootstrap's modals (1050) */
+}
+
+/* Prevent Bootstrap backdrop from interfering */
+.modal-backdrop {
+  display: none !important;
+}
+
+body.login-modal-open {
+  overflow: hidden;
+  padding-right: 0 !important;
+}

@@ -124,7 +124,9 @@ unset($_SESSION['error'], $_SESSION['success']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - BunniShop</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/profile.css">
 </head>
@@ -135,7 +137,6 @@ unset($_SESSION['error'], $_SESSION['success']);
     <div class="profile-container">
         <div class="profile-card">
             <div class="profile-header">
-                <img src="../assets/images/default-avatar.jpg" alt="Profile" class="profile-avatar">
                 <h2><?= htmlspecialchars($user['name'] ?? 'User') ?></h2>
                 <p class="mb-0"><?= htmlspecialchars($user['email'] ?? '') ?></p>
                 <small class="text-white-50">Member since <?= date('F Y', strtotime($user['created_at'])) ?></small>
@@ -254,19 +255,31 @@ unset($_SESSION['error'], $_SESSION['success']);
         </div>
     </div>
 
-    <!-- Logout Confirmation Modal (direct child of body) -->
+    <!-- Logout Confirmation Modal -->
     <div class="logout-confirm" id="logoutConfirm" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
         <div class="logout-dialog" style="background: white; padding: 2rem; border-radius: 8px; max-width: 400px; width: 90%; text-align: center;">
             <h3>Are you sure you want to logout?</h3>
             <p>You'll need to sign in again to access your account.</p>
             <div class="logout-actions" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
                 <button class="logout-btn logout-cancel-btn" id="logoutCancel" style="padding: 0.5rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-                <a href="../pages/logout.php" class="logout-btn logout-confirm-btn" style="padding: 0.5rem 1.5rem; border: none; border-radius: 4px; background: #e74c3c; color: white; text-decoration: none;">Logout</a>
+                <!-- Use a button here instead of a direct link -->
+                <button class="logout-btn logout-confirm-btn" id="logoutConfirmBtn" style="padding: 0.5rem 1.5rem; border: none; border-radius: 4px; background: #e74c3c; color: white; cursor: pointer;">Logout</button>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap Bundle JS -->
+    <!-- Redirecting Modal (Bootstrap) -->
+    <div class="modal fade" id="redirectModal" tabindex="-1" aria-labelledby="redirectModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-body text-center">
+            <p id="redirectMessage">Redirecting...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Enable Bootstrap tabs -->
     <script>
@@ -279,11 +292,11 @@ unset($_SESSION['error'], $_SESSION['success']);
             });
         });
     </script>
-    <!-- Logout Modal Script -->
+    <!-- Logout Modal Script with Redirecting -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const logoutConfirm = document.getElementById('logoutConfirm');
-            // Get logout triggers - ensure these are buttons or anchors with href="javascript:void(0)" in user-navbar.php
+            // Get logout triggers from navbar or mobile (ensure these IDs are set in your user-navbar.php)
             const logoutButtons = [
                 document.getElementById('navLogout'),
                 document.getElementById('mobileLogout')
@@ -297,14 +310,28 @@ unset($_SESSION['error'], $_SESSION['success']);
                 });
             });
 
+            // Cancel logout hides the modal
             document.getElementById('logoutCancel').addEventListener('click', function() {
                 logoutConfirm.style.display = 'none';
             });
 
+            // Close logout modal when clicking outside the dialog
             logoutConfirm.addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.style.display = 'none';
                 }
+            });
+
+            // Logout Confirm button: show redirect modal then redirect after delay
+            document.getElementById('logoutConfirmBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logoutConfirm.style.display = 'none';
+                document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
+                let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
+                redirectModal.show();
+                setTimeout(function(){
+                    window.location.href = "../pages/logout.php";
+                }, 2000);
             });
         });
     </script>
