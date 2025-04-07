@@ -68,6 +68,18 @@
   color: #2b374b;
 }
 
+.nav-link:focus {
+  font-weight: 600; 
+  outline: none
+  
+}
+
+.nav-link:focus {
+  font-weight: inherit;
+  text-decoration: inherit;
+  color: inherit;
+}
+
 .dropdown-icon {
   margin-left: 5px;
   font-size: 12px;
@@ -442,3 +454,4 @@ body.logout-modal-open {
   overflow: hidden;
   padding-right: 0 !important;
 }
+
