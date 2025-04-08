@@ -13,6 +13,7 @@ if (isset($_SESSION['user_id'])) {
   <meta charset="UTF-8">
   <title>Bunniwinkle Navigation</title>
   <link rel="stylesheet" href="../assets/css/navbar.css" />
+  <link rel="stylesheet" href="../assets/css/about-us.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -76,7 +77,7 @@ if (isset($_SESSION['user_id'])) {
     <!-- Navigation Links -->
     <ul class="nav-menu" id="navMenu">
       <li class="nav-item"><a href="../pages-user/shop.php" class="nav-link">Shop</a></li>
-      <li class="nav-item"><a href="../pages-user/about.php" class="nav-link">About Us</a></li>
+      <li class="nav-item"><a href="../pages-user/about-us.php" class="nav-link">About Us</a></li>
       <li class="nav-item"><a href="../pages-user/contact.php" class="nav-link">Contact Us</a></li>
       <li class="nav-item dropdown">
         <a href="#" class="nav-link">Others <span class="dropdown-icon">▼</span></a>

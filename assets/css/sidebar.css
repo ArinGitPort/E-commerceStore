@@ -1,37 +1,93 @@
-/* Reset & Base */
+/* ---------------------
+   RESET & BASE STYLES
+---------------------- */
 * {
   box-sizing: border-box;
 }
-body, html {
+
+html, body {
   margin: 0;
   padding: 0;
   font-family: "Trebuchet MS", Arial, sans-serif;
   width: 100%;
+  background: #f8f9fa; /* Light gray background */
 }
 
-/* Wrapper (if needed) */
+/* ---------------------
+   WRAPPER
+---------------------- */
 .pageWrapper {
-  flex: 0;
   display: flex;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
+  min-height: 100vh; /* Keep the container tall */
 }
 
-/* SIDEBAR CONTAINER */
+/* ---------------------
+   SIDEBAR CONTAINER
+---------------------- */
 .sidebarContainer {
-  width: 350px;
-  background: linear-gradient(0deg, rgba(255,219,254,1) 3%, rgba(200,226,246,1) 48%);
+  width: 350px; /* full size on larger screens */
+  background: linear-gradient(
+    0deg,
+    rgba(255,219,254,1) 3%,
+    rgba(200,226,246,1) 48%
+  );
   border-right: 1px solid #354359;
   box-shadow: 0 0 6px rgba(0, 0, 0, 1);
   display: flex;
   flex-direction: column;
-  padding: 0;
   position: relative;
   z-index: 1000;
+  transition: width 0.3s ease, transform 0.3s ease;
 }
 
-/* Profile / Logo */
+/* This .open class (used on mobile) slides the sidebar into view */
+.sidebarContainer.open {
+  transform: translateX(0);
+}
+
+/* Collapsed State (Desktop logic) */
+.sidebarContainer.collapsed {
+  width: 70px;
+  overflow: hidden;
+}
+.sidebarContainer.collapsed .dashboardProfile,
+.sidebarContainer.collapsed .menuDashboard,
+.sidebarContainer.collapsed .dropdown-arrow {
+  display: none;
+}
+.sidebarContainer.collapsed .listDiv {
+  justify-content: center;
+  padding: 15px 0;
+}
+
+/* Header (Dark Bar) */
+.sidebarHeader {
+  width: 100%;
+  height: 60px;
+  background: #354359; /* Dark background for header */
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+/* Toggle Button (Hamburger) */
+.collapse-toggle {
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background 0.3s ease;
+}
+.collapse-toggle:hover {
+  background: #e5e5e5;
+}
+
+/* ---------------------
+   SIDEBAR PROFILE
+---------------------- */
 .dashboardProfile {
   text-align: center;
   border-bottom: 2px solid #354359;
@@ -40,26 +96,23 @@ body, html {
 .userIcon {
   width: 80%;
   max-width: 250px;
-  margin-top: 10px;
+  margin: 10px auto;
   border-radius: 8px;
 }
 
-/* NAVIGATION LIST */
+/* ---------------------
+   NAVIGATION LIST
+---------------------- */
 .listDashboard {
   list-style: none;
   padding: 0;
   margin: 0;
   font-size: 18px;
 }
-
-/* Each list item fills full width */
 .listDashboard li {
-  list-style: none;
-  margin-bottom: 5px;
   width: 100%;
+  margin-bottom: 5px;
 }
-
-/* Container for each nav item */
 .listDiv {
   display: flex;
   align-items: center;
@@ -67,16 +120,13 @@ body, html {
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
   position: relative;
-  width: 100%;
 }
-
 .listDiv:hover {
   background-color: #354359;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
 }
-
 .listDiv::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   bottom: 0;
@@ -85,13 +135,10 @@ body, html {
   background-color: white;
   transition: width 0.4s ease, left 0.4s ease;
 }
-
 .listDiv:hover::after {
   width: 100%;
   left: 0;
 }
-
-/* Nav Link */
 .menuDashboard {
   color: black;
   text-decoration: none;
@@ -101,92 +148,126 @@ body, html {
   font-weight: bold;
   transition: color 0.3s ease;
 }
-
-/* Change link color when parent is hovered */
 .listDiv:hover .menuDashboard {
   color: white;
 }
 
-/* Icon Styles */
+/* Icon Classes (Font Awesome) */
 .imgIcon {
+  font-size: 20px;
   width: 24px;
   height: 24px;
-  margin-right: 5px;
+  margin-right: 10px;
 }
 
-/* DROPDOWN TOGGLE */
+/* ---------------------
+   DROPDOWN
+---------------------- */
 .dropdown-toggle {
   display: flex;
   align-items: center;
   width: 100%;
 }
-
-.dropdown-arrow {
-    font-size: 20px;
-    color: white;  
-    margin-left: auto;
-    transition: color 0.3s, font-size 0.3s; 
-  }
-
-  
-  
-/* DROPDOWN VERTICAL LIST */
 .dropdown-content-vertical {
   display: none;
   flex-direction: column;
   padding: 0;
   margin: 0;
-  width: 100%; /* spans full width of sidebar */
-  border: none;
-  border-radius: 0; /* no rounding */
-  box-shadow: none;
+  width: 100%;
 }
-
+.dropdown-content-vertical.open {
+  display: block;
+}
 .dropdown-content-vertical .dropdown-item {
   display: block;
   padding: 12px 20px;
   font-size: 16px;
   color: black;
   text-decoration: none;
-  transition: background-color 0.3s, color 0.3s;
   width: 100%;
-  border-radius: 0;
-  margin-bottom: 0; /* remove margin if you want full block fill */
+  transition: background-color 0.3s, color 0.3s;
 }
-
 .dropdown-content-vertical .dropdown-item:hover {
   background-color: #1e293b;
   color: white;
 }
 
-/* RESPONSIVE BREAKPOINTS */
-@media (max-width: 768px) {
+/* ---------------------
+   MAIN CONTENT
+---------------------- */
+.main-content {
+  margin-left: 350px; /* Aligns with sidebar width on desktop */
+  transition: margin-left 0.3s ease;
+  flex: 1;
+  padding: 20px;
+  background: #f8f9fa;
+}
+.main-content.expanded {
+  margin-left: 70px;
+}
+
+/* ---------------------
+   RESPONSIVE STYLES
+---------------------- */
+
+/* For screens <= 992px */
+@media (max-width: 992px) {
   .sidebarContainer {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 250px;
+    transform: translateX(-100%);
+    z-index: 1000;
+    transition: transform 0.3s ease;
   }
-  .listDiv {
-    flex-direction: column;
-    justify-content: center;
+
+  .sidebarContainer.collapsed {
+    width: 250px; /* Collapsed width for uniform overlay */
+  }
+
+  /* Ensure the button is visible on top */
+  #sidebarToggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 9999; 
+    /* Possibly add color or background if needed, e.g.:
+    background-color: #fff; 
+    color: #354359; 
+    */
+  }
+
+  .main-content {
+    margin-left: 0; 
+  }
+
+  .main-content.expanded {
+    margin-left: 0;
   }
 }
 
+/* For screens <= 768px */
+@media (max-width: 768px) {
+  .listDiv {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  .menuDashboard {
+    margin-left: 10px;
+  }
+}
+
+/* For screens <= 600px */
 @media (max-width: 600px) {
-  .pageWrapper {
-    flex-direction: column;
-  }
-  .sidebarContainer {
-    width: 100%;
-    box-shadow: none;
-    border-right: none;
-    border-bottom: 2px solid #354359;
-  }
-  .dropdown-content-vertical {
-    left: auto;
-    right: 10px;
+  .userIcon {
+    width: 60%;
   }
   .listDiv {
-    justify-content: center;
+    padding: 8px;
+  }
+  .dropdown-content-vertical {
+    right: 10px; 
   }
 }

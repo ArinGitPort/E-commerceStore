@@ -8,9 +8,10 @@
 
 /* Main Navbar Container */
 .navbar {
+  /* height: 150px;  remove this */
+  min-height: 150px; /* optional if you want a minimum size, but let content grow */
   background-color: white;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  height: 150px;
   width: 100%;
   display: flex;
   align-items: center;

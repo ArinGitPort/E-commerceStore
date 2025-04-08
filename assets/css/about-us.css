@@ -1,0 +1,274 @@
+/* about-us.css */
+:root {
+  --primary-color: #ff85a2; /* Soft pink */
+  --secondary-color: #a5d8ff; /* Light blue */
+  --accent-color: #f9c74f; /* Warm yellow */
+  --dark-color: #3a3a5e; /* Deep navy */
+  --light-color: #f8f9fa; /* Off-white */
+  --glass-blur: 12px;
+}
+
+/* Shared Styles */
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--light-color);
+  color: var(--dark-color);
+  overflow-x: hidden;
+}
+
+/* Hero Banner */
+.about-hero {
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--secondary-color) 100%
+  );
+  height: 30vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("../assets/images/company assets/bunniwinkleBG.jpg")
+    center/cover;
+  opacity: 0.15;
+}
+
+.about-hero .container {
+  position: relative;
+  z-index: 2;
+}
+
+.about-hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.about-hero p {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  font-weight: 300;
+}
+
+/* Glassmorphism Card Styles */
+.mission-card,
+.cta-box {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  transition: all 0.3s ease;
+}
+
+.mission-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.mission-statement {
+  font-style: italic;
+  position: relative;
+  padding: 0 2rem;
+}
+
+.mission-statement::before,
+.mission-statement::after {
+  content: '"';
+  font-size: 3rem;
+  color: var(--primary-color);
+  opacity: 0.3;
+  position: absolute;
+}
+
+.mission-statement::before {
+  top: -1.5rem;
+  left: 0;
+}
+
+.mission-statement::after {
+  bottom: -3rem;
+  right: 0;
+}
+
+/* Team Section */
+.team-member img {
+  border: 5px solid white;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+}
+
+.team-member:hover img {
+  transform: scale(1.05);
+}
+
+.team-member h4 {
+  color: var(--dark-color);
+  margin-top: 1rem;
+}
+
+.team-member p:last-child {
+  font-style: italic;
+  color: var(--primary-color);
+}
+
+/* Values Section */
+.values-section {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(245, 245, 255, 0.9) 100%
+  );
+}
+
+.value-card {
+  height: 100%;
+  transition: transform 0.3s ease;
+  background: transparent !important;
+  border: none !important;
+}
+
+.value-card:hover {
+  transform: translateY(-10px);
+}
+
+.value-icon {
+  font-size: 2.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  width: 70px;
+  height: 70px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+/* CTA Section */
+.cta-box {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(245, 245, 255, 0.85) 100%
+  );
+  position: relative;
+  z-index: 10;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  padding: 0.75rem 2rem;
+  border-radius: 50px;
+  font-weight: 600;
+}
+
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  padding: 0.75rem 2rem;
+  border-radius: 50px;
+  font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Signature Style */
+.signature {
+  font-family: "Dancing Script", cursive;
+  color: var(--primary-color);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+  .about-hero {
+    height: 50vh;
+  }
+
+  .team-member {
+    margin-bottom: 2.5rem;
+  }
+
+  .value-card {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .about-hero {
+    height: 40vh;
+  }
+
+  .mission-card {
+    padding: 1.5rem;
+  }
+
+  .cta-box .btn {
+    display: block;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .cta-box .btn:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .about-hero {
+    height: 35vh;
+  }
+
+  .mission-statement {
+    padding: 0 1rem;
+  }
+
+  .mission-statement::before {
+    top: -1rem;
+  }
+
+  .mission-statement::after {
+    bottom: -2.5rem;
+  }
+}
+
+/* Animation Delays */
+.animate__delay-1s {
+  animation-delay: 0.3s;
+}
+
+.animate__delay-2s {
+  animation-delay: 0.6s;
+}
+
+.animate__delay-3s {
+  animation-delay: 0.9s;
+}
+
+.our-story-img {
+    width: 60%;
+    max-width: 400px; /* 👈 Adjust this as needed */
+    height: auto;
+    margin: 0 auto;
+    display: block;
+}
+

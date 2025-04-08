@@ -80,8 +80,8 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
 <body>
     <?php include '../includes/user-navbar.php'; ?>
 
-    <div class="shop-container container my-4">
-        <div class="shop-header text-center mb-4">
+    <div class="shop-container container">
+        <div class="shop-header text-center ">
             <h1>Our Products</h1>
 
             <?php if ($showExclusive): ?>
