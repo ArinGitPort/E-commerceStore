@@ -15,7 +15,7 @@ if (session_status() === PHP_SESSION_NONE) {
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
-    
+
     session_name('BUNNISHOP_SESS');
     session_start();
 }
@@ -45,7 +45,8 @@ try {
 /**
  * Sync database cart to session — used for logged-in users only
  */
-function sync_cart(PDO $pdo): void {
+function sync_cart(PDO $pdo): void
+{
     if (!isset($_SESSION['user_id'])) return;
 
     try {
@@ -59,8 +60,8 @@ function sync_cart(PDO $pdo): void {
 
 /**
  * Get detailed cart items for checkout, cart display, etc.
- */
-function get_cart_details(PDO $pdo): array {
+ */ function get_cart_details(PDO $pdo): array
+{
     $items = [];
 
     try {
@@ -68,32 +69,68 @@ function get_cart_details(PDO $pdo): array {
             // Logged-in: use DB cart
             $stmt = $pdo->prepare("
                 SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
-                       ci.quantity, pi.image_url as image, c.category_name
+                       ci.quantity, c.category_name
                 FROM cart_items ci
                 JOIN products p ON ci.product_id = p.product_id
                 JOIN categories c ON p.category_id = c.category_id
-                LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
                 WHERE ci.user_id = ?
             ");
             $stmt->execute([$_SESSION['user_id']]);
-            $items = $stmt->fetchAll();
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
             // Guest: use session cart
             if (!empty($_SESSION['cart'])) {
                 $placeholders = implode(',', array_fill(0, count($_SESSION['cart']), '?'));
                 $stmt = $pdo->prepare("
                     SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
-                           pi.image_url as image, c.category_name
+                           c.category_name
                     FROM products p
                     JOIN categories c ON p.category_id = c.category_id
-                    LEFT JOIN product_images pi ON p.product_id = pi.product_id AND pi.is_primary = 1
                     WHERE p.product_id IN ($placeholders)
                 ");
                 $stmt->execute(array_keys($_SESSION['cart']));
-                $items = $stmt->fetchAll();
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+                // Attach quantities from session cart data
                 foreach ($items as &$item) {
                     $item['quantity'] = $_SESSION['cart'][$item['product_id']];
+                }
+            }
+        }
+
+        // Now, retrieve all images for the products in the cart.
+        $productIds = array_column($items, 'product_id');
+        if ($productIds) {
+            $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+            $stmt = $pdo->prepare("
+                SELECT product_id, image_url, is_primary, alt_text, sort_order
+                FROM product_images
+                WHERE product_id IN ($placeholders)
+                ORDER BY product_id, sort_order ASC
+            ");
+            $stmt->execute($productIds);
+            $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Group images by product ID
+            $imagesByProduct = [];
+            foreach ($images as $img) {
+                $imagesByProduct[$img['product_id']][] = $img;
+            }
+
+            // Attach images to each item and optionally set a primary image
+            foreach ($items as &$item) {
+                $item['images'] = $imagesByProduct[$item['product_id']] ?? [];
+
+                // Look for a primary image
+                foreach ($item['images'] as $img) {
+                    if ($img['is_primary']) {
+                        $item['primary_image'] = $img;
+                        break;
+                    }
+                }
+                // If no image is flagged as primary, just pick the first available image if there is any.
+                if (!isset($item['primary_image']) && !empty($item['images'])) {
+                    $item['primary_image'] = $item['images'][0];
                 }
             }
         }
@@ -105,10 +142,13 @@ function get_cart_details(PDO $pdo): array {
 }
 
 
+
+
 /**
  * CSRF token generator
  */
-function generate_csrf_token(): string {
+function generate_csrf_token(): string
+{
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
@@ -118,7 +158,8 @@ function generate_csrf_token(): string {
 /**
  * Validate CSRF token
  */
-function validate_csrf_token(string $token): bool {
+function validate_csrf_token(string $token): bool
+{
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
 
@@ -126,7 +167,8 @@ function validate_csrf_token(string $token): bool {
  * Count total number of product types in the cart
  * You can modify this to return total quantity instead if preferred
  */
-function get_cart_count(PDO $pdo): int {
+function get_cart_count(PDO $pdo): int
+{
     if (!isset($_SESSION['user_id'])) {
         return count($_SESSION['cart'] ?? []);
     }
@@ -140,5 +182,3 @@ function get_cart_count(PDO $pdo): int {
         return 0;
     }
 }
-
-?>

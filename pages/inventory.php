@@ -59,6 +59,9 @@ $totalPages = ceil($totalRows / $rowsPerPage);
 // Get categories for filter dropdown
 $categories = $pdo->query("SELECT * FROM categories ORDER BY category_name")->fetchAll(PDO::FETCH_ASSOC);
 
+// Initialize productImages to prevent undefined variable warning in the Add Product modal
+$productImages = [];
+
 // Handle bulk deletion (this form posts to the same file)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
   $selectedIds = $_POST['selected_products'] ?? [];
@@ -86,7 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
   }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -147,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
               </select>
               <select name="stock" class="md-select" onchange="this.form.submit()">
                 <option value="">All Items</option>
-                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)< /option>
+                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)</option>
                 <option value="out_of_stock" <?= $stockFilter === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
               </select>
               <div class="search-box" style="margin-top: 10px;">
@@ -179,14 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                   <td><input type="checkbox" name="selected_products[]" value="<?= $product['product_id'] ?>"></td>
                   <td class="product-image-cell">
                     <?php if (!empty($product['primary_image'])): ?>
-                      <img src="<?=
-                                // Check if image path is already a full URL
-                                filter_var($product['primary_image'], FILTER_VALIDATE_URL) ?
-                                  $product['primary_image'] :
-                                  '/assets/images/products/' . htmlspecialchars($product['primary_image'])
-                                ?>"
-                        alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
-                        class="product-thumbnail">
+                      <img src="<?= filter_var($product['primary_image'], FILTER_VALIDATE_URL) ? $product['primary_image'] : '/assets/images/products/' . htmlspecialchars($product['primary_image']) ?>"
+                           alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
+                           class="product-thumbnail">
                     <?php else: ?>
                       <div class="no-image">No Image</div>
                     <?php endif; ?>
@@ -210,15 +207,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                   </td>
                   <td class="actions">
                     <button type="button" class="md-icon-btn edit-btn"
-                      data-id="<?= $product['product_id'] ?>"
-                      data-bs-toggle="modal"
-                      data-bs-target="#editProductModal">
+                            data-id="<?= $product['product_id'] ?>"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editProductModal">
                       <i class="fas fa-edit"></i>
                     </button>
                     <button type="button" class="md-icon-btn view-btn"
-                      data-id="<?= $product['product_id'] ?>"
-                      data-bs-toggle="modal"
-                      data-bs-target="#viewProductModal">
+                            data-id="<?= $product['product_id'] ?>"
+                            data-bs-toggle="modal"
+                            data-bs-target="#viewProductModal">
                       <i class="fas fa-eye"></i>
                     </button>
                   </td>
@@ -242,12 +239,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
               <option value="50" <?= $rowsPerPage == 50 ? 'selected' : '' ?>>50</option>
             </select>
             <button class="md-icon-btn" <?= $currentPage == 1 ? 'disabled' : '' ?>
-              onclick="goToPage(<?= $currentPage - 1 ?>)">
+                    onclick="goToPage(<?= $currentPage - 1 ?>)">
               &lt;
             </button>
             <span>Page <?= $currentPage ?> of <?= $totalPages ?></span>
             <button class="md-icon-btn" <?= $currentPage >= $totalPages ? 'disabled' : '' ?>
-              onclick="goToPage(<?= $currentPage + 1 ?>)">
+                    onclick="goToPage(<?= $currentPage + 1 ?>)">
               &gt;
             </button>
           </div>
@@ -309,27 +306,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                 <div class="mb-3">
                   <label class="form-label">Product Images</label>
                   <div class="image-preview-container">
-                    <?php foreach ($productImages as $image): ?>
-                      <div class="image-preview-item" data-image-id="<?= $image['image_id'] ?>">
-                        <img src="/assets/images/products/<?= htmlspecialchars($image['image_url']) ?>"
-                          class="img-thumbnail">
-                        <div class="image-actions">
-                          <button type="button" class="btn btn-sm btn-primary set-primary-btn 
-                    <?= $image['is_primary'] ? 'active' : '' ?>"
-                            data-image-id="<?= $image['image_id'] ?>">
-                            <i class="fas fa-star"></i> Primary
-                          </button>
-                          <button type="button" class="btn btn-sm btn-danger delete-image-btn"
-                            data-image-id="<?= $image['image_id'] ?>">
-                            <i class="fas fa-trash"></i>
-                          </button>
+                    <?php if (!empty($productImages)): ?>
+                      <?php foreach ($productImages as $image): ?>
+                        <div class="image-preview-item" data-image-id="<?= $image['image_id'] ?>">
+                          <img src="/assets/images/products/<?= htmlspecialchars($image['image_url']) ?>" class="img-thumbnail">
+                          <div class="image-actions">
+                            <button type="button" class="btn btn-sm btn-primary set-primary-btn <?= $image['is_primary'] ? 'active' : '' ?>" data-image-id="<?= $image['image_id'] ?>">
+                              <i class="fas fa-star"></i> Primary
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger delete-image-btn" data-image-id="<?= $image['image_id'] ?>">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    <?php endforeach; ?>
+                      <?php endforeach; ?>
+                    <?php else: ?>
+                      <p>No images available.</p>
+                    <?php endif; ?>
                   </div>
                   <input type="file" name="new_images[]" class="form-control mt-2" multiple accept="image/*">
                 </div>
-
               </div>
             </div>
           </div>
@@ -446,38 +442,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
         $('#viewProductModal .modal-content').html(data);
       });
     });
-
     $(document).on('click', '.set-primary-btn', function() {
-    const imageId = $(this).data('image-id');
-    const productId = $('#editProductModal').data('product-id');
-    const $btn = $(this);
-    
-    // Show loading state
-    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing');
-    
-    $.post('inventory_actions.php', {
-        action: 'set_primary_image',
-        product_id: productId,
-        image_id: imageId
-    }, function(response) {
-        if (response.success) {
-            // Update UI
-            $('.set-primary-btn').removeClass('active');
-            $btn.addClass('active');
-            
-            // Update the primary image in the main table if needed
-            const imageUrl = response.image_url;
-            $('tr[data-product-id="' + productId + '"] .product-thumbnail')
-                .attr('src', '/assets/images/products/' + imageUrl);
-        } else {
-            alert(response.message || 'Error updating primary image');
-        }
-    }).fail(function() {
-        alert('Server error occurred');
-    }).always(function() {
-        $btn.prop('disabled', false).html('<i class="fas fa-star"></i> Primary');
+      const imageId = $(this).data('image-id');
+      const productId = $('#editProductModal').data('product-id');
+      const $btn = $(this);
+      
+      // Show loading state
+      $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing');
+      
+      $.post('inventory_actions.php', {
+          action: 'set_primary_image',
+          product_id: productId,
+          image_id: imageId
+      }, function(response) {
+          if (response.success) {
+              // Update UI
+              $('.set-primary-btn').removeClass('active');
+              $btn.addClass('active');
+              
+              // Update the primary image in the main table if needed
+              const imageUrl = response.image_url;
+              $('tr[data-product-id="' + productId + '"] .product-thumbnail')
+                  .attr('src', '/assets/images/products/' + imageUrl);
+          } else {
+              alert(response.message || 'Error updating primary image');
+          }
+      }).fail(function() {
+          alert('Server error occurred');
+      }).always(function() {
+          $btn.prop('disabled', false).html('<i class="fas fa-star"></i> Primary');
+      });
     });
-});
   </script>
 </body>
 

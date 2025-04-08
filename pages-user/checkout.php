@@ -1,5 +1,3 @@
-
-
 <?php
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
@@ -36,9 +34,17 @@ foreach ($cartItems as $item) {
     $itemTotal = $price * $quantity;
     $subtotal += $itemTotal;
 
+    // Pull the image URL from primary_image if available; otherwise use a default
+    $imageUrl = '../assets/images/default-product.jpg';
+    if (!empty($item['primary_image']['image_url'])) {
+        // If your DB just stores a filename, prepend a path if needed
+        // e.g. '/assets/images/products/' . $item['primary_image']['image_url']
+        $imageUrl = '/assets/images/products/' . $item['primary_image']['image_url'];
+    }
+
     $itemDetails[] = [
         'name'     => $item['product_name'],
-        'image'    => $item['image'] ?? '../assets/images/default-product.jpg',
+        'image'    => $imageUrl,  // store the actual image path here
         'price'    => $price,
         'quantity' => $quantity,
         'total'    => $itemTotal,
@@ -73,11 +79,12 @@ $paymentMethods  = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::F
     <div class="col-lg-7">
       <h4 class="section-title">Your Order</h4>
       <?php foreach ($itemDetails as $item): ?>
-      <div class="cart-item">
+      <div class="cart-item d-flex align-items-center mb-3">
+        <!-- Now referencing $item['image'] -->
         <img 
           src="<?= htmlspecialchars($item['image']) ?>" 
           alt="<?= htmlspecialchars($item['name']) ?>" 
-          style="width:80px;"
+          style="width:80px; object-fit:contain;"
         >
         <div class="ms-3 flex-grow-1">
           <h5><?= htmlspecialchars($item['name']) ?></h5>
@@ -190,6 +197,7 @@ $paymentMethods  = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::F
           <div 
             class="payment-method p-2 border rounded mb-2"
             onclick="document.getElementById('pm<?= $pm['payment_method_id'] ?>').checked = true;"
+            style="cursor: pointer;"
           >
             <input 
               class="form-check-input" 

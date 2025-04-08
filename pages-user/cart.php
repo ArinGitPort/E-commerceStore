@@ -74,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_update'])) {
         $pdo->commit();
         header("Location: cart.php");
         exit;
-
     } catch (PDOException $e) {
         // Roll back if anything fails
         $pdo->rollBack();
@@ -108,6 +107,7 @@ if (isset($_SESSION['cart_message'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Shopping Cart - BunniShop</title>
@@ -122,14 +122,17 @@ if (isset($_SESSION['cart_message'])) {
             object-fit: contain;
             border-radius: 5px;
         }
+
         .quantity-input {
             width: 60px;
             text-align: center;
         }
+
         .cart-item {
             padding: 15px 0;
             border-bottom: 1px solid #eee;
         }
+
         .summary-card {
             background: #f8f9fa;
             border-radius: 10px;
@@ -137,6 +140,7 @@ if (isset($_SESSION['cart_message'])) {
         }
     </style>
 </head>
+
 <body>
     <?php include '../includes/user-navbar.php'; ?>
 
@@ -180,11 +184,13 @@ if (isset($_SESSION['cart_message'])) {
                         <?php foreach ($cartItems as $item): ?>
                             <div class="cart-item row align-items-center" data-product-id="<?= $item['product_id'] ?>">
                                 <div class="col-md-2">
-                                    <img 
-                                        src="<?= htmlspecialchars($item['image'] ?? '../assets/images/default-product.jpg') ?>"
+                                    <img
+                                        src="<?= isset($item['primary_image'])
+                                                    ? '/assets/images/products/' . htmlspecialchars($item['primary_image']['image_url'])
+                                                    : '../assets/images/default-product.jpg' ?>"
                                         alt="<?= htmlspecialchars($item['product_name']) ?>"
-                                        class="img-fluid cart-item-image"
-                                    >
+                                        class="img-fluid cart-item-image">
+
                                 </div>
                                 <div class="col-md-4">
                                     <h5><?= htmlspecialchars($item['product_name']) ?></h5>
@@ -196,25 +202,23 @@ if (isset($_SESSION['cart_message'])) {
                                     <?php endif; ?>
                                 </div>
                                 <div class="col-md-2">
-                                    <input 
+                                    <input
                                         type="number"
                                         name="quantities[<?= $item['product_id'] ?>]"
                                         value="<?= $item['quantity'] ?>"
                                         min="1"
                                         max="<?= $item['stock'] ?>"
-                                        class="form-control quantity-input"
-                                    >
+                                        class="form-control quantity-input">
                                 </div>
                                 <div class="col-md-2 text-center">
                                     <p class="mb-0">₱<?= number_format($item['price'], 2) ?></p>
                                 </div>
                                 <div class="col-md-2 text-end">
-                                    <button 
+                                    <button
                                         type="submit"
                                         name="remove_item"
                                         class="btn btn-outline-danger btn-sm"
-                                        value="<?= $item['product_id'] ?>"
-                                    >
+                                        value="<?= $item['product_id'] ?>">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -223,11 +227,10 @@ if (isset($_SESSION['cart_message'])) {
 
                         <!-- Update / Continue Buttons -->
                         <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                            <button 
-                                type="submit" 
-                                name="update_cart" 
-                                class="btn btn-outline-primary px-4"
-                            >
+                            <button
+                                type="submit"
+                                name="update_cart"
+                                class="btn btn-outline-primary px-4">
                                 <i class="fas fa-sync-alt me-2"></i> Update Cart
                             </button>
                             <a href="../pages-user/shop.php" class="btn btn-outline-secondary px-4">
@@ -245,11 +248,10 @@ if (isset($_SESSION['cart_message'])) {
                                 <span id="orderTotal">₱<?= number_format($cartTotal, 2) ?></span>
                             </div>
                             <!-- 'Proceed to Checkout' triggers if (isset($_POST['checkout'])) in the code above -->
-                            <button 
-                                type="submit" 
-                                name="checkout" 
-                                class="btn btn-primary w-100 py-2"
-                            >
+                            <button
+                                type="submit"
+                                name="checkout"
+                                class="btn btn-primary w-100 py-2">
                                 Proceed to Checkout
                             </button>
                         </div>
@@ -287,7 +289,7 @@ if (isset($_SESSION['cart_message'])) {
                             // Update the order summary total on the page
                             $('#orderTotal').text(
                                 '₱' + Number(response.newTotal).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2, 
+                                    minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
                                 })
                             );
@@ -303,4 +305,5 @@ if (isset($_SESSION['cart_message'])) {
         });
     </script>
 </body>
+
 </html>
