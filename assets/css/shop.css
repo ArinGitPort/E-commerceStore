@@ -104,6 +104,8 @@
     transition: opacity 0.3s ease;
 }
 
+
+
 .product-card:hover .quick-view {
     opacity: 1;
 }

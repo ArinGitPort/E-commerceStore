@@ -38,7 +38,7 @@ if (isset($_SESSION['user_id'])) {
 <div class="login-confirm" id="loginConfirm">
   <div class="login-dialog">
     <h3>Do you want to login?</h3>
-    <p>You need to sign in to access your account.</p>
+    <p>You need to sign in to access your account/cart.</p>
     <div class="login-actions">
       <button class="login-btn login-cancel-btn" id="loginCancel">Cancel</button>
       <!-- Changed to button with no href to intercept click -->

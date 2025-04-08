@@ -11,6 +11,33 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
 }
 
 //ADD MEMBERSHIP LEVEL PRODUCT ACCESS
+// Handle setting primary image via AJAX
+if ($_GET['action'] === 'set_primary_image' && isset($_POST['product_id'], $_POST['image_id'])) {
+    header('Content-Type: application/json');
+    try {
+        $pdo->beginTransaction();
+        
+        // First reset all primary flags for this product
+        $stmt = $pdo->prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ?");
+        $stmt->execute([$_POST['product_id']]);
+        
+        // Then set the selected image as primary
+        $stmt = $pdo->prepare("UPDATE product_images SET is_primary = 1 WHERE image_id = ? AND product_id = ?");
+        $stmt->execute([$_POST['image_id'], $_POST['product_id']]);
+        
+        $pdo->commit();
+        
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
 
 // Handle AJAX requests for modals (edit or view product)
 if (isset($_GET['action'])) {
@@ -397,3 +424,6 @@ if (isset($_GET['export'])) {
   exit;
 }
 ?>
+
+
+script

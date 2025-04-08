@@ -142,10 +142,13 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                                     </div>
                                 <?php endif; ?>
 
-                                <div class="quick-view position-absolute top-50 start-50 translate-middle bg-light p-2 rounded"
-                                    data-product-id="<?= $product['product_id'] ?>" style="cursor:pointer;">
+                                <div class="quick-view position-absolute top-50 start-50 translate-middle p-2 rounded"
+                                    data-product-id="<?= $product['product_id'] ?>"
+                                    style="cursor:pointer; background-color: transparent !important;">
                                     <i class="fas fa-eye"></i> Quick View
                                 </div>
+
+
                             </div>
 
                             <!-- Product Info -->

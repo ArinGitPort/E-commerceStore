@@ -178,8 +178,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                 <tr class="<?= $product['stock'] <= 0 ? 'out-of-stock' : ($product['stock'] < 10 ? 'low-stock' : '') ?>">
                   <td><input type="checkbox" name="selected_products[]" value="<?= $product['product_id'] ?>"></td>
                   <td class="product-image-cell">
-                    <?php if ($product['primary_image']): ?>
-                      <img src="../assets/images/products/<?= htmlspecialchars($product['primary_image'] ?? '') ?>"
+                    <?php if (!empty($product['primary_image'])): ?>
+                      <img src="<?=
+                                // Check if image path is already a full URL
+                                filter_var($product['primary_image'], FILTER_VALIDATE_URL) ?
+                                  $product['primary_image'] :
+                                  '/assets/images/products/' . htmlspecialchars($product['primary_image'])
+                                ?>"
                         alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
                         class="product-thumbnail">
                     <?php else: ?>
@@ -303,9 +308,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Product Images</label>
-                  <input type="file" name="product_images[]" class="form-control" multiple accept="image/*">
-                  <small class="text-muted">First image will be set as primary</small>
+                  <div class="image-preview-container">
+                    <?php foreach ($productImages as $image): ?>
+                      <div class="image-preview-item" data-image-id="<?= $image['image_id'] ?>">
+                        <img src="/assets/images/products/<?= htmlspecialchars($image['image_url']) ?>"
+                          class="img-thumbnail">
+                        <div class="image-actions">
+                          <button type="button" class="btn btn-sm btn-primary set-primary-btn 
+                    <?= $image['is_primary'] ? 'active' : '' ?>"
+                            data-image-id="<?= $image['image_id'] ?>">
+                            <i class="fas fa-star"></i> Primary
+                          </button>
+                          <button type="button" class="btn btn-sm btn-danger delete-image-btn"
+                            data-image-id="<?= $image['image_id'] ?>">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                  <input type="file" name="new_images[]" class="form-control mt-2" multiple accept="image/*">
                 </div>
+
               </div>
             </div>
           </div>
@@ -406,25 +430,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
     });
     // Trigger export by setting the 'export' parameter in the URL
     document.getElementById('exportBtn').addEventListener('click', function() {
-      const url = new URL(window.location.href);
-      url.searchParams.set('export', '1');
       window.location.href = 'inventory_actions.php?export=1';
-
     });
     // Load edit modal content via AJAX
-    $('.edit-btn').click(function() {
+    $(document).on('click', '.edit-btn', function() {
       const productId = $(this).data('id');
       $.get('inventory_actions.php?action=get_product&id=' + productId, function(data) {
         $('#editProductModal .modal-content').html(data);
       });
     });
     // Load view modal content via AJAX
-    $('.view-btn').click(function() {
+    $(document).on('click', '.view-btn', function() {
       const productId = $(this).data('id');
       $.get('inventory_actions.php?action=view_product&id=' + productId, function(data) {
         $('#viewProductModal .modal-content').html(data);
       });
     });
+
+    $(document).on('click', '.set-primary-btn', function() {
+    const imageId = $(this).data('image-id');
+    const productId = $('#editProductModal').data('product-id');
+    const $btn = $(this);
+    
+    // Show loading state
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing');
+    
+    $.post('inventory_actions.php', {
+        action: 'set_primary_image',
+        product_id: productId,
+        image_id: imageId
+    }, function(response) {
+        if (response.success) {
+            // Update UI
+            $('.set-primary-btn').removeClass('active');
+            $btn.addClass('active');
+            
+            // Update the primary image in the main table if needed
+            const imageUrl = response.image_url;
+            $('tr[data-product-id="' + productId + '"] .product-thumbnail')
+                .attr('src', '/assets/images/products/' + imageUrl);
+        } else {
+            alert(response.message || 'Error updating primary image');
+        }
+    }).fail(function() {
+        alert('Server error occurred');
+    }).always(function() {
+        $btn.prop('disabled', false).html('<i class="fas fa-star"></i> Primary');
+    });
+});
   </script>
 </body>
 
