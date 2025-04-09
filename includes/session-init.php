@@ -1,5 +1,4 @@
 <?php
-// session-init.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -9,7 +8,7 @@ defined('ROOT_PATH') || define('ROOT_PATH', realpath(dirname(__DIR__)));
 // Start session securely
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
-        'lifetime' => 86400,
+        'lifetime' => 43200,
         'path' => '/',
         'secure' => isset($_SERVER['HTTPS']),
         'httponly' => true,
@@ -20,10 +19,50 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Initialize core session variables
+// Database connection FIRST
+try {
+    $pdo = new PDO(
+        "mysql:host=localhost;dbname=bunnishop;charset=utf8mb4",
+        "root",
+        "1234",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    );
+} catch (PDOException $e) {
+    error_log("Database connection failed: " . $e->getMessage());
+    die("Database connection error. Please try again later.");
+}
+
+// Inactivity auto-logout
+$timeoutSeconds = 9000; // 15 minutes inactivity
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeoutSeconds) {
+    session_unset();
+    session_destroy();
+    header("Location: /pages/login.php?timeout=1");
+    exit;
+}
+$_SESSION['last_activity'] = time();
+
+// ✅ Initialize core session values
 $_SESSION['user_id'] = $_SESSION['user_id'] ?? null;
 $_SESSION['cart'] = $_SESSION['cart'] ?? [];
 $_SESSION['csrf_token'] = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
+
+// ✅ Track user activity in DB
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET last_activity_at = NOW() WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+    } catch (PDOException $e) {
+        error_log("Failed to update last activity: " . $e->getMessage());
+    }
+}
+
+
+
 
 // Database connection
 try {

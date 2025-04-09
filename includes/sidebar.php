@@ -48,7 +48,7 @@
         <li>
           <div class="listDiv">
             <i class="fas fa-shopping-cart imgIcon"></i>
-            <a href="../pages/customer-order.php" class="menuDashboard">Order Management</a>
+            <a href="../pages/order-management.php" class="menuDashboard">Order Management</a>
           </div>
         </li>
         <li>

@@ -229,3 +229,14 @@
       position: sticky;
       top: 20px;
     }
+
+
+    .payment-method {
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .payment-method input:checked + .d-flex,
+    .payment-method:has(input:checked) {
+      background-color: #eaf5ff;
+      border-color: #0d6efd;
+    }
+    

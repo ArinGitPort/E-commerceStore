@@ -1,4 +1,3 @@
-/* about-us.css */
 :root {
   --primary-color: #ff85a2; /* Soft pink */
   --secondary-color: #a5d8ff; /* Light blue */
@@ -23,9 +22,9 @@ body {
     var(--primary-color) 0%,
     var(--secondary-color) 100%
   );
-  height: 30vh;
+  min-height: 50vh; /* Increased height so "Our Story" displays well */
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden;  <-- remove if you suspect it clips your text */
 }
 
 .about-hero::before {
@@ -49,11 +48,13 @@ body {
   font-size: clamp(2.5rem, 6vw, 4rem);
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 1rem;
+  /* text color is white from .text-white parent */
 }
 
 .about-hero p {
   font-size: clamp(1.2rem, 3vw, 1.5rem);
   font-weight: 300;
+  /* also white because of .text-white parent in the container */
 }
 
 /* Glassmorphism Card Styles */
@@ -201,7 +202,7 @@ body {
 /* Responsive Adjustments */
 @media (max-width: 992px) {
   .about-hero {
-    height: 50vh;
+    min-height: 50vh;  /* keep or adjust as needed */
   }
 
   .team-member {
@@ -215,7 +216,7 @@ body {
 
 @media (max-width: 768px) {
   .about-hero {
-    height: 40vh;
+    min-height: 40vh;
   }
 
   .mission-card {
@@ -235,7 +236,7 @@ body {
 
 @media (max-width: 576px) {
   .about-hero {
-    height: 35vh;
+    min-height: 35vh;
   }
 
   .mission-statement {
@@ -266,9 +267,8 @@ body {
 
 .our-story-img {
     width: 60%;
-    max-width: 400px; /* 👈 Adjust this as needed */
+    max-width: 400px;
     height: auto;
     margin: 0 auto;
     display: block;
 }
-
