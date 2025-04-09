@@ -60,7 +60,7 @@
         <li>
           <div class="listDiv">
             <i class="fas fa-user-circle imgIcon"></i>
-            <a href="graph.php" class="menuDashboard">Account Management</a>
+            <a href="/pages/account-management.php" class="menuDashboard">Account Management</a>
           </div>
         </li>
         <li>

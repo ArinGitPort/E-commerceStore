@@ -40,6 +40,7 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Order Confirmation - BunniShop</title>
@@ -51,6 +52,7 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
             height: auto;
             object-fit: contain;
         }
+
         .order-box {
             border: 1px solid #ddd;
             padding: 20px;
@@ -59,55 +61,57 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
         }
     </style>
 </head>
+
 <body>
-<?php include '../includes/user-navbar.php'; ?>
+    <?php include '../includes/user-navbar.php'; ?>
 
-<div class="container my-5">
-    <div class="text-center mb-4">
-        <h2 class="fw-bold text-success">Thank you for your order!</h2>
-        <p>Your order has been placed successfully. Below are the details.</p>
-    </div>
+    <div class="container my-5">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-success">Thank you for your order!</h2>
+            <p>Your order has been placed successfully. Below are the details.</p>
+        </div>
 
-    <div class="order-box">
-        <h4 class="mb-3">Order Information</h4>
-        <ul class="list-group mb-4">
-            <li class="list-group-item d-flex justify-content-between"><strong>Order ID:</strong> #<?= $order['order_id'] ?></li>
-            <li class="list-group-item d-flex justify-content-between"><strong>Order Date:</strong> <?= date('F d, Y h:i A', strtotime($order['order_date'])) ?></li>
-            <li class="list-group-item d-flex justify-content-between"><strong>Delivery Method:</strong> <?= $order['delivery_method'] ?></li>
-            <li class="list-group-item d-flex justify-content-between"><strong>Payment Method:</strong> <?= $order['payment_method'] ?></li>
-            <li class="list-group-item d-flex justify-content-between"><strong>Status:</strong> <?= $order['order_status'] ?></li>
-            <?php if ($order['estimated_delivery']): ?>
-                <li class="list-group-item d-flex justify-content-between"><strong>Estimated Delivery:</strong> <?= date('F d, Y', strtotime($order['estimated_delivery'])) ?></li>
-            <?php endif; ?>
-        </ul>
+        <div class="order-box">
+            <h4 class="mb-3">Order Information</h4>
+            <ul class="list-group mb-4">
+                <li class="list-group-item d-flex justify-content-between"><strong>Order ID:</strong> #<?= $order['order_id'] ?></li>
+                <li class="list-group-item d-flex justify-content-between"><strong>Order Date:</strong> <?= date('F d, Y h:i A', strtotime($order['order_date'])) ?></li>
+                <li class="list-group-item d-flex justify-content-between"><strong>Delivery Method:</strong> <?= $order['delivery_method'] ?></li>
+                <li class="list-group-item d-flex justify-content-between"><strong>Payment Method:</strong> <?= $order['payment_method'] ?></li>
+                <li class="list-group-item d-flex justify-content-between"><strong>Status:</strong> <?= $order['order_status'] ?></li>
+                <?php if ($order['estimated_delivery']): ?>
+                    <li class="list-group-item d-flex justify-content-between"><strong>Estimated Delivery:</strong> <?= date('F d, Y', strtotime($order['estimated_delivery'])) ?></li>
+                <?php endif; ?>
+            </ul>
 
-        <h5>Shipping Address</h5>
-        <p><?= htmlspecialchars($order['address']) ?></p>
-    </div>
+            <h5>Shipping Address</h5>
+            <p><?= htmlspecialchars($order['address'] ?? '') ?></p>
+        </div>
 
-    <div class="order-summary mt-5">
-        <h4 class="mb-3">Items Ordered</h4>
-        <?php foreach ($items as $item): ?>
-        <div class="d-flex align-items-center mb-3 border-bottom pb-2">
-            <img src="/assets/images/products/<?= $item['image_url'] ?? 'default-product.jpg' ?>" alt="<?= $item['product_name'] ?>" class="me-3">
-            <div class="flex-grow-1">
-                <h6 class="mb-1"><?= htmlspecialchars($item['product_name']) ?></h6>
-                <small>Quantity: <?= $item['quantity'] ?></small>
+        <div class="order-summary mt-5">
+            <h4 class="mb-3">Items Ordered</h4>
+            <?php foreach ($items as $item): ?>
+                <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+                    <img src="/assets/images/products/<?= $item['image_url'] ?? 'default-product.jpg' ?>" alt="<?= $item['product_name'] ?>" class="me-3">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1"><?= htmlspecialchars($item['product_name']) ?></h6>
+                        <small>Quantity: <?= $item['quantity'] ?></small>
+                    </div>
+                    <div><strong>₱<?= number_format($item['total_price'], 2) ?></strong></div>
+                </div>
+            <?php endforeach; ?>
+
+            <div class="text-end mt-3">
+                <h5 class="fw-bold">Total: ₱<?= number_format($order['total_price'], 2) ?></h5>
             </div>
-            <div><strong>₱<?= number_format($item['total_price'], 2) ?></strong></div>
         </div>
-        <?php endforeach; ?>
 
-        <div class="text-end mt-3">
-            <h5 class="fw-bold">Total: ₱<?= number_format($order['total_price'], 2) ?></h5>
+        <div class="text-center mt-5">
+            <a href="../pages-user/shop.php" class="btn btn-outline-primary">Continue Shopping</a>
+            <a href="../pages-user/users-orders.php" class="btn btn-success">View My Orders</a>
         </div>
     </div>
-
-    <div class="text-center mt-5">
-        <a href="../pages-user/shop.php" class="btn btn-outline-primary">Continue Shopping</a>
-        <a href="../pages-user/my-orders.php" class="btn btn-success">View My Orders</a>
-    </div>
-</div>
 
 </body>
+
 </html>

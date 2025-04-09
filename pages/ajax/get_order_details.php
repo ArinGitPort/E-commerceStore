@@ -57,10 +57,10 @@ foreach ($items as $item) {
             <div class="col-md-6">
                 <h6>Customer Information</h6>
                 <ul class="list-unstyled">
-                    <li><strong>Name:</strong> <?= htmlspecialchars($order['name']) ?></li>
-                    <li><strong>Email:</strong> <?= htmlspecialchars($order['email']) ?></li>
-                    <li><strong>Phone:</strong> <?= htmlspecialchars($order['phone']) ?></li>
-                    <li><strong>Address:</strong> <?= nl2br(htmlspecialchars($order['address'])) ?></li>
+                    <li><strong>Name:</strong> <?= htmlspecialchars($order['name'] ?? '') ?></li>
+                    <li><strong>Email:</strong> <?= htmlspecialchars($order['email'] ?? '') ?></li>
+                    <li><strong>Phone:</strong> <?= htmlspecialchars($order['phone'] ?? '') ?></li>
+                    <li><strong>Address:</strong> <?= nl2br(htmlspecialchars($order['address'] ?? '')) ?></li>
                 </ul>
             </div>
             <div class="col-md-6">
@@ -68,7 +68,7 @@ foreach ($items as $item) {
                 <ul class="list-unstyled">
                     <li><strong>Order Date:</strong> <?= date('M d, Y H:i', strtotime($order['order_date'])) ?></li>
                     <li><strong>Status:</strong> <?= ucfirst($order['order_status']) ?></li>
-                    <li><strong>Delivery Method:</strong> <?= htmlspecialchars($order['method_name']) ?></li>
+                    <li><strong>Delivery Method:</strong> <?= htmlspecialchars($order['method_name'] ?? '') ?></li>
                     <li>
                         <strong>Estimated Delivery:</strong> 
                         <?= $order['estimated_delivery'] ? date('M d, Y', strtotime($order['estimated_delivery'])) : 'Not set' ?>
@@ -89,7 +89,7 @@ foreach ($items as $item) {
             <tbody>
                 <?php foreach ($items as $item): ?>
                 <tr>
-                    <td><?= htmlspecialchars($item['product_name']) ?></td>
+                    <td><?= htmlspecialchars($item['product_name'] ?? '') ?></td>
                     <td>₱<?= number_format($item['total_price'] / $item['quantity'], 2) ?></td>
                     <td><?= $item['quantity'] ?></td>
                     <td>₱<?= number_format($item['total_price'], 2) ?></td>
