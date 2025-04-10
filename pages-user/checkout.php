@@ -63,6 +63,9 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/checkout.css">
   <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico">
+  <!-- SweetAlert2 for beautiful popups -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -197,41 +200,74 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    $('input[name="payment_method"]').change(function () {
+    // Payment method selection styling
+    $('input[name="payment_method"]').change(function() {
       $('.payment-method').removeClass('active');
       $(this).closest('.payment-method').addClass('active');
     });
     $('input[name="payment_method"]:checked').closest('.payment-method').addClass('active');
 
-    $('#checkoutForm').on('submit', function (e) {
+    // Form submission with confirmation
+    $('#checkoutForm').on('submit', function(e) {
       e.preventDefault();
-      const form = $(this);
-      const btn = form.find('button[type="submit"]');
-      const originalText = btn.html();
-      btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Processing Order...');
 
-      $.ajax({
-        url: form.attr('action'),
-        type: 'POST',
-        data: form.serialize(),
-        dataType: 'json',
-        success: function (response) {
-          if (response.success) {
-            window.location.href = 'order-confirmation.php?order_id=' + response.order_id;
-          } else {
-            alert(response.error || 'An error occurred. Please try again.');
-          }
-        },
-        //PLEASE REMOVE ERROR CODE IT SHOWS DB
-        error: function () {
-          alert('Failed to connect to server. Please check your connection.');
-        },
-        complete: function () {
-          btn.prop('disabled', false).html(originalText);
+      // Show confirmation dialog
+      Swal.fire({
+        title: 'Confirm Your Order',
+        html: `
+        <div class="text-start">
+          <p>You are about to place an order for <strong>₱<?= number_format($grandTotal, 2) ?></strong>.</p>
+          <p>Please review your shipping information:</p>
+          <ul class="text-muted">
+            <li>Name: ${$('#fullName').val()}</li>
+            <li>Address: ${$('#address').val()}</li>
+            <li>Phone: ${$('#phone').val()}</li>
+          </ul>
+        </div>
+      `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, place order!',
+        cancelButtonText: 'Review order',
+        backdrop: `
+        rgba(0,0,0,0.7)
+        url("/assets/images/loading.gif")
+        center top
+        no-repeat
+      `
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Proceed with order submission
+          const form = $(this);
+          const btn = form.find('button[type="submit"]');
+          const originalText = btn.html();
+          btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Processing Order...');
+
+          $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+              if (response.success) {
+                window.location.href = 'order-confirmation.php?order_id=' + response.order_id;
+              } else {
+                Swal.fire('Error', response.error || 'An error occurred. Please try again.', 'error');
+              }
+            },
+            error: function() {
+              Swal.fire('Error', 'Failed to connect to server. Please check your connection.', 'error');
+            },
+            complete: function() {
+              btn.prop('disabled', false).html(originalText);
+            }
+          });
         }
       });
     });
   </script>
 </body>
-</html>
 
+</html>

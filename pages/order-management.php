@@ -120,7 +120,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
     }
 </style>
 
-<body>
+<body?>
     <?php include '../includes/sidebar.php'; ?>
 
     <div class="container-fluid mt-4">
@@ -145,7 +145,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
 
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Live Alerts</h5>
+                        <h5 class="card-title">Recent Orders</h5>
                         <div id="liveAlerts" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
                     </div>
                 </div>
@@ -362,7 +362,6 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                         $("#updateStatusDebug").removeClass('d-none').html('AJAX Error: ' + error);
                     }
                 });
-
             });
 
             // Open Set Delivery Date Modal
@@ -408,7 +407,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
             $(document).on('click', '.view-details', function() {
                 const orderId = $(this).data('order-id');
                 $('#orderDetailsDebug').html('<div class="alert alert-info">Loading details for Order #' + orderId + '...</div>');
-                $.get('ajax/get_order_details.php', {
+                $.get('pages/ajax/get_order_details.php', {
                         order_id: orderId
                     })
                     .done(function(data) {
@@ -423,58 +422,57 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
             });
 
             // Real-time alerts for new orders
-            let lastCheck = Math.floor(Date.now() / 1000);
+            let lastCheck = Math.floor(Date.now() / 1000); // current time in seconds
 
-            function checkNewOrders() {
-                $.ajax({
-                    url: '../ajax/get_new_orders.php',
-                    data: {
-                        lastCheck: lastCheck
-                    },
-                    dataType: 'text',
-                    success: function(response) {
-                        // Split response into lines
-                        const lines = response.trim().split('\n');
-
-                        lines.forEach(line => {
-                            // Skip empty lines
-                            if (!line) return;
-
-                            // Split line into parts
-                            const parts = line.split('|');
-
-                            if (parts[0] === 'ORDER') {
-                                // Format: ORDER|ID|CUSTOMER|DATE
-                                const alertHTML = `
-                        <div class="list-group-item list-group-item-warning">
-                            <div class="d-flex justify-content-between">
-                                <div>New Order #${parts[1]} from ${parts[2]}</div>
-                                <small>${new Date(parts[3]).toLocaleString()}</small>
-                            </div>
-                        </div>
-                    `;
-                                $('#liveAlerts').prepend(alertHTML);
-
-                                // Update lastCheck with the new order's timestamp
-                                lastCheck = Math.floor(new Date(parts[3]).getTime() / 1000);
-                            } else if (parts[0] === 'ERROR') {
-                                console.error('Server Error:', parts.slice(1).join('|'));
-                            }
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
+            async function checkNewOrders() {
+                try {
+                    // Build the URL using a template literal.
+                    const response = await fetch(`ajax/get_new_orders.php?lastCheck=${lastCheck}`);
+                    if (!response.ok) {
+                        const text = await response.text();
+                        console.error("Server response:", text);
+                        throw new Error("Network response was not ok");
                     }
-                });
+                    const data = await response.json();
+                    // If there are new orders returned from the server, display them.
+                    if (Array.isArray(data.orders) && data.orders.length > 0) {
+                        data.orders.forEach(order => {
+                            const date = new Date(order.timestamp * 1000);
+                            const alertHTML = `
+          <div class="list-group-item list-group-item-warning">
+              <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                      <strong>Order #${order.order_id}</strong><br>
+                      <small>${order.customer}</small>
+                  </div>
+                  <small class="text-nowrap">
+                      ${date.toLocaleDateString()}<br>
+                      ${date.toLocaleTimeString()}
+                  </small>
+              </div>
+          </div>
+                        `;
+                            document.getElementById('liveAlerts').insertAdjacentHTML('afterbegin', alertHTML);
+                        });
+                    }
+                    // Update the lastCheck timestamp provided by the server or use the current time.
+                    lastCheck = data.lastCheck ? data.lastCheck : Math.floor(Date.now() / 1000);
+                } catch (error) {
+                    console.error('Error fetching orders:', error);
+                    const errorAlert = `
+          <div class="list-group-item list-group-item-danger">
+              Connection Error: ${error.message}
+          </div>
+                `;
+                    document.getElementById('liveAlerts').insertAdjacentHTML('afterbegin', errorAlert);
+                }
             }
 
-            // Check every 5 seconds
-            setInterval(checkNewOrders, 5000);
-            checkNewOrders(); // Initial check
+            // Call checkNewOrders every 3 seconds.
+            setInterval(checkNewOrders, 3000);
+            checkNewOrders();
         });
     </script>
-
-
-</body>
+    </body>
 
 </html>

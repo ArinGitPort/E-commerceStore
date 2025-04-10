@@ -1,3 +1,5 @@
+// order_management.js
+
 function showToast(message, type = 'info') {
     const toastEl = document.getElementById('liveToast');
     if (!toastEl) return;
@@ -9,15 +11,15 @@ function showToast(message, type = 'info') {
     new bootstrap.Toast(toastEl).show();
 }
 
-// Event Delegation for Update Status Buttons
+// Update Status (Uses update_order_status.php in pages/ajax)
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('btn-update-status')) {
         const orderId = e.target.dataset.orderId;
         const currentStatus = document.querySelector(`#status-${orderId}`).textContent.trim();
-        
+
         document.querySelectorAll('.status-card').forEach(card => {
             card.classList.remove('selected');
-            if(card.dataset.status.toLowerCase() === currentStatus.toLowerCase()) {
+            if (card.dataset.status.toLowerCase() === currentStatus.toLowerCase()) {
                 card.classList.add('selected');
                 card.querySelector('input').checked = true;
             }
@@ -31,7 +33,7 @@ document.addEventListener('click', (e) => {
 window.selectStatus = function(status) {
     document.querySelectorAll('.status-card').forEach(card => {
         card.classList.remove('selected');
-        if(card.dataset.status === status) {
+        if (card.dataset.status === status) {
             card.classList.add('selected');
             card.querySelector('input').checked = true;
         }
@@ -49,7 +51,8 @@ document.getElementById('saveStatus').addEventListener('click', async () => {
     }
 
     try {
-        const response = await fetch('ajax/update_order_status.php', {
+        // Adjusted path for update_order_status.php:
+        const response = await fetch(`../../pages/ajax/update_order_status.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, new_status: status })
@@ -73,46 +76,68 @@ document.getElementById('saveStatus').addEventListener('click', async () => {
 
 // Real-time Alerts System
 let lastCheck = Math.floor(Date.now() / 1000);
-const alertSound = new Audio('assets/sounds/new-order.mp3');
+const alertSound = new Audio('../../assets/sounds/new-order.mp3'); 
+// Adjust if needed, depending on where new-order.mp3 actually is.
 
 async function checkNewOrders() {
     try {
-        const response = await fetch(`ajax/get_new_orders.php?lastCheck=${lastCheck}`);
-        if (!response.ok) throw new Error('Network response was not ok');
+        // Adjusted path for get_new_orders.php:
+        const response = await fetch(`../../pages/ajax/get_new_orders.php?lastCheck=${lastCheck}`);
+        console.log("HTTP Status:", response.status);
+        if (!response.ok) {
+            const text = await response.text();
+            console.error("Server response:", text);
+            throw new Error("Network response was not ok");
+        }
         
-        const orders = await response.json();
+        const data = await response.json();
+        console.log("Data received:", data);
         
-        orders.forEach(order => {
-            const alert = createAlertElement(order);
-            document.getElementById('liveAlerts').prepend(alert);
-            alertSound.play().catch(() => {}); // Mute play() error
-            setTimeout(() => alert.remove(), 10000);
-        });
+        // Display new orders, if any
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+            data.orders.forEach(order => {
+                const date = new Date(order.timestamp * 1000);
+                const alertHTML = `
+                    <div class="list-group-item list-group-item-warning new-order-alert">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>New Order #${order.order_id}</strong><br>
+                                <small>${order.customer} - ₱${order.total_price}</small>
+                            </div>
+                            <small>${date.toLocaleTimeString()}</small>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('liveAlerts').insertAdjacentHTML('afterbegin', alertHTML);
+
+                // Attempt to play alert sound
+                alertSound.play().catch(() => {});
+
+                // Remove alert after 10s
+                setTimeout(() => {
+                    const alertElem = document.querySelector('.new-order-alert');
+                    if (alertElem) alertElem.remove();
+                }, 10000);
+            });
+        }
         
-        lastCheck = Math.floor(Date.now() / 1000);
+        // Update lastCheck based on server response
+        lastCheck = data.lastCheck ? data.lastCheck : Math.floor(Date.now() / 1000);
     } catch (error) {
-        console.error('Alerts error:', error);
+        console.error('Error fetching orders:', error);
+        const errorAlert = `
+          <div class="list-group-item list-group-item-danger">
+              Connection Error: ${error.message}
+          </div>
+        `;
+        document.getElementById('liveAlerts').insertAdjacentHTML('afterbegin', errorAlert);
     }
 }
 
-function createAlertElement(order) {
-    const alert = document.createElement('div');
-    alert.className = 'list-group-item list-group-item-warning new-order-alert';
-    alert.innerHTML = `
-        <div class="d-flex justify-content-between">
-            <div>
-                <strong>New Order #${order.id}</strong><br>
-                <small>${order.customer} - ₱${order.total}</small>
-            </div>
-            <small>${new Date(order.timestamp * 1000).toLocaleTimeString()}</small>
-        </div>
-    `;
-    return alert;
-}
-
-// Initialize polling
+// Poll for new orders every 5 seconds
 setInterval(checkNewOrders, 5000);
-document.getElementById('refreshAlerts').addEventListener('click', checkNewOrders);
 
-// Initial check
+// If you have a 'refreshAlerts' button, attach the handler
+// document.getElementById('refreshAlerts').addEventListener('click', checkNewOrders);
+
 checkNewOrders();
