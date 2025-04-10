@@ -76,10 +76,10 @@
             <span class="menuDashboard">Audit Logs</span>
           </div>
           <ul class="dropdown-content-vertical" id="dropdownContent">
-            <li><a href="added_items.php" class="dropdown-item">Added Products</a></li>
-            <li><a href="deleted_items.php" class="dropdown-item">Unavailable Products</a></li>
-            <li><a href="permdeleted_items.php" class="dropdown-item">Deleted Products</a></li>
-            <li><a href="order_history.php" class="dropdown-item">Completed Orders</a></li>
+            <li><a href="../pages/reports/completed-orders.php" class="dropdown-item">Sales</a></li>
+            <li><a href="/pages/reports/added-products.php" class="dropdown-item">Added Products</a></li>
+            <li><a href="/pages/reports/removed-products.php" class="dropdown-item">Removed Products</a></li>
+
           </ul>
         </li>
         <!-- Logout -->

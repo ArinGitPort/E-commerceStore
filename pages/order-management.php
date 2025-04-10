@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
@@ -95,7 +96,6 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
     <title>Order Management - BunniShop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/orders.css">
 </head>
 
 <style>
@@ -182,7 +182,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="ordersTableBody">
                                     <?php foreach ($orders as $order): ?>
                                         <tr class="<?= !$order['viewed'] ? 'table-warning' : '' ?>">
                                             <td>#<?= $order['order_id'] ?></td>
@@ -220,6 +220,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                 </tbody>
                             </table>
                         </div>
+
 
                         <!-- Pagination -->
                         <nav>
@@ -313,9 +314,60 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
         </div>
     </div>
 
+
+    <!-- Confirmation Modal for Completing an Order -->
+    <div class="modal fade" id="confirmCompleteModal" tabindex="-1" aria-labelledby="confirmCompleteLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmCompleteLabel">Confirm Order Completion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to mark this order as completed?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmCompleteBtn" class="btn btn-success">Yes, Complete Order</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Simple toast notification function (adjust styling as needed)
+        function showToast(message, type = 'info') {
+            // Create a simple toast element if not using a prebuilt one.
+            // Here’s a very basic implementation:
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast align-items-center text-white bg-${type} border-0 position-fixed`;
+            toastEl.style.right = '20px';
+            toastEl.style.top = '20px';
+            toastEl.style.zIndex = 1050;
+            toastEl.innerHTML = `<div class="d-flex">
+                            <div class="toast-body">${message}</div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                          </div>`;
+            document.body.appendChild(toastEl);
+            let toast = new bootstrap.Toast(toastEl, {
+                delay: 3000
+            });
+            toast.show();
+            // Remove the toast element after it hides.
+            toastEl.addEventListener('hidden.bs.toast', () => {
+                toastEl.remove();
+            });
+        }
+
+
+
         $(document).ready(function() {
             // Open Update Status Modal when clicking the Update Status button
             $(document).on('click', '.btn-update-status', function() {
@@ -403,11 +455,79 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                 }
             });
 
+            // Global variable to store the order ID pending completion
+            let currentCompleteOrderId = null;
+
+            $(document).ready(function() {
+
+                // Listen for clicks on the "Complete" button (data-action="completed")
+                $(document).on('click', '.order-action[data-action="completed"]', function() {
+                    currentCompleteOrderId = $(this).data('order-id');
+                    // Open the confirmation modal
+                    let confirmModal = new bootstrap.Modal(document.getElementById('confirmCompleteModal'));
+                    confirmModal.show();
+                });
+
+                // When the user clicks the confirm button in the modal
+                $('#confirmCompleteBtn').on('click', async function() {
+                    const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmCompleteModal'));
+                    confirmModal.hide();
+
+                    if (!currentCompleteOrderId) {
+                        showToast("No order selected", "danger");
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('ajax/complete_order.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                order_id: currentCompleteOrderId
+                            })
+                        });
+
+                        // First check if the response is JSON
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            throw new Error(`Expected JSON but got: ${text.substring(0, 100)}...`);
+                        }
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Failed to complete order');
+                        }
+
+                        if (result.success) {
+                            showToast("Order completed and archived", "success");
+                            // Remove the row from the table
+                            $(`tr:has(button[data-order-id="${currentCompleteOrderId}"])`).remove();
+                        } else {
+                            throw new Error(result.error || "Failed to complete order");
+                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                        showToast(error.message, "danger");
+                    }
+
+                    currentCompleteOrderId = null;
+                });
+
+                // (Other functionality such as update status, real-time alerts, etc.)
+
+            });
+
+
+
             // View Order Details in Modal when clicking the eye icon
             $(document).on('click', '.view-details', function() {
                 const orderId = $(this).data('order-id');
                 $('#orderDetailsDebug').html('<div class="alert alert-info">Loading details for Order #' + orderId + '...</div>');
-                $.get('pages/ajax/get_order_details.php', {
+                $.get('ajax/get_order_details.php', {
                         order_id: orderId
                     })
                     .done(function(data) {
@@ -471,8 +591,13 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
             // Call checkNewOrders every 3 seconds.
             setInterval(checkNewOrders, 3000);
             checkNewOrders();
+
         });
     </script>
+
+
+
+
     </body>
 
 </html>

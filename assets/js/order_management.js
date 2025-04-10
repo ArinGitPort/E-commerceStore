@@ -1,4 +1,4 @@
-// order_management.js
+console.log("order_management.js loaded");
 
 function showToast(message, type = 'info') {
     const toastEl = document.getElementById('liveToast');
@@ -11,7 +11,7 @@ function showToast(message, type = 'info') {
     new bootstrap.Toast(toastEl).show();
 }
 
-// Update Status (Uses update_order_status.php in pages/ajax)
+// Update Status Button Handler
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('btn-update-status')) {
         const orderId = e.target.dataset.orderId;
@@ -77,7 +77,6 @@ document.getElementById('saveStatus').addEventListener('click', async () => {
 // Real-time Alerts System
 let lastCheck = Math.floor(Date.now() / 1000);
 const alertSound = new Audio('../../assets/sounds/new-order.mp3'); 
-// Adjust if needed, depending on where new-order.mp3 actually is.
 
 async function checkNewOrders() {
     try {
@@ -109,10 +108,7 @@ async function checkNewOrders() {
                     </div>
                 `;
                 document.getElementById('liveAlerts').insertAdjacentHTML('afterbegin', alertHTML);
-
-                // Attempt to play alert sound
-                alertSound.play().catch(() => {});
-
+                alertSound.play().catch(() => {}); // handle play error silently
                 // Remove alert after 10s
                 setTimeout(() => {
                     const alertElem = document.querySelector('.new-order-alert');
@@ -134,10 +130,35 @@ async function checkNewOrders() {
     }
 }
 
-// Poll for new orders every 5 seconds
 setInterval(checkNewOrders, 5000);
-
-// If you have a 'refreshAlerts' button, attach the handler
-// document.getElementById('refreshAlerts').addEventListener('click', checkNewOrders);
-
 checkNewOrders();
+
+
+
+
+
+
+/*
+function refreshOrdersTable() {
+    console.log("Refreshing orders table at " + new Date().toLocaleTimeString());
+    const url = `ajax/orders_table.php?filter=<?= urlencode($filterStatus) ?>&sort=<?= urlencode($sortBy) ?>&dir=<?= urlencode($sortDir) ?>&search=<?= urlencode($search) ?>`;
+    console.log("Request URL: " + url);
+    
+    $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(html) {
+            console.log("AJAX success, received HTML: ", html);
+            $('#ordersTableBody').html(html);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error refreshing orders table:', error);
+        }
+    });
+}
+setInterval(refreshOrdersTable, 5000);
+refreshOrdersTable();
+
+DISABLED AUTO-REFRESH ORDER TABLE
+
+*/
