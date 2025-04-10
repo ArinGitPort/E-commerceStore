@@ -1,7 +1,10 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+session_start();
+
+// Add these security headers
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 
 defined('ROOT_PATH') || define('ROOT_PATH', realpath(dirname(__DIR__)));
 

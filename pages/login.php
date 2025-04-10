@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Redirect user based on role
     $redirect = match ($user['role_name']) {
       'Admin'  => '../pages/inventory.php',
-      'Member' => '../member/home.php',
+      'Member' => '../pages-user/homepage.php',
       default  => '../pages-user/homepage.php'
     };
 
@@ -119,10 +119,13 @@ unset($_SESSION['login_error']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <!-- Added viewport meta for mobile responsiveness -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Login - Bunniwinkle</title>
   <link rel="stylesheet" href="../assets/css/login.css" />
   <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico" />
@@ -130,11 +133,13 @@ unset($_SESSION['login_error']);
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <style>
     /* Apply your background gradient to the body */
-    body, html {
+    body,
+    html {
       margin: 0;
       padding: 0;
-      background: linear-gradient(0deg, rgba(255,219,254,1) 3%, rgba(200,226,246,1) 48%);
+      background: linear-gradient(0deg, rgba(255, 219, 254, 1) 3%, rgba(200, 226, 246, 1) 48%);
     }
+
     /* Floating shop button using your colors */
     .floating-shop-btn {
       position: fixed;
@@ -151,16 +156,19 @@ unset($_SESSION['login_error']);
       border: none;
       transition: all 0.3s ease;
     }
+
     @keyframes floatUp {
       from {
         opacity: 0;
         transform: translateX(-50%) translateY(20px);
       }
+
       to {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
       }
     }
+
     /* Login wrapper */
     .login-wrapper {
       display: flex;
@@ -169,9 +177,10 @@ unset($_SESSION['login_error']);
       min-height: 100vh;
       padding: 15px;
     }
+
     /* Login card styled with your color scheme */
     .login-card {
-      background: rgba(255,255,255,0.95);
+      background: rgba(255, 255, 255, 0.95);
       border: 2px solid #354359;
       border-radius: 10px;
       padding: 30px 40px;
@@ -180,6 +189,7 @@ unset($_SESSION['login_error']);
       max-width: 450px;
       margin-top: 70px;
     }
+
     /* Button styling using your color */
     .login-btn {
       background-color: #354359;
@@ -191,9 +201,11 @@ unset($_SESSION['login_error']);
       cursor: pointer;
       transition: background-color 0.3s;
     }
+
     .login-btn:hover {
       background-color: #2b374b;
     }
+
     /* Responsive adjustments for small screens */
     @media (max-width: 576px) {
       .login-card {
@@ -201,6 +213,7 @@ unset($_SESSION['login_error']);
         margin: 0 10px;
         margin-top: 40px;
       }
+
       .floating-shop-btn {
         padding: 6px 16px;
         top: 10px;
@@ -208,6 +221,7 @@ unset($_SESSION['login_error']);
     }
   </style>
 </head>
+
 <body>
   <!-- Floating Visit Shop Button -->
   <a href="../index.php" class="btn btn-success floating-shop-btn">
@@ -224,17 +238,17 @@ unset($_SESSION['login_error']);
         <div class="alert alert-danger" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form action="login.php" method="POST" novalidate>
+      <form action="login.php" method="POST" novalidate atocomplete="off">
         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
 
         <div class="mb-3">
           <label for="email" class="form-label" style="color: #333; font-weight: bold;">Email</label>
-          <input type="email" name="email" id="email" required placeholder="Enter your email" class="form-control" />
+          <input type="email" name="email" id="email" required placeholder="Enter your email" class="form-control" autocomplete="off" value="" />
         </div>
 
         <div class="mb-3">
           <label for="password" class="form-label" style="color: #333; font-weight: bold;">Password</label>
-          <input type="password" name="password" id="password" required placeholder="Enter your password" class="form-control" />
+          <input type="password" name="password" id="password" required placeholder="Enter your password" class="form-control" autocomplete="off" value="" />
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -253,11 +267,29 @@ unset($_SESSION['login_error']);
           <p>
             Don't have an account?
             <a href="register.php" style="color: #354359; font-weight: bold;">Register here</a>
+
+          <div class="d-flex align-items-center mb-3">
+            <hr class="flex-grow-1">
+            <span class="mx-2 text-muted">or</span>
+            <hr class="flex-grow-1">
+          </div>
+
+          <div class="mb-3">
+            <a href="login-google.php" class="btn-premium-google w-100">
+              <i class="fab fa-google"></i>
+              <span class="google-text-span">Continue with Google</span>
+            </a>
+          </div>
+
           </p>
         </div>
       </form>
     </div>
   </div>
+
+
+
+
 
   <script>
     function togglePassword() {
@@ -267,17 +299,17 @@ unset($_SESSION['login_error']);
 
     document.addEventListener('DOMContentLoaded', function() {
       const shopBtn = document.querySelector('.floating-shop-btn');
-      
+
       // Fallback for older browsers
       if (window.CSS && CSS.supports('position', 'sticky')) {
         return;
       }
-      
+
       shopBtn.addEventListener('mouseenter', function() {
         this.style.transition = 'background 0.6s ease-in-out';
         this.style.background = 'linear-gradient(135deg, #6da3d6, #e091cc)';
       });
-      
+
       shopBtn.addEventListener('mouseleave', function() {
         this.style.transition = 'background 0.6s ease-in-out';
         this.style.background = 'linear-gradient(135deg, #ffaee7, #83a6d4)';
@@ -285,4 +317,5 @@ unset($_SESSION['login_error']);
     });
   </script>
 </body>
+
 </html>

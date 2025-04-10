@@ -3,6 +3,9 @@ register.php
 
 requires mail/code
 
+composer require google/apiclient
+
+
 # Make sure you're in the right directory
 if (Test-Path "composer.json") {
     Write-Host "✅ Found composer.json"
@@ -38,3 +41,6 @@ if (Test-Path "composer.json") {
 # ADD AUDIt LOGS
 # ADD SALES GRAPH
 # DASHBOARD INFO
+
+
+
