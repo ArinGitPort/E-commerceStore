@@ -110,8 +110,8 @@ function sync_cart(PDO $pdo): void
         if (isset($_SESSION['user_id'])) {
             // Logged-in: use DB cart
             $stmt = $pdo->prepare("
-                SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
-                       ci.quantity, c.category_name
+                SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive, p.min_membership_level,
+                ci.quantity, c.category_name
                 FROM cart_items ci
                 JOIN products p ON ci.product_id = p.product_id
                 JOIN categories c ON p.category_id = c.category_id
@@ -124,8 +124,8 @@ function sync_cart(PDO $pdo): void
             if (!empty($_SESSION['cart'])) {
                 $placeholders = implode(',', array_fill(0, count($_SESSION['cart']), '?'));
                 $stmt = $pdo->prepare("
-                    SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive,
-                           c.category_name
+                    SELECT p.product_id, p.product_name, p.price, p.stock, p.is_exclusive, p.min_membership_level,
+                    c.category_name
                     FROM products p
                     JOIN categories c ON p.category_id = c.category_id
                     WHERE p.product_id IN ($placeholders)

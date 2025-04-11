@@ -13,10 +13,13 @@ if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
 $user = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT u.*, r.role_name 
+        SELECT u.*, r.role_name, mt.type_name AS membership_type, m.start_date, m.expiry_date
         FROM users u
         JOIN roles r ON u.role_id = r.role_id
+        LEFT JOIN memberships m ON u.user_id = m.user_id
+        LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
         WHERE u.user_id = ?
+
     ");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
@@ -120,6 +123,7 @@ unset($_SESSION['error'], $_SESSION['success']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -130,6 +134,7 @@ unset($_SESSION['error'], $_SESSION['success']);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/profile.css">
 </head>
+
 <body>
     <!-- Include the user navbar; ensure its logout triggers are updated -->
     <?php include '../includes/user-navbar.php'; ?>
@@ -194,6 +199,27 @@ unset($_SESSION['error'], $_SESSION['success']);
                                 <input type="text" class="form-control" value="<?= htmlspecialchars($user['role_name'] ?? 'Customer') ?>" disabled>
                             </div>
                         </div>
+
+                        <div class="row mb-3">
+                        <div class="col-md-6">
+                                <label class="form-label">Membership Tier</label><br>
+                                <span class="badge bg-info text-dark p-2">
+                                    <?= htmlspecialchars($user['membership_type'] ?? 'None') ?>
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Membership Validity</label>
+                                <input type="text" class="form-control"
+                                    value="<?= htmlspecialchars(
+                                                isset($user['start_date'], $user['expiry_date'])
+                                                    ? 'From ' . date('F j, Y', strtotime($user['start_date'])) .
+                                                    ' to ' . date('F j, Y', strtotime($user['expiry_date']))
+                                                    : 'None'
+                                            ) ?>"
+                                    disabled>
+                            </div>
+                            </div>
+
                         <div class="mb-3">
                             <label for="address" class="form-label">Address</label>
                             <textarea class="form-control" id="address" name="address" rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
@@ -270,13 +296,13 @@ unset($_SESSION['error'], $_SESSION['success']);
 
     <!-- Redirecting Modal (Bootstrap) -->
     <div class="modal fade" id="redirectModal" tabindex="-1" aria-labelledby="redirectModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-body text-center">
-            <p id="redirectMessage">Redirecting...</p>
-          </div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <p id="redirectMessage">Redirecting...</p>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- Bootstrap Bundle JS (includes Popper) -->
@@ -329,11 +355,12 @@ unset($_SESSION['error'], $_SESSION['success']);
                 document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
                 let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
                 redirectModal.show();
-                setTimeout(function(){
+                setTimeout(function() {
                     window.location.href = "../pages/logout.php";
                 }, 2000);
             });
         });
     </script>
 </body>
+
 </html>

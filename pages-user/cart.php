@@ -60,6 +60,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_update'])) {
             $_SESSION['message'] = "Item removed from cart!";
         }
 
+        if (isset($_POST['checkout'])) {
+            // Check if user still has access to all exclusive items in the cart
+            $stmt = $pdo->prepare("
+                SELECT p.product_name
+                FROM cart_items ci
+                JOIN products p ON ci.product_id = p.product_id
+                LEFT JOIN memberships m ON ci.user_id = m.user_id
+                LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
+                WHERE ci.user_id = ? 
+                  AND p.is_exclusive = TRUE
+                  AND (mt.can_access_exclusive IS NULL OR mt.can_access_exclusive = FALSE)
+            ");
+            $stmt->execute([$_SESSION['user_id']]);
+            $restrictedItems = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+            if (!empty($restrictedItems)) {
+                $_SESSION['message'] = "You no longer have access to these exclusive item(s): " . implode(', ', $restrictedItems);
+                header("Location: cart.php");
+                exit;
+            }
+        
+            // Commit and proceed to checkout
+            $pdo->commit();
+            header("Location: ../pages-user/checkout.php");
+            exit;
+        }
+        
+
         // 3) Proceed to Checkout
         if (isset($_POST['checkout'])) {
             // Commit the transaction so any updates/removals are finalized

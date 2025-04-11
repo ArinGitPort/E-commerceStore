@@ -84,9 +84,13 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
         <div class="shop-header text-center ">
             <h1>Our Products</h1>
 
-            <?php if ($showExclusive): ?>
-                <div class="alert alert-info">You have access to exclusive products!</div>
-            <?php endif; ?>
+            <?php
+            /* ALERT
+            if ($showExclusive): ?>
+                   <div class="alert alert-info">You have access to exclusive products!</div>
+            <?php endif;
+            */
+            ?>
 
             <!-- Search & Filter Form -->
             <form method="GET" class="search-filter d-flex justify-content-center align-items-center gap-3 mt-3">
@@ -125,10 +129,6 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                 <?php foreach ($products as $product): ?>
                     <div class="col-sm-6 col-md-4 col-lg-3">
                         <div class="product-card border p-3 h-100">
-                            <?php if ($product['is_exclusive']): ?>
-                                <div class="exclusive-badge">Exclusive</div>
-                            <?php endif; ?>
-
                             <!-- Product Image & Quick View trigger -->
                             <div class="product-image position-relative">
                                 <?php if ($product['primary_image']): ?>
@@ -155,6 +155,14 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                             <div class="product-info mt-2">
                                 <h3 class="h6"><?= htmlspecialchars($product['product_name']) ?></h3>
                                 <div class="price fs-5">₱<?= number_format($product['price'], 2) ?></div>
+                                <?php if ($product['is_exclusive']): ?>
+                                    <div class="mt-1">
+                                        <span class="badge bg-warning text-dark px-3 py-1" style="font-size: 0.85rem;">
+                                            <i class="fas fa-star me-1"></i> Subscriber Exclusive
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                                
                             </div>
                         </div>
                     </div>

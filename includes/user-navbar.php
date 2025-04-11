@@ -3,9 +3,26 @@ require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
 // Re-sync cart data so that the cart count is accurate
-if (isset($_SESSION['user_id'])) {
-  sync_cart($pdo);
+$user_id = $_SESSION['user_id'] ?? null;
+$membership_type_id = 0;
+$can_access_exclusive = false;
+
+if ($user_id) {
+  $stmt = $pdo->prepare("
+    SELECT mt.membership_type_id, mt.can_access_exclusive
+    FROM memberships m
+    JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
+    WHERE m.user_id = ?
+  ");
+  $stmt->execute([$user_id]);
+  $membership = $stmt->fetch();
+
+  if ($membership) {
+    $membership_type_id = (int) $membership['membership_type_id'];
+    $can_access_exclusive = (bool) $membership['can_access_exclusive'];
+  }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -147,6 +164,19 @@ if (isset($_SESSION['user_id'])) {
               foreach ($cart_items as $item):
                 $subtotal_item = $item['price'] * $item['quantity'];
                 $total += $subtotal_item;
+                $has_restricted_exclusive = false;
+
+                foreach ($cart_items as $item) {
+                  if ($item['is_exclusive']) {
+                    $min_level = (int) $item['min_membership_level'];
+                    if (!$can_access_exclusive || $membership_type_id < $min_level) {
+                      $has_restricted_exclusive = true;
+                      break;
+                    }
+                  }
+                }
+
+
             ?>
                 <div class="cart-item">
                   <div class="cart-item-info">
@@ -158,14 +188,22 @@ if (isset($_SESSION['user_id'])) {
                   <span class="cart-item-price">₱<?= number_format($subtotal_item, 2) ?></span>
                 </div>
               <?php endforeach; ?>
+
               <div class="cart-total">
                 <span>Total:</span>
                 <span>₱<?= number_format($total, 2) ?></span>
               </div>
               <div class="cart-actions">
                 <a href="cart.php" class="btn-view-cart">View Cart</a>
-                <a href="checkout.php" class="btn-checkout">Checkout</a>
+                <?php if ($has_restricted_exclusive): ?>
+                  <button class="btn-checkout disabled" style="opacity: 0.6; cursor: not-allowed;" title="Upgrade to checkout exclusive items" disabled>
+                    Checkout
+                  </button>
+                <?php else: ?>
+                  <a href="checkout.php" class="btn-checkout">Checkout</a>
+                <?php endif; ?>
               </div>
+
             <?php else: ?>
               <div class="empty-cart">
                 <p>Your cart is empty</p>
