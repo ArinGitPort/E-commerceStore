@@ -126,14 +126,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
           <button class="md-btn md-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
             <i class="fas fa-plus"></i> ADD PRODUCT
           </button>
-          <div class="btn-group">
-            <button class="md-btn" data-bs-toggle="modal" data-bs-target="#importModal">
+          <div class="btn-group" >
+            <button class="md-btn" data-bs-toggle="modal" data-bs-target="#importModal" style="margin-left: 5px; margin-right: 5px;">
               <i class="fas fa-file-import"></i> IMPORT
             </button>
-            <button class="md-btn" id="exportBtn">
+            <button class="md-btn" id="exportBtn" style="margin-left: 5px; margin-right: 5px;">
               <i class="fas fa-file-export"></i> EXPORT
             </button>
-            <button class="md-btn md-danger" id="deleteSelectedBtn">
+            <button class="md-btn md-danger" id="deleteSelectedBtn" style="margin-left: 5px; margin-right: 5px;">
               <i class="fas fa-trash"></i> DELETE
             </button>
           </div>
@@ -253,90 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
     </div>
   </div>
 
-  <!-- Modals -->
-  <!-- Add Product Modal -->
-  <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form action="inventory_actions.php" method="post" enctype="multipart/form-data">
-          <div class="modal-header">
-            <h5 class="modal-title">Add New Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Product Name*</label>
-                  <input type="text" name="product_name" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">SKU*</label>
-                  <input type="text" name="sku" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Category*</label>
-                  <select name="category_id" class="form-select" required>
-                    <option value="">Select Category</option>
-                    <?php foreach ($categories as $category): ?>
-                      <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Price*</label>
-                    <input type="number" step="0.01" name="price" class="form-control" required>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Stock Quantity*</label>
-                    <input type="number" name="stock" class="form-control" required>
-                  </div>
-                </div>
-                <div class="mb-3 form-check">
-                  <input type="checkbox" name="is_exclusive" class="form-check-input" id="isExclusive">
-                  <label class="form-check-label" for="isExclusive">Exclusive Product (Members Only)</label>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Description</label>
-                  <textarea name="description" class="form-control" rows="4"></textarea>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Product Images</label>
-                  <div class="image-preview-container">
-                    <?php if (!empty($productImages)): ?>
-                      <?php foreach ($productImages as $image): ?>
-                        <div class="image-preview-item" data-image-id="<?= $image['image_id'] ?>">
-                          <img src="/assets/images/products/<?= htmlspecialchars($image['image_url']) ?>" class="img-thumbnail">
-                          <div class="image-actions">
-                            <button type="button" class="btn btn-sm btn-primary set-primary-btn <?= $image['is_primary'] ? 'active' : '' ?>" data-image-id="<?= $image['image_id'] ?>">
-                              <i class="fas fa-star"></i> Primary
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger delete-image-btn" data-image-id="<?= $image['image_id'] ?>">
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </div>
-                        </div>
-                      <?php endforeach; ?>
-                    <?php else: ?>
-                      <p>No images available.</p>
-                    <?php endif; ?>
-                  </div>
-                  <input type="file" name="new_images[]" class="form-control mt-2" multiple accept="image/*">
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" name="add_product" class="btn btn-primary">Save Product</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Edit Product Modal (loaded via AJAX) -->
   <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">

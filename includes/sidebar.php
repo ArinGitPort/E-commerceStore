@@ -42,7 +42,7 @@
         <li>
           <div class="listDiv">
             <i class="fas fa-home imgIcon"></i>
-            <a href="/pages/dashboard.php" class="menuDashboard">Dashboard</a>
+            <a href="../pages/dashboard.php" class="menuDashboard">Dashboard</a>
           </div>
         </li>
         <li>
@@ -76,7 +76,7 @@
             <span class="menuDashboard">Audit Logs</span>
           </div>
           <ul class="dropdown-content-vertical" id="dropdownContent">
-            <li><a href="../pages/reports/completed-orders.php" class="dropdown-item">Sales</a></li>
+            <li><a href="../pages/sales_report.php" class="dropdown-item">Sales</a></li>
             <li><a href="/pages/reports/added-products.php" class="dropdown-item">Added Products</a></li>
             <li><a href="/pages/reports/removed-products.php" class="dropdown-item">Removed Products</a></li>
 

@@ -460,15 +460,13 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
 
             $(document).ready(function() {
 
-                // Listen for clicks on the "Complete" button (data-action="completed")
+                // Listen for clicks on the "Complete" button
                 $(document).on('click', '.order-action[data-action="completed"]', function() {
                     currentCompleteOrderId = $(this).data('order-id');
-                    // Open the confirmation modal
                     let confirmModal = new bootstrap.Modal(document.getElementById('confirmCompleteModal'));
                     confirmModal.show();
                 });
 
-                // When the user clicks the confirm button in the modal
                 $('#confirmCompleteBtn').on('click', async function() {
                     const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmCompleteModal'));
                     confirmModal.hide();
@@ -482,14 +480,13 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                         const response = await fetch('ajax/complete_order.php', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 order_id: currentCompleteOrderId
                             })
                         });
 
-                        // First check if the response is JSON
                         const contentType = response.headers.get('content-type');
                         if (!contentType || !contentType.includes('application/json')) {
                             const text = await response.text();
@@ -498,17 +495,20 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
 
                         const result = await response.json();
 
-                        if (!response.ok) {
+                        if (!response.ok || !result.success) {
                             throw new Error(result.error || 'Failed to complete order');
                         }
 
-                        if (result.success) {
-                            showToast("Order completed and archived", "success");
-                            // Remove the row from the table
-                            $(`tr:has(button[data-order-id="${currentCompleteOrderId}"])`).remove();
-                        } else {
-                            throw new Error(result.error || "Failed to complete order");
-                        }
+                        showToast("Order completed and archived", "success");
+
+                        // === Option A: Refresh the page (recommended for summaries or counts)
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000); // Add delay for toast visibility
+
+                        // === Option B: Remove just the row (uncomment below if preferred)
+                        // $(`tr:has(button[data-order-id="${currentCompleteOrderId}"])`).remove();
+
                     } catch (error) {
                         console.error("Error:", error);
                         showToast(error.message, "danger");
@@ -517,9 +517,8 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                     currentCompleteOrderId = null;
                 });
 
-                // (Other functionality such as update status, real-time alerts, etc.)
-
             });
+
 
 
 

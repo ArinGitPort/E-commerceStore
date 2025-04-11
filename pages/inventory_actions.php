@@ -10,23 +10,24 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
+
 //ADD MEMBERSHIP LEVEL PRODUCT ACCESS
 // Handle setting primary image via AJAX
 if ($_GET['action'] === 'set_primary_image' && isset($_POST['product_id'], $_POST['image_id'])) {
     header('Content-Type: application/json');
     try {
         $pdo->beginTransaction();
-        
+
         // First reset all primary flags for this product
         $stmt = $pdo->prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ?");
         $stmt->execute([$_POST['product_id']]);
-        
+
         // Then set the selected image as primary
         $stmt = $pdo->prepare("UPDATE product_images SET is_primary = 1 WHERE image_id = ? AND product_id = ?");
         $stmt->execute([$_POST['image_id'], $_POST['product_id']]);
-        
+
         $pdo->commit();
-        
+
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
         $pdo->rollBack();
@@ -44,7 +45,7 @@ if (isset($_GET['action'])) {
     switch ($_GET['action']) {
         case 'get_product':
             // Retrieve product details (with category name) based on provided product id.
-            $stmt = $pdo->prepare("SELECT p.*, c.category_name FROM products p JOIN categories c ON p.category_id = c.category_id WHERE p.product_id = ?");
+            $stmt = $pdo->prepare("SELECT p.*, c.category_name, p.min_membership_level FROM products p JOIN categories c ON p.category_id = c.category_id WHERE p.product_id = ?");
             $stmt->execute([$_GET['id']]);
             $product = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($product) {
@@ -100,6 +101,30 @@ if (isset($_GET['action'])) {
                                     <input type="checkbox" name="is_exclusive" class="form-check-input" id="isExclusive" <?= $product['is_exclusive'] ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="isExclusive">Exclusive Product</label>
                                 </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Minimum Membership Access</label>
+                                    <select name="min_membership_level" class="form-select" id="minMembershipSelect" <?= !$product['is_exclusive'] ? 'disabled' : '' ?>>
+                                        <option value="">All Users</option>
+                                        <?php
+                                        $membershipTypes = $pdo->query("SELECT * FROM membership_types")->fetchAll(PDO::FETCH_ASSOC);
+                                        foreach ($membershipTypes as $type):
+                                        ?>
+                                            <option value="<?= $type['membership_type_id'] ?>" <?= $product['min_membership_level'] == $type['membership_type_id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($type['type_name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <script>
+                                    $('#isExclusive').on('change', function() {
+                                        const isChecked = $(this).is(':checked');
+                                        $('#minMembershipSelect').prop('disabled', !isChecked);
+                                    });
+                                </script>
+
+
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -391,39 +416,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Export functionality - output products as a CSV file.
 if (isset($_GET['export'])) {
-  // Clear output buffer if needed
-  if (ob_get_contents()) {
-    ob_end_clean();
-  }
-  header('Content-Type: text/csv');
-  header('Content-Disposition: attachment; filename="products_export_' . date('Y-m-d') . '.csv"');
+    // Clear output buffer if needed
+    if (ob_get_contents()) {
+        ob_end_clean();
+    }
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="products_export_' . date('Y-m-d') . '.csv"');
 
-  $output = fopen('php://output', 'w');
+    $output = fopen('php://output', 'w');
 
-  // Write CSV header row
-  fputcsv($output, ['product_name', 'sku', 'description', 'price', 'stock', 'is_exclusive', 'category_name']);
+    // Write CSV header row
+    fputcsv($output, ['product_name', 'sku', 'description', 'price', 'stock', 'is_exclusive', 'category_name']);
 
-  // Query to fetch products with their category names
-  $stmt = $pdo->query("SELECT p.*, c.category_name 
+    // Query to fetch products with their category names
+    $stmt = $pdo->query("SELECT p.*, c.category_name 
                        FROM products p 
                        JOIN categories c ON p.category_id = c.category_id 
                        ORDER BY p.product_name");
-  while ($product = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    fputcsv($output, [
-      $product['product_name'], 
-      $product['sku'], 
-      $product['description'], 
-      $product['price'], 
-      $product['stock'], 
-      $product['is_exclusive'], 
-      $product['category_name']
-    ]);
-  }
-  fclose($output);
-  ob_end_flush(); // Flush the output buffer
-  exit;
+    while ($product = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        fputcsv($output, [
+            $product['product_name'],
+            $product['sku'],
+            $product['description'],
+            $product['price'],
+            $product['stock'],
+            $product['is_exclusive'],
+            $product['category_name']
+        ]);
+    }
+    fclose($output);
+    ob_end_flush(); // Flush the output buffer
+    exit;
 }
 ?>
-
-
-script

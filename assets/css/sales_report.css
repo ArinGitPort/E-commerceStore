@@ -1,16 +1,9 @@
-.pageWrapper,
-.contentWrapper {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
 .card-counter {
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
   padding: 20px 10px;
   border-radius: 8px;
   transition: all 0.3s ease;
+  margin-bottom: 20px;
 }
 .card-counter:hover {
   transform: translateY(-5px);
@@ -28,8 +21,8 @@
   background-color: #f6c23e;
   color: white;
 }
-.card-counter.danger {
-  background-color: #e74a3b;
+.card-counter.info {
+  background-color: #36b9cc;
   color: white;
 }
 .card-counter .count-numbers {
@@ -55,31 +48,14 @@
   max-height: 500px;
   overflow-y: auto;
 }
-.badge-status {
+.badge-delivery {
   padding: 6px 10px;
   border-radius: 20px;
   font-weight: 500;
-}
-.status-pending {
-  background-color: #f6c23e;
-  color: #000;
-}
-.status-shipped {
-  background-color: #36b9cc;
-  color: #fff;
-}
-.status-delivered {
-  background-color: #1cc88a;
-  color: #fff;
-}
-.status-cancelled {
-  background-color: #e74a3b;
-  color: #fff;
-}
-.status-returned {
   background-color: #858796;
-  color: #fff;
+  color: white;
 }
-.chart-card {
-  height: 100%;
+.status-completed {
+  background-color: #1cc88a;
+  color: white;
 }
