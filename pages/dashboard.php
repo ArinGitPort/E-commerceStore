@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
+if (!isset($_SESSION['user_id'])) {
+  header("Location: ../pages/login.php");
+  exit;
+}
+
 // Default date range (last 30 days)
 $start_date = date('Y-m-d', strtotime('-30 days'));
 $end_date = date('Y-m-d');

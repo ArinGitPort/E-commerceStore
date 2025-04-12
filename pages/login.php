@@ -90,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Decide where to redirect based on role.
         $redirect = match ($user['role_name']) {
+            'Super Admin' => '../pages/dashboard.php',
             'Admin'  => '../pages/inventory.php',
             'Member' => '../pages-user/homepage.php',
             default  => '../pages-user/homepage.php',

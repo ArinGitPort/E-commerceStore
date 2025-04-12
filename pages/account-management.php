@@ -2,6 +2,10 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../pages/login.php");
+    exit;
+}
 
 // Pagination
 $usersPerPage = 15;

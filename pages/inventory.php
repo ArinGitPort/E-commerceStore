@@ -2,11 +2,11 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
-// Check admin authentication
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
+if (!isset($_SESSION['user_id'])) {
   header("Location: ../pages/login.php");
   exit;
 }
+
 
 // Pagination
 $rowsPerPage = isset($_GET['rows']) ? (int)$_GET['rows'] : 10;

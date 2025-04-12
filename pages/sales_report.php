@@ -2,14 +2,20 @@
 require_once __DIR__ . '/../config/db_connection.php';
 require_once __DIR__ . '/../includes/session-init.php';
 
+if (!isset($_SESSION['user_id'])) {
+  header("Location: ../pages/login.php");
+  exit;
+}
+
+
 // Default date range (last 30 days)
 $start_date = date('Y-m-d', strtotime('-30 days'));
 $end_date = date('Y-m-d');
 
 // Get filter parameters
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $start_date = $_POST['start_date'] ?? $start_date;
-    $end_date = $_POST['end_date'] ?? $end_date;
+  $start_date = $_POST['start_date'] ?? $start_date;
+  $end_date = $_POST['end_date'] ?? $end_date;
 }
 
 // Get archived orders with customer names
@@ -28,8 +34,8 @@ $query = "SELECT
 
 $stmt = $pdo->prepare($query);
 $stmt->execute([
-    ':start_date' => $start_date . ' 00:00:00',
-    ':end_date' => $end_date . ' 23:59:59'
+  ':start_date' => $start_date . ' 00:00:00',
+  ':end_date' => $end_date . ' 23:59:59'
 ]);
 $archivedOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -43,8 +49,8 @@ $summary_query = "SELECT
                   WHERE order_date BETWEEN :start_date AND :end_date";
 $summary_stmt = $pdo->prepare($summary_query);
 $summary_stmt->execute([
-    ':start_date' => $start_date . ' 00:00:00',
-    ':end_date' => $end_date . ' 23:59:59'
+  ':start_date' => $start_date . ' 00:00:00',
+  ':end_date' => $end_date . ' 23:59:59'
 ]);
 $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -59,8 +65,8 @@ $daily_sales_query = "SELECT
                       ORDER BY sale_date";
 $daily_sales_stmt = $pdo->prepare($daily_sales_query);
 $daily_sales_stmt->execute([
-    ':start_date' => $start_date . ' 00:00:00',
-    ':end_date' => $end_date . ' 23:59:59'
+  ':start_date' => $start_date . ' 00:00:00',
+  ':end_date' => $end_date . ' 23:59:59'
 ]);
 $daily_sales = $daily_sales_stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -70,14 +76,38 @@ $chart_revenue = [];
 $chart_orders = [];
 
 foreach ($daily_sales as $day) {
-    $chart_labels[] = date('M j', strtotime($day['sale_date']));
-    $chart_revenue[] = $day['daily_revenue'];
-    $chart_orders[] = $day['daily_orders'];
+  $chart_labels[] = date('M j', strtotime($day['sale_date']));
+  $chart_revenue[] = $day['daily_revenue'];
+  $chart_orders[] = $day['daily_orders'];
 }
+
+// Get top products
+$products_query = "SELECT 
+                    p.product_id,
+                    p.product_name,
+                    c.category_name,
+                    SUM(od.quantity) as total_quantity,
+                    SUM(od.total_price) as total_revenue
+                  FROM order_details od
+                  JOIN products p ON od.product_id = p.product_id
+                  JOIN categories c ON p.category_id = c.category_id
+                  JOIN orders o ON od.order_id = o.order_id
+                  WHERE o.order_date BETWEEN :start_date AND :end_date
+                  GROUP BY p.product_id
+                  ORDER BY total_quantity DESC
+                  LIMIT 5";
+
+$products_stmt = $pdo->prepare($products_query);
+$products_stmt->execute([
+  ':start_date' => $start_date . ' 00:00:00',
+  ':end_date' => $end_date . ' 23:59:59'
+]);
+$top_products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -88,6 +118,7 @@ foreach ($daily_sales as $day) {
 
 
 </head>
+
 <body>
   <div class="pageWrapper">
     <!-- Sidebar -->
@@ -97,9 +128,8 @@ foreach ($daily_sales as $day) {
     <div class="contentWrapper">
 
       <!-- Main Content -->
-      <div class="container-fluid px-4">
-        <h1 class="mt-4">Completed Orders Report</h1>
-    
+
+
 
         <!-- Filter Form -->
         <div class="report-filter mb-4">
@@ -155,13 +185,33 @@ foreach ($daily_sales as $day) {
         </div>
 
         <!-- Sales Trend Chart -->
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="card-title">Sales Trend (<?= date('M j', strtotime($start_date)) ?> - <?= date('M j', strtotime($end_date)) ?>)</h5>
+        <!-- Charts Row - Sales Trend + Top Products -->
+        <div class="row mb-4">
+          <!-- Sales Trend Chart -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h5 class="card-title">Sales Trend (<?= date('M j', strtotime($start_date)) ?> - <?= date('M j', strtotime($end_date)) ?>)</h5>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="salesTrendChart"></canvas>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="chart-container">
-              <canvas id="salesTrendChart"></canvas>
+
+          <!-- Top Products Chart -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h5 class="card-title">Top Selling Products</h5>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="topProductsChart"></canvas>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -210,14 +260,14 @@ foreach ($daily_sales as $day) {
                   <?php endif; ?>
                 </tbody>
                 <?php if (!empty($archivedOrders)): ?>
-                <tfoot>
-                  <tr>
-                    <th colspan="5">Totals</th>
-                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')), 2) ?></th>
-                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
-                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')) - array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
-                  </tr>
-                </tfoot>
+                  <tfoot>
+                    <tr>
+                      <th colspan="5">Totals</th>
+                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')), 2) ?></th>
+                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
+                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')) - array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
+                    </tr>
+                  </tfoot>
                 <?php endif; ?>
               </table>
             </div>
@@ -237,7 +287,7 @@ foreach ($daily_sales as $day) {
       dateFormat: "Y-m-d",
       defaultDate: "<?= $start_date ?>"
     });
-    
+
     flatpickr("#end_date", {
       dateFormat: "Y-m-d",
       defaultDate: "<?= $end_date ?>"
@@ -246,8 +296,7 @@ foreach ($daily_sales as $day) {
     // Prepare chart data
     const chartData = {
       labels: <?= json_encode($chart_labels) ?>,
-      datasets: [
-        {
+      datasets: [{
           label: 'Daily Revenue',
           data: <?= json_encode($chart_revenue) ?>,
           backgroundColor: 'rgba(78, 115, 223, 0.5)',
@@ -260,9 +309,15 @@ foreach ($daily_sales as $day) {
           data: <?= json_encode($chart_orders) ?>,
           backgroundColor: 'rgba(28, 200, 138, 0.5)',
           borderColor: 'rgba(28, 200, 138, 1)',
-          borderWidth: 2,
+          borderWidth: 3, // Increased from 2 to 3
+          pointBorderWidth: 2, // Added point border width
+          pointRadius: 5, // Increased point size
+          pointHoverRadius: 7, // Larger on hover
+          pointBackgroundColor: 'rgba(28, 200, 138, 1)', // Solid point color
           type: 'line',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          tension: 0.1, // Slightly curved line
+          fill: false // Don't fill under line
         }
       ]
     };
@@ -328,14 +383,95 @@ foreach ($daily_sales as $day) {
       const ws = XLSX.utils.table_to_sheet(table);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "CompletedOrders");
-      
+
       // Generate a filename with the date range
       const start = "<?= $start_date ?>";
       const end = "<?= $end_date ?>";
       const filename = `BunniShop_Completed_Orders_${start}_to_${end}.xlsx`;
-      
+
       XLSX.writeFile(wb, filename);
     }
   </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('topProductsChart').getContext('2d');
+
+      // Prepare data for chart
+      const productNames = <?= json_encode(array_column($top_products, 'product_name')) ?>;
+      const quantities = <?= json_encode(array_column($top_products, 'total_quantity')) ?>;
+      const revenues = <?= json_encode(array_column($top_products, 'total_revenue')) ?>;
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: productNames,
+          datasets: [{
+              label: 'Quantity Sold',
+              data: quantities,
+              backgroundColor: '#4e73df',
+              borderColor: '#2e59d9',
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Quantity Sold'
+              },
+              beginAtZero: true
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Revenue (₱)'
+              },
+              beginAtZero: true,
+              grid: {
+                drawOnChartArea: false
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.datasetIndex === 1) {
+                    label += '₱' + context.raw.toFixed(2);
+                  } else {
+                    label += context.raw;
+                  }
+                  return label;
+                }
+              }
+            }
+          }
+        }
+      });
+    });
+  </script>
 </body>
+
 </html>

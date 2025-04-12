@@ -4,6 +4,16 @@ require_once __DIR__ . '/../../includes/session-init.php';
 
 header('Content-Type: application/json');
 
+$userId = $_GET['user_id'] ?? 0;
+
+$stmt = $pdo->prepare("SELECT u.*, m.membership_type_id, m.expiry_date 
+                      FROM users u
+                      LEFT JOIN memberships m ON u.user_id = m.user_id
+                      WHERE u.user_id = ?");
+$stmt->execute([$userId]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+echo json_encode($user);
 
 if (!isset($_GET['user_id'])) {
     http_response_code(400);
