@@ -59,12 +59,14 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>User Management - BunniShop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
 </head>
+
 <body>
     <?php include '../includes/sidebar.php'; ?>
 
@@ -87,7 +89,14 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                                 <button class="btn btn-primary">Filter</button>
                                 <a href="user-management.php" class="btn btn-outline-secondary">Reset</a>
                             </form>
+
+                            <a href="admin-notifications.php" class="btn btn-success">
+                                <i class="bi bi-megaphone"></i> Send Notification
+                            </a>
+
                         </div>
+
+
 
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
@@ -120,15 +129,15 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                                             </td>
                                             <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                                             <td>
-                                                <button class="btn btn-sm btn-primary edit-user" 
-                                                        data-user-id="<?= $user['user_id'] ?>"
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#editUserModal">
+                                                <button class="btn btn-sm btn-primary edit-user"
+                                                    data-user-id="<?= $user['user_id'] ?>"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editUserModal">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </button>
                                                 <button class="btn btn-sm <?= $user['is_active'] ? 'btn-danger' : 'btn-success' ?> toggle-status"
-                                                        data-user-id="<?= $user['user_id'] ?>"
-                                                        data-new-status="<?= $user['is_active'] ? 0 : 1 ?>">
+                                                    data-user-id="<?= $user['user_id'] ?>"
+                                                    data-new-status="<?= $user['is_active'] ? 0 : 1 ?>">
                                                     <?= $user['is_active'] ? 'Deactivate' : 'Activate' ?>
                                                 </button>
                                             </td>
@@ -196,64 +205,67 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    $(document).ready(function() {
-        // Automatic search implementation
-        let searchTimeout;
-        const searchInput = $('input[name="search"]');
-        
-        // Search debounce function
-        searchInput.on('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                $(this.form).submit();
-            }, 300); // 300ms delay after typing stops
-        });
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Automatic search implementation
+            let searchTimeout;
+            const searchInput = $('input[name="search"]');
 
-        // Original code below remains the same
-        // Edit User Modal
-        $('.edit-user').click(function() {
-            const userId = $(this).data('user-id');
-            $.get('ajax/get_user.php', { user_id: userId })
-                .done(function(data) {
-                    $('#editUserId').val(data.user_id);
-                    $('input[name="name"]').val(data.name);
-                    $('input[name="email"]').val(data.email);
-                    $('select[name="role_id"]').val(data.role_id);
-                })
-                .fail(function() {
-                    alert('Error loading user data');
-                });
-        });
+            // Search debounce function
+            searchInput.on('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    $(this.form).submit();
+                }, 300); // 300ms delay after typing stops
+            });
 
-        // Save User Changes
-        $('#editUserForm').submit(function(e) {
-            e.preventDefault();
-            $.post('ajax/update_user.php', $(this).serialize())
-                .done(function() {
+            // Original code below remains the same
+            // Edit User Modal
+            $('.edit-user').click(function() {
+                const userId = $(this).data('user-id');
+                $.get('ajax/get_user.php', {
+                        user_id: userId
+                    })
+                    .done(function(data) {
+                        $('#editUserId').val(data.user_id);
+                        $('input[name="name"]').val(data.name);
+                        $('input[name="email"]').val(data.email);
+                        $('select[name="role_id"]').val(data.role_id);
+                    })
+                    .fail(function() {
+                        alert('Error loading user data');
+                    });
+            });
+
+            // Save User Changes
+            $('#editUserForm').submit(function(e) {
+                e.preventDefault();
+                $.post('ajax/update_user.php', $(this).serialize())
+                    .done(function() {
+                        location.reload();
+                    })
+                    .fail(function() {
+                        alert('Error saving changes');
+                    });
+            });
+
+            // Toggle User Status
+            $('.toggle-status').click(function() {
+                const userId = $(this).data('user-id');
+                const newStatus = $(this).data('new-status');
+
+                $.post('ajax/toggle_user_status.php', {
+                    user_id: userId,
+                    new_status: newStatus
+                }).done(function() {
                     location.reload();
-                })
-                .fail(function() {
-                    alert('Error saving changes');
+                }).fail(function() {
+                    alert('Error updating status');
                 });
-        });
-
-        // Toggle User Status
-        $('.toggle-status').click(function() {
-            const userId = $(this).data('user-id');
-            const newStatus = $(this).data('new-status');
-            
-            $.post('ajax/toggle_user_status.php', {
-                user_id: userId,
-                new_status: newStatus
-            }).done(function() {
-                location.reload();
-            }).fail(function() {
-                alert('Error updating status');
             });
         });
-    });
-</script>
+    </script>
 </body>
+
 </html>

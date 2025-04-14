@@ -212,144 +212,206 @@ if ($user_id) {
             <?php endif; ?>
           </div>
         </div>
+
+        <!-- Notification Bell Icon -->
+        <div class="notif-dropdown position-relative" style="margin-left: 15px;">
+          <a href="#" class="icon" id="notifBell" title="Notifications" style="font-size: 1.1rem; position: relative;">
+            <i class="fas fa-bell"></i>
+            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle p-1 rounded-circle" id="notifCount" style="font-size: 0.65rem; transform: translate(-30%, -30%);">0</span>
+          </a>
+          <div class="notif-dropdown-content shadow-sm border" id="notifDropdown" style="display: none; position: absolute; right: 0; background: #fff; width: 300px; max-height: 350px; overflow-y: auto; z-index: 999; border-radius: 8px;">
+            <div class="p-3">
+              <h6 class="fw-bold mb-2">Notifications</h6>
+              <div id="notifItems">
+                <p class="text-muted small mb-0">No notifications yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+
+
       </div>
     </div>
   </nav>
 
-  <!-- Bootstrap 5 Bundle JS (includes Popper) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+
     // Mobile menu toggle
-    document.getElementById('mobileMenuToggle').addEventListener('click', function() {
+    document.getElementById('mobileMenuToggle').addEventListener('click', function () {
       this.classList.toggle('active');
       document.getElementById('navMenu').classList.toggle('active');
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-      // Enhanced cart dropdown
-      const cartIcon = document.querySelector('.cart-icon');
-      const cartDropdown = document.querySelector('.cart-dropdown-content');
-      if (cartIcon && cartDropdown) {
-        cartIcon.addEventListener('click', function(e) {
-          if (window.innerWidth > 768) {
-            e.preventDefault();
-            cartDropdown.classList.toggle('show');
-            // Close other open dropdowns
-            document.querySelectorAll('.cart-dropdown-content.show').forEach(dd => {
-              if (dd !== cartDropdown) dd.classList.remove('show');
-            });
-          }
-        });
-        // Close when clicking outside
-        document.addEventListener('click', function(e) {
-          if (!e.target.closest('.cart-dropdown')) {
-            cartDropdown.classList.remove('show');
-          }
-        });
+    // Cart dropdown
+    const cartIcon = document.querySelector('.cart-icon');
+    const cartDropdown = document.querySelector('.cart-dropdown-content');
+    if (cartIcon && cartDropdown) {
+      cartIcon.addEventListener('click', function (e) {
+        if (window.innerWidth > 768) {
+          e.preventDefault();
+          cartDropdown.classList.toggle('show');
+          document.querySelectorAll('.cart-dropdown-content.show').forEach(dd => {
+            if (dd !== cartDropdown) dd.classList.remove('show');
+          });
+        }
+      });
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('.cart-dropdown')) {
+          cartDropdown.classList.remove('show');
+        }
+      });
+    }
+
+    // Highlight current page
+    const currentPage = location.pathname.split('/').pop() || 'homepage.php';
+    document.querySelectorAll('.nav-link').forEach(link => {
+      if (link.getAttribute('href').includes(currentPage)) {
+        link.classList.add('active');
       }
+    });
 
-      // Highlight current page link
-      const currentPage = location.pathname.split('/').pop() || 'homepage.php';
-      document.querySelectorAll('.nav-link').forEach(link => {
-        if (link.getAttribute('href').includes(currentPage)) {
-          link.classList.add('active');
-        }
-      });
-
-      // Logout confirmation
-      const logoutConfirm = document.getElementById('logoutConfirm');
-      const logoutButtons = [
-        document.getElementById('navLogout'),
-        document.getElementById('mobileLogout')
-      ].filter(btn => btn);
-
-      logoutButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          logoutConfirm.style.display = 'flex';
-        });
-      });
-
-      // Cancel logout
-      document.getElementById('logoutCancel').addEventListener('click', function() {
-        logoutConfirm.style.display = 'none';
-      });
-
-      // Close logout modal when clicking outside
-      logoutConfirm.addEventListener('click', function(e) {
-        if (e.target === this) {
-          logoutConfirm.style.display = 'none';
-        }
-      });
-
-      // Login modal trigger for mobile login
-      const mobileLogin = document.getElementById('mobileLogin');
-      const loginConfirm = document.getElementById('loginConfirm');
-      if (mobileLogin && loginConfirm) {
-        mobileLogin.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          loginConfirm.style.display = 'flex';
-        });
-      }
-
-      // Login modal trigger for any element with class 'login-trigger'
-      const loginTriggers = document.querySelectorAll('.login-trigger');
-      loginTriggers.forEach(trigger => {
-        trigger.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          loginConfirm.style.display = 'flex';
-        });
-      });
-
-      // Cancel login action
-      document.getElementById('loginCancel').addEventListener('click', function() {
-        loginConfirm.style.display = 'none';
-      });
-
-      // Close login modal when clicking outside
-      loginConfirm.addEventListener('click', function(e) {
-        if (e.target === this) {
-          loginConfirm.style.display = 'none';
-        }
-      });
-
-      // Redirection logic for Logout Confirm button
-      document.getElementById('logoutConfirmBtn').addEventListener('click', function(e) {
+    // Logout confirmation
+    const logoutConfirm = document.getElementById('logoutConfirm');
+    const logoutButtons = [document.getElementById('navLogout'), document.getElementById('mobileLogout')].filter(Boolean);
+    logoutButtons.forEach(btn => {
+      btn.addEventListener('click', function (e) {
         e.preventDefault();
-        logoutConfirm.style.display = 'none';
-        document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
-        let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
-        redirectModal.show();
-        setTimeout(function() {
-          window.location.href = "../pages/logout.php";
-        }, 2000);
-      });
-
-      // Redirection logic for Login Confirm button
-      document.getElementById('loginConfirmBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        loginConfirm.style.display = 'none';
-        document.getElementById('redirectMessage').innerText = "Redirecting to Login Page...";
-        let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
-        redirectModal.show();
-        setTimeout(function() {
-          window.location.href = "../pages/login.php";
-        }, 2000);
-      });
-
-      // Close redirect modal when clicking outside (optional, Bootstrap handles this by default)
-      document.getElementById('redirectModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-          let modalInstance = bootstrap.Modal.getInstance(document.getElementById('redirectModal'));
-          modalInstance.hide();
-        }
+        e.stopPropagation();
+        logoutConfirm.style.display = 'flex';
       });
     });
-  </script>
+
+    document.getElementById('logoutCancel').addEventListener('click', function () {
+      logoutConfirm.style.display = 'none';
+    });
+
+    logoutConfirm.addEventListener('click', function (e) {
+      if (e.target === this) {
+        logoutConfirm.style.display = 'none';
+      }
+    });
+
+    // Login confirmation
+    const mobileLogin = document.getElementById('mobileLogin');
+    const loginConfirm = document.getElementById('loginConfirm');
+    if (mobileLogin && loginConfirm) {
+      mobileLogin.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        loginConfirm.style.display = 'flex';
+      });
+    }
+
+    document.querySelectorAll('.login-trigger').forEach(trigger => {
+      trigger.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        loginConfirm.style.display = 'flex';
+      });
+    });
+
+    document.getElementById('loginCancel').addEventListener('click', function () {
+      loginConfirm.style.display = 'none';
+    });
+
+    loginConfirm.addEventListener('click', function (e) {
+      if (e.target === this) {
+        loginConfirm.style.display = 'none';
+      }
+    });
+
+    document.getElementById('logoutConfirmBtn').addEventListener('click', function (e) {
+      e.preventDefault();
+      logoutConfirm.style.display = 'none';
+      document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
+      let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
+      redirectModal.show();
+      setTimeout(() => window.location.href = "../pages/logout.php", 2000);
+    });
+
+    document.getElementById('loginConfirmBtn').addEventListener('click', function (e) {
+      e.preventDefault();
+      loginConfirm.style.display = 'none';
+      document.getElementById('redirectMessage').innerText = "Redirecting to Login Page...";
+      let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
+      redirectModal.show();
+      setTimeout(() => window.location.href = "../pages/login.php", 2000);
+    });
+
+    document.getElementById('redirectModal').addEventListener('click', function (e) {
+      if (e.target === this) {
+        let modalInstance = bootstrap.Modal.getInstance(this);
+        modalInstance.hide();
+      }
+    });
+
+    // NOTIFICATIONS
+
+    const notifBell = document.getElementById('notifBell');
+    const notifDropdown = document.getElementById('notifDropdown');
+
+    notifBell.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.notif-dropdown')) {
+        notifDropdown.style.display = 'none';
+      }
+    });
+
+    async function fetchNotifications() {
+      try {
+        const res = await fetch('../pages/ajax/fetch-notifications.php');
+        const data = await res.json();
+
+        const notifItems = document.getElementById('notifItems');
+        const notifCount = document.getElementById('notifCount');
+
+        if (data.success) {
+          const notifications = data.notifications;
+          notifCount.textContent = notifications.length;
+          notifCount.style.display = notifications.length > 0 ? 'inline-block' : 'none';
+
+          notifItems.innerHTML = '';
+
+          if (notifications.length > 0) {
+            notifications.forEach(notif => {
+              const notifElement = document.createElement('div');
+              notifElement.className = 'notif-item mb-2';
+              notifElement.innerHTML = `
+                <div class="fw-semibold">${notif.title}</div>
+                <div class="text-muted small">${notif.message}</div>
+                <hr class="my-2">
+              `;
+              notifItems.appendChild(notifElement);
+            });
+          } else {
+            notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+          }
+        } else {
+          console.error('Notification error:', data.error);
+        }
+
+      } catch (err) {
+        console.error('Fetch failed:', err);
+      }
+    }
+
+    // Initial fetch and polling
+    fetchNotifications();
+    setInterval(fetchNotifications, 30000);
+
+  });
+</script>
 
 </body>
 

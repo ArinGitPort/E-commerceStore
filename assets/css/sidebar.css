@@ -196,7 +196,6 @@ html, body {
    MAIN CONTENT
 ---------------------- */
 .main-content {
-  margin-left: 350px; /* Aligns with sidebar width on desktop */
   transition: margin-left 0.3s ease;
   flex: 1;
   padding: 20px;

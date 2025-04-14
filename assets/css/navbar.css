@@ -535,3 +535,23 @@ body.login-modal-open {
   overflow: hidden;
   padding-right: 0 !important;
 }
+
+.notif-dropdown .icon {
+  position: relative;
+}
+
+.notif-dropdown-content {
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+#notifCount {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}

@@ -360,6 +360,66 @@ unset($_SESSION['error'], $_SESSION['success']);
                 }, 2000);
             });
         });
+
+            // NOTIFICATIONS
+
+    const notifBell = document.getElementById('notifBell');
+    const notifDropdown = document.getElementById('notifDropdown');
+
+    notifBell.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.notif-dropdown')) {
+        notifDropdown.style.display = 'none';
+      }
+    });
+
+    async function fetchNotifications() {
+      try {
+        const res = await fetch('../pages/ajax/fetch-notifications.php');
+        const data = await res.json();
+
+        const notifItems = document.getElementById('notifItems');
+        const notifCount = document.getElementById('notifCount');
+
+        if (data.success) {
+          const notifications = data.notifications;
+          notifCount.textContent = notifications.length;
+          notifCount.style.display = notifications.length > 0 ? 'inline-block' : 'none';
+
+          notifItems.innerHTML = '';
+
+          if (notifications.length > 0) {
+            notifications.forEach(notif => {
+              const notifElement = document.createElement('div');
+              notifElement.className = 'notif-item mb-2';
+              notifElement.innerHTML = `
+                <div class="fw-semibold">${notif.title}</div>
+                <div class="text-muted small">${notif.message}</div>
+                <hr class="my-2">
+              `;
+              notifItems.appendChild(notifElement);
+            });
+          } else {
+            notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+          }
+        } else {
+          console.error('Notification error:', data.error);
+        }
+
+      } catch (err) {
+        console.error('Fetch failed:', err);
+      }
+    }
+
+    // Initial fetch and polling
+    fetchNotifications();
+    setInterval(fetchNotifications, 30000);
+
     </script>
 </body>
 
