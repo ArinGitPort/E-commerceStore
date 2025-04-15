@@ -1,34 +1,9 @@
 <?php
-require_once __DIR__ . '/../includes/session-init.php';
+require_once __DIR__ . '/../includes/session-init.php'; // Ensure this file contains validate_csrf_token()
 require_once __DIR__ . '/../config/db_connection.php';
 
-function merge_session_cart_to_db(PDO $pdo): void
-{
-    if (!isset($_SESSION['user_id']) || empty($_SESSION['cart'])) {
-        return;
-    }
-
-    $userId = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("
-        INSERT INTO cart_items (user_id, product_id, quantity)
-        VALUES (:user_id, :product_id, :quantity)
-        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)
-    ");
-
-    foreach ($_SESSION['cart'] as $productId => $quantity) {
-        $stmt->execute([
-            'user_id'    => $userId,
-            'product_id' => $productId,
-            'quantity'   => $quantity
-        ]);
-    }
-
-    // Clear the session cart once merged to DB.
-    $_SESSION['cart'] = [];
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validate CSRF token.
+    // Validate CSRF token
     if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
         $_SESSION['login_error'] = 'Invalid security token. Please try again.';
         header("Location: login.php");
@@ -45,34 +20,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // Select the user with the given email, along with role info.
-        $stmt = $pdo->prepare("
-            SELECT u.user_id, u.name, u.email, u.password, u.is_active, r.role_name
-            FROM users u
-            JOIN roles r ON u.role_id = r.role_id
-            WHERE u.email = ?
-        ");
+        // Select the user with the given email, along with role info
+        $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.email, u.password, u.is_active, r.role_name 
+                               FROM users u
+                               JOIN roles r ON u.role_id = r.role_id 
+                               WHERE u.email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Check if user exists and password matches.
+        // Check if user exists and password matches
         if (!$user || !password_verify($password, $user['password'])) {
             $_SESSION['login_error'] = 'Invalid email or password.';
             header("Location: login.php");
             exit;
         }
 
-        // Check if user is active.
+        // Check if user is active
         if ($user['is_active'] != 1) {
             $_SESSION['login_error'] = 'Your account is not activated. Please verify your email.';
             header("Location: login.php");
             exit;
         }
 
-        // Regenerate session to avoid fixation.
+        // Regenerate session to avoid session fixation
         session_regenerate_id(true);
 
-        // Set session variables.
+        // Set session variables
         $_SESSION['user_id']      = $user['user_id'];
         $_SESSION['name']         = $user['name'];
         $_SESSION['email']        = $user['email'];
@@ -80,15 +53,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['last_login']   = time();
         $_SESSION['last_activity'] = time();
 
-        // Merge cart from session to DB.
-        merge_session_cart_to_db($pdo);
+        try {
+            // Update last login timestamp
+            $stmt = $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE user_id = :user_id");
+            $stmt->execute(['user_id' => $user['user_id']]);
 
-        // If you have a sync_cart function, you can call it here (as shown in your snippet).
-        if (function_exists('sync_cart')) {
-            sync_cart($pdo);
+            // Log the login action in the audit logs
+            $stmt = $pdo->prepare("
+                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+                VALUES (:user_id, 'User logged in', 'users', :user_id, 'LOGIN', :ip_address, :user_agent, :affected_data)
+            ");
+            $stmt->execute([
+                'user_id'      => $user['user_id'],
+                'ip_address'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'affected_data' => json_encode([])
+            ]);
+            error_log("Login action successfully logged for user ID: " . $user['user_id']);
+        } catch (PDOException $e) {
+            error_log("Failed to insert login audit log: " . $e->getMessage());
         }
 
-        // Decide where to redirect based on role.
+        // Redirect based on role
         $redirect = match ($user['role_name']) {
             'Super Admin' => '../pages/dashboard.php',
             'Admin'  => '../pages/inventory.php',
@@ -96,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             default  => '../pages-user/homepage.php',
         };
 
-        // If a redirect was set prior to login, use it; otherwise use the default.
+        // If a redirect was set prior to login, use it; otherwise use the default
         $redirect_url = $_SESSION['redirect_url'] ?? $redirect;
         unset($_SESSION['redirect_url']);
 
@@ -110,10 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Grab any login error message stored in session.
+// Grab any login error message stored in session
 $error = $_SESSION['login_error'] ?? null;
 unset($_SESSION['login_error']);
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -159,7 +147,6 @@ unset($_SESSION['login_error']);
         transform: translateX(-50%) translateY(0);
       }
     }
-    /* Login wrapper */
     .login-wrapper {
       display: flex;
       justify-content: center;
@@ -167,7 +154,6 @@ unset($_SESSION['login_error']);
       min-height: 100vh;
       padding: 15px;
     }
-    /* Login card */
     .login-card {
       background: rgba(255, 255, 255, 0.95);
       border: 2px solid #354359;
@@ -178,7 +164,6 @@ unset($_SESSION['login_error']);
       max-width: 450px;
       margin-top: 70px;
     }
-    /* Button styling */
     .login-btn {
       background-color: #354359;
       color: white;
@@ -192,7 +177,6 @@ unset($_SESSION['login_error']);
     .login-btn:hover {
       background-color: #2b374b;
     }
-    /* Responsive adjustments for small screens */
     @media (max-width: 576px) {
       .login-card {
         padding: 20px;
@@ -207,7 +191,6 @@ unset($_SESSION['login_error']);
   </style>
 </head>
 <body>
-  <!-- Floating Visit Shop Button -->
   <a href="../index.php" class="btn btn-success floating-shop-btn">
     <i class="fas fa-store me-2"></i> Visit Shop
   </a>
@@ -305,25 +288,6 @@ unset($_SESSION['login_error']);
       const passwordField = document.getElementById('password');
       passwordField.type = (passwordField.type === 'password') ? 'text' : 'password';
     }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      const shopBtn = document.querySelector('.floating-shop-btn');
-
-      // Fallback for older browsers
-      if (window.CSS && CSS.supports('position', 'sticky')) {
-        return;
-      }
-
-      shopBtn.addEventListener('mouseenter', function() {
-        this.style.transition = 'background 0.6s ease-in-out';
-        this.style.background = 'linear-gradient(135deg, #6da3d6, #e091cc)';
-      });
-
-      shopBtn.addEventListener('mouseleave', function() {
-        this.style.transition = 'background 0.6s ease-in-out';
-        this.style.background = 'linear-gradient(135deg, #ffaee7, #83a6d4)';
-      });
-    });
   </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 
 // Check if headers have already been sent
 if (!headers_sent()) {
-    header("Location: ../pages-user/shop.php");
+    header("Location: ../pages-user/homepage.php");
     exit;
 } else {
     // Fallback for when headers have been sent

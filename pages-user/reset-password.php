@@ -50,6 +50,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
         $hashed = password_hash($password, PASSWORD_DEFAULT);
         $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?")->execute([$hashed, $user_id]);
         $pdo->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$user_id]);
+
+        // ✅ Log the password reset action in the audit logs
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+                VALUES (:user_id, 'Password reset', 'users', :user_id, 'UPDATE', :ip_address, :user_agent, :affected_data)
+            ");
+            $stmt->execute([
+                'user_id'      => $user_id,
+                'ip_address'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',  // Fallback for IP address
+                'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', // Fallback for User Agent
+                'affected_data' => json_encode(['action' => 'Password reset']) // Additional details
+            ]);
+        } catch (PDOException $e) {
+            error_log("Failed to log password reset action: " . $e->getMessage());
+        }
+
         $success = true;
     }
 }
