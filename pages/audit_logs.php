@@ -72,6 +72,28 @@ $action_types = $pdo->query("SELECT DISTINCT action_type FROM audit_logs")->fetc
 
 // Get distinct table names
 $table_names = $pdo->query("SELECT DISTINCT table_name FROM audit_logs")->fetchAll(PDO::FETCH_COLUMN);
+
+function renderAffectedData($data) {
+    if (is_array($data)) {
+        echo '<ul>';
+        foreach ($data as $key => $value) {
+            echo '<li>';
+            echo ucfirst($key) . ': ';
+            if (is_array($value)) {
+                // Recursively render nested arrays
+                renderAffectedData($value);
+            } else {
+                // Render scalar values
+                echo htmlspecialchars($value);
+            }
+            echo '</li>';
+        }
+        echo '</ul>';
+    } else {
+        // Render scalar values directly
+        echo htmlspecialchars($data);
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -186,7 +208,14 @@ $table_names = $pdo->query("SELECT DISTINCT table_name FROM audit_logs")->fetchA
                                         <?php endif; ?>
                                         
                                         <?php if ($log['affected_data']): ?>
-                                            <div class="mt-2 json-data"><?= htmlspecialchars(json_encode(json_decode($log['affected_data']), JSON_PRETTY_PRINT)) ?></div>
+                                            <?php 
+                                            // Decode the JSON data
+                                            $affectedData = json_decode($log['affected_data'], true); 
+                                            ?>
+                                            <div class="mt-2">
+                                                <strong>Details:</strong>
+                                                <?php renderAffectedData($affectedData); ?>
+                                            </div>
                                         <?php endif; ?>
                                     </div>
                                 </div>
