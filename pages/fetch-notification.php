@@ -13,10 +13,7 @@ $response = [
 ];
 
 try {
-    // Check valid session
-    if (!isset($_SESSION['user_id'])) {
-        throw new Exception('Authentication required. Please login.');
-    }
+
 
     $user_id = $_SESSION['user_id'];
 

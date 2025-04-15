@@ -1,203 +1,110 @@
 <?php
+// Filepath: /pages/admin-notifications.php
+
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+// Initialize variables
+$notifications = [];
+$totalNotifications = 0;
+$totalPages = 1;
+$templates = [];
+$success = '';
+$error = '';
 
-// Fetch data for templates & membership types
-$templates = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
-$membershipTypes = $pdo->query("SELECT * FROM membership_types")->fetchAll(PDO::FETCH_ASSOC);
-
-// Handle pagination/search
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+// Pagination
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $limit = 15;
 $offset = ($page - 1) * $limit;
 
-$notificationsQuery = "
-    SELECT 
-        n.*, 
-        u.name AS creator_name,
-        GROUP_CONCAT(mt.type_name) AS target_groups
-    FROM notifications n
-    LEFT JOIN users u ON n.created_by = u.user_id
-    LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
-    LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
-";
+try {
+  // Fetch notification templates
+  $templates = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
-// If searching
-$whereClauses = [];
-if (!empty($search)) {
-  $whereClauses[] = "(n.title LIKE :search OR n.message LIKE :search)";
-}
+  // Main notifications query
+  $notificationsQuery = "
+        SELECT 
+            n.notification_id,
+            n.title,
+            n.message,
+            n.start_date,
+            n.expiry_date,
+            n.created_at,
+            n.created_by,
+            GROUP_CONCAT(DISTINCT mt.membership_type_id ORDER BY mt.membership_type_id) AS target_group_ids
+        FROM notifications n
+        LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
+        LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
+    ";
 
-if ($whereClauses) {
-  $notificationsQuery .= " WHERE " . implode(' AND ', $whereClauses);
-}
+  $where = [];
+  $params = [];
 
-$notificationsQuery .= " ORDER BY n.created_at DESC LIMIT $limit OFFSET $offset";
-
-$stmt = $pdo->prepare($notificationsQuery);
-if (!empty($search)) {
-  $searchTerm = "%$search%";
-  $stmt->bindParam(':search', $searchTerm, PDO::PARAM_STR);
-}
-$stmt->execute();
-$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Count total notifications
-$countQuery = "SELECT COUNT(*) FROM notifications";
-if (!empty($search)) {
-  $countQuery .= " WHERE title LIKE :search OR message LIKE :search";
-}
-$stmt = $pdo->prepare($countQuery);
-if (!empty($search)) {
-  $stmt->bindParam(':search', $searchTerm, PDO::PARAM_STR);
-}
-$stmt->execute();
-$totalNotifications = $stmt->fetchColumn();
-$totalPages = ceil($totalNotifications / $limit);
-
-// Process form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-
-  $action = $_POST['action'] ?? '';
-  $response = ['success' => false, 'message' => ''];
-
-  try {
-    if ($action === 'create_notification') {
-      // Create new notification
-      $title = trim($_POST['title']);
-      $message = trim($_POST['message']);
-      $start_date = $_POST['start_date'] ?: null;
-      $expiry_date = $_POST['expiry_date'] ?: null;
-      $target_memberships = $_POST['membership_types'] ?? [];
-
-      if ($title && $message) {
-        $pdo->beginTransaction();
-
-        // Insert into notifications
-        $stmt = $pdo->prepare("
-                  INSERT INTO notifications (title, message, created_by, start_date, expiry_date) 
-                  VALUES (?, ?, ?, ?, ?)
-              ");
-        $stmt->execute([
-          $title,
-          $message,
-          $_SESSION['user_id'],
-          $start_date,
-          $expiry_date
-        ]);
-
-        $notification_id = $pdo->lastInsertId();
-
-        // Insert into notification_membership_targets if multiple membership types
-        if (!empty($target_memberships)) {
-          $targetStmt = $pdo->prepare("
-                      INSERT INTO notification_membership_targets (notification_id, membership_type_id) 
-                      VALUES (?, ?)
-                  ");
-          foreach ($target_memberships as $type_id) {
-            $targetStmt->execute([$notification_id, $type_id]);
-          }
-        }
-
-        $pdo->commit();
-        $response = [
-          'success' => true,
-          'message' => 'Notification sent successfully!',
-          'notification_id' => $notification_id,
-          'redirect' => !$is_ajax // Only redirect for non-AJAX
-        ];
-      } else {
-        $response['message'] = 'Title and message are required.';
-      }
-    } elseif ($action === 'save_template') {
-      // Save new template
-      $title = trim($_POST['template_title']);
-      $message = trim($_POST['template_message']);
-
-      if ($title && $message) {
-        $stmt = $pdo->prepare("
-                  INSERT INTO notification_templates (title, message, created_by)
-                  VALUES (?, ?, ?)
-              ");
-        $stmt->execute([$title, $message, $_SESSION['user_id']]);
-        $template_id = $pdo->lastInsertId();
-
-        $response = [
-          'success' => true,
-          'message' => 'Template saved successfully!',
-          'template' => [
-            'id' => $template_id,
-            'title' => $title,
-            'message' => $message,
-            'created_at' => date('Y-m-d H:i:s')
-          ],
-          'redirect' => !$is_ajax
-        ];
-      } else {
-        $response['message'] = 'Template title and message are required.';
-      }
-    } elseif ($action === 'delete_notification') {
-      // Delete notification
-      $notification_id = (int)$_POST['notification_id'];
-      $stmt = $pdo->prepare("DELETE FROM notifications WHERE notification_id = ?");
-      $stmt->execute([$notification_id]);
-
-      $response = [
-        'success' => true,
-        'message' => 'Notification deleted successfully!',
-        'notification_id' => $notification_id,
-        'redirect' => !$is_ajax
-      ];
-    } elseif ($action === 'update_notification') {
-      // Update existing notification
-      $notification_id = (int)$_POST['notification_id'];
-      $title = trim($_POST['title']);
-      $message = trim($_POST['message']);
-      $start_date = $_POST['start_date'] ?: null;
-      $expiry_date = $_POST['expiry_date'] ?: null;
-
-      $stmt = $pdo->prepare("
-              UPDATE notifications
-              SET title = ?, message = ?, start_date = ?, expiry_date = ?
-              WHERE notification_id = ?
-          ");
-      $stmt->execute([$title, $message, $start_date, $expiry_date, $notification_id]);
-
-      $response = [
-        'success' => true,
-        'message' => 'Notification updated successfully!',
-        'notification_id' => $notification_id,
-        'redirect' => !$is_ajax
-      ];
-    } else {
-      $response['message'] = 'Invalid action specified.';
-    }
-  } catch (Exception $e) {
-    $response['message'] = 'Error: ' . $e->getMessage();
+  if (!empty($search)) {
+    $where[] = "(n.title LIKE :search OR n.message LIKE :search)";
+    $params[':search'] = "%$search%";
   }
 
-  if ($is_ajax) {
-    header('Content-Type: application/json');
-    echo json_encode($response);
-    exit;
-  } else {
-    // For regular form submissions
-    $_SESSION['success'] = $response['success'] ? $response['message'] : '';
-    $_SESSION['error'] = !$response['success'] ? $response['message'] : '';
-    header("Location: admin-notifications.php");
-    exit;
+  if (!empty($where)) {
+    $notificationsQuery .= " WHERE " . implode(' AND ', $where);
   }
+
+  $notificationsQuery .= " 
+        GROUP BY n.notification_id
+        ORDER BY n.created_at DESC
+        LIMIT :limit OFFSET :offset
+    ";
+
+  $stmt = $pdo->prepare($notificationsQuery);
+
+  if (!empty($search)) {
+    $stmt->bindValue(':search', $params[':search'], PDO::PARAM_STR);
+  }
+  $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+  $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+  $stmt->execute();
+  $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  // Count query
+  $countQuery = "SELECT COUNT(*) FROM notifications n";
+  $countParams = [];
+
+  if (!empty($search)) {
+    $countQuery .= " WHERE n.title LIKE :search OR n.message LIKE :search";
+    $countParams[':search'] = "%$search%";
+  }
+
+  $countStmt = $pdo->prepare($countQuery);
+
+  if (!empty($countParams)) {
+    $countStmt->bindValue(':search', $countParams[':search'], PDO::PARAM_STR);
+  }
+
+  $countStmt->execute();
+  $totalNotifications = $countStmt->fetchColumn();
+  $totalPages = max(1, ceil($totalNotifications / $limit));
+} catch (PDOException $e) {
+  error_log("Database Error: " . $e->getMessage());
+  $error = "Failed to load notifications. Please try again.";
+  // For debugging: $error = "Error: " . $e->getMessage();
 }
 
 // Flash messages
-$success = $_SESSION['success'] ?? '';
-$error = $_SESSION['error'] ?? '';
-unset($_SESSION['success'], $_SESSION['error']);
+if (isset($_SESSION['success'])) {
+  $success = $_SESSION['success'];
+  unset($_SESSION['success']);
+}
+
+if (isset($_SESSION['error'])) {
+  $error = $_SESSION['error'];
+  unset($_SESSION['error']);
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -262,12 +169,12 @@ unset($_SESSION['success'], $_SESSION['error']);
   <?php include '../includes/sidebar.php'; ?>
 
   <div class="main-content container-fluid py-4">
-
     <!-- Header Row -->
     <div class="row mb-4">
       <div class="col">
         <div class="d-flex justify-content-between align-items-center">
           <h2><i class="bi bi-megaphone"></i> Notifications Management</h2>
+          <!-- Button triggers the New Notification modal -->
           <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newNotificationModal">
             <i class="bi bi-plus-lg"></i> New Notification
           </button>
@@ -288,21 +195,22 @@ unset($_SESSION['success'], $_SESSION['error']);
       </div>
     <?php endif; ?>
 
-    <!-- Notifications Card -->
+    <!-- Notifications List -->
     <div class="row mb-4">
       <div class="col">
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">All Notifications</h5>
-            <form class="d-flex" method="get" action="fetch-notifications.php">
+            <form class="d-flex" method="get" action="">
               <div class="input-group">
-                <input type="text" class="form-control" name="search" placeholder="Search notifications..."
+                <input type="text" class="form-control" name="search"
+                  placeholder="Search notifications..."
                   value="<?= htmlspecialchars($search) ?>">
                 <button class="btn btn-outline-secondary" type="submit">
                   <i class="bi bi-search"></i>
                 </button>
                 <?php if (!empty($search)): ?>
-                  <a href="fetch-notifications.php" class="btn btn-outline-danger">
+                  <a href="admin-notifications.php" class="btn btn-outline-danger">
                     <i class="bi bi-x-lg"></i>
                   </a>
                 <?php endif; ?>
@@ -326,39 +234,45 @@ unset($_SESSION['success'], $_SESSION['error']);
                 </thead>
                 <tbody>
                   <?php
-                  $now = new DateTime();
+                  $now = new DateTime('now', new DateTimeZone('Asia/Manila'));
                   foreach ($notifications as $notification):
                     $status = 'Active';
                     $statusClass = 'status-active';
 
-                    date_default_timezone_set('Asia/Manila'); // Set appropriate timezone
-
-                    $startDate = $notification['start_date'] ?
-                      new DateTime($notification['start_date'], new DateTimeZone('Asia/Manila')) :
-                      null;
-                    $expiryDate = $notification['expiry_date'] ? new DateTime($notification['expiry_date']) : null;
+                    $startDate = $notification['start_date']
+                      ? new DateTime($notification['start_date'], new DateTimeZone('Asia/Manila'))
+                      : null;
+                    $expiryDate = $notification['expiry_date']
+                      ? new DateTime($notification['expiry_date'], new DateTimeZone('Asia/Manila'))
+                      : null;
 
                     if ($startDate && $now < $startDate) {
-                      $status = 'Pending';
+                      $status      = 'Pending';
                       $statusClass = 'status-pending';
                     } elseif ($expiryDate && $now > $expiryDate) {
-                      $status = 'Expired';
+                      $status      = 'Expired';
                       $statusClass = 'status-expired';
                     }
                   ?>
                     <tr class="notification-row">
                       <td><?= $notification['notification_id'] ?></td>
-                      <td><?= htmlspecialchars($data, ENT_QUOTES) ?></td>
-
+                      <td><?= htmlspecialchars($notification['title'], ENT_QUOTES) ?></td>
                       <td>
                         <div class="text-truncate" style="max-width: 300px;">
                           <?= htmlspecialchars($notification['message']) ?>
                         </div>
                       </td>
                       <td>
-                        <?php if (!empty($notification['target_type'])): ?>
-                          <span class="badge badge-target"><?= htmlspecialchars($notification['target_type']) ?></span>
-                        <?php else: ?>
+                        <?php
+                        // If 'target_groups' is empty, it implies no membership targets → "All Members"
+                        if (!empty($notification['target_groups'])):
+                          // e.g. "Free, Premium, VIP"
+                          $groups = explode(',', $notification['target_groups']);
+                          foreach ($groups as $grp) {
+                            echo '<span class="badge badge-target me-1">' . htmlspecialchars($grp) . '</span>';
+                          }
+                        else:
+                        ?>
                           <span class="badge bg-primary">All Members</span>
                         <?php endif; ?>
                       </td>
@@ -382,7 +296,8 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <div class="d-flex gap-2">
                           <!-- Edit button triggers modal -->
                           <button class="btn btn-sm btn-outline-primary action-btn"
-                            data-bs-toggle="modal" data-bs-target="#editNotificationModal"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editNotificationModal"
                             data-id="<?= $notification['notification_id'] ?>"
                             data-title="<?= htmlspecialchars($notification['title']) ?>"
                             data-message="<?= htmlspecialchars($notification['message']) ?>"
@@ -392,10 +307,11 @@ unset($_SESSION['success'], $_SESSION['error']);
                           </button>
 
                           <!-- Delete form -->
-                          <form method="post" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
+                          <form method="post" action="admin-notifications-handler.php">
                             <input type="hidden" name="action" value="delete_notification">
                             <input type="hidden" name="notification_id" value="<?= $notification['notification_id'] ?>">
-                            <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
+                            <button type="submit"
+                              class="btn btn-sm btn-outline-danger action-btn"
                               onclick="return confirm('Are you sure you want to delete this notification?')">
                               <i class="bi bi-trash"></i>
                             </button>
@@ -408,6 +324,7 @@ unset($_SESSION['success'], $_SESSION['error']);
               </table>
             </div>
 
+            <!-- Fallback if no notifications -->
             <?php if (empty($notifications)): ?>
               <div class="text-center py-4">
                 <i class="bi bi-megaphone" style="font-size: 3rem; opacity: 0.2;"></i>
@@ -440,10 +357,9 @@ unset($_SESSION['success'], $_SESSION['error']);
               </ul>
             </nav>
           </div>
-
         </div>
       </div>
-    </div>
+    </div><!-- /row -->
 
     <!-- Templates & Stats Row -->
     <div class="row">
@@ -452,6 +368,7 @@ unset($_SESSION['success'], $_SESSION['error']);
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Quick Templates</h5>
+            <!-- This button triggers the "New Template" modal -->
             <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
               <i class="bi bi-plus-lg"></i> New Template
             </button>
@@ -502,13 +419,13 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <div class="p-3 border rounded bg-light">
                   <h3 class="mb-0">
                     <?php
-                    // Example: count "Pending"
-                    // (start_date > now) or else if start_date is null, fallback logic
-                    echo $pdo->query("
-                      SELECT COUNT(*)
-                      FROM notifications
-                      WHERE (start_date IS NOT NULL AND start_date > NOW())
-                    ")->fetchColumn();
+                    // Count "Pending": notifications with start_date > NOW()
+                    $pendingCount = $pdo->query("
+                        SELECT COUNT(*)
+                        FROM notifications
+                        WHERE start_date IS NOT NULL AND start_date > NOW()
+                      ")->fetchColumn();
+                    echo (int)$pendingCount;
                     ?>
                   </h3>
                   <small class="text-muted">Pending</small>
@@ -518,13 +435,14 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <div class="p-3 border rounded bg-light">
                   <h3 class="mb-0">
                     <?php
-                    // Example: count "Expired"
-                    echo $pdo->query("
-                      SELECT COUNT(*)
-                      FROM notifications
-                      WHERE expiry_date IS NOT NULL
-                        AND expiry_date < NOW()
-                    ")->fetchColumn();
+                    // Count "Expired": notifications whose expiry_date < NOW()
+                    $expiredCount = $pdo->query("
+                        SELECT COUNT(*)
+                        FROM notifications
+                        WHERE expiry_date IS NOT NULL
+                          AND expiry_date < NOW()
+                      ")->fetchColumn();
+                    echo (int)$expiredCount;
                     ?>
                   </h3>
                   <small class="text-muted">Expired</small>
@@ -533,246 +451,35 @@ unset($_SESSION['success'], $_SESSION['error']);
             </div>
           </div>
         </div>
-      </div> <!-- /col-md-6 -->
-    </div> <!-- /row -->
-
-  </div> <!-- /main-content -->
-  <!-- Modals -->
-
-  <!-- New Notification Modal -->
-  <div class="modal fade" id="newNotificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form method="post" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
-          <input type="hidden" name="action" value="create_notification">
-
-          <div class="modal-header">
-            <h5 class="modal-title">Create New Notification</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-8">
-                <div class="mb-3">
-                  <label class="form-label">Title <span class="text-danger">*</span></label>
-                  <input type="text" name="title" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Message <span class="text-danger">*</span></label>
-                  <textarea name="message" class="form-control" rows="5" required></textarea>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="mb-3">
-                  <label class="form-label">Schedule</label>
-                  <div class="mb-3">
-                    <label class="form-label small">Start Date (optional)</label>
-                    <input type="date" name="start_date" class="form-control form-control-sm">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label small">Expiry Date (optional)</label>
-                    <input type="date" name="expiry_date" class="form-control form-control-sm">
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Target Audience</label>
-                  <div class="form-text small mb-2">Select specific membership types</div>
-                  <div class="list-group list-group-flush">
-                    <?php foreach ($membershipTypes as $type): ?>
-                      <label class="list-group-item d-flex gap-2">
-                        <input class="form-check-input flex-shrink-0" type="checkbox"
-                          name="membership_types[]" value="<?= $type['membership_type_id'] ?>">
-                        <span>
-                          <?= htmlspecialchars($type['type_name']) ?>
-                          <?php if ($type['can_access_exclusive']): ?>
-                            <span class="badge bg-info ms-1">Exclusive</span>
-                          <?php endif; ?>
-                        </span>
-                      </label>
-                    <?php endforeach; ?>
-                  </div>
-                </div>
-              </div>
-            </div> <!-- /row -->
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Send Notification</button>
-          </div>
-        </form>
       </div>
-    </div>
-  </div>
+    </div><!-- /row -->
+  </div><!-- /main-content -->
 
-  <!-- New Template Modal -->
-  <div class="modal fade" id="newTemplateModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form method="post" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
-          <input type="hidden" name="action" value="save_template">
-          <div class="modal-header">
-            <h5 class="modal-title">Save New Template</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Template Title <span class="text-danger">*</span></label>
-              <input type="text" name="template_title" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Template Message <span class="text-danger">*</span></label>
-              <textarea name="template_message" class="form-control" rows="8" required></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Template</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+  <!-- Include separate file containing all the modals -->
+  <?php include __DIR__ . '/admin-notifications-modals.php'; ?>
 
-  <!-- Edit Notification Modal -->
-  <div class="modal fade" id="editNotificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form method="post" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
-          <input type="hidden" name="action" value="update_notification">
-          <input type="hidden" name="notification_id" id="editNotificationId">
-
-          <div class="modal-header">
-            <h5 class="modal-title">Edit Notification</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-8">
-                <div class="mb-3">
-                  <label class="form-label">Title <span class="text-danger">*</span></label>
-                  <input type="text" name="title" id="editTitle" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Message <span class="text-danger">*</span></label>
-                  <textarea name="message" id="editMessage" class="form-control" rows="5" required></textarea>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="mb-3">
-                  <label class="form-label">Schedule</label>
-                  <div class="mb-3">
-                    <label class="form-label small">Start Date</label>
-                    <input type="date" name="start_date" id="editStartDate" class="form-control form-control-sm">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label small">Expiry Date</label>
-                    <input type="date" name="expiry_date" id="editExpiryDate" class="form-control form-control-sm">
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Target Audience</label>
-                  <div class="form-text small">Targets cannot be modified after creation</div>
-                </div>
-              </div>
-            </div> <!-- /row -->
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Update Notification</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Debug Panel -->
-  <div id="debug-panel" style="
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 400px;
-  max-height: 400px;
-  overflow-y: auto;
-  z-index: 9999;
-  background: rgba(0,0,0,0.85);
-  color: #fff;
-  font-size: 12px;
-  font-family: monospace;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-  display: none;
-  padding: 10px;
-">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-      <strong>🛠️ Debug Log</strong>
-      <button onclick="document.getElementById('debug-panel').style.display='none'" style="
-      background: red; border: none; color: white; font-size: 12px; padding: 2px 8px; cursor: pointer;
-    ">X</button>
-    </div>
-    <div id="debug-log"></div>
-  </div>
-
-  <!-- Toggle Debug Button -->
-  <button onclick="toggleDebug()" style="
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 9999;
-  background: #343a40;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-">
-    🔧 Toggle Debug
-  </button>
-
-  <script>
-    function toggleDebug() {
-      const panel = document.getElementById('debug-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    }
-
-    function debugLog(...args) {
-      const logDiv = document.getElementById('debug-log');
-      const entry = document.createElement('div');
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ` + args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a) : a
-      ).join(' | ');
-      logDiv.prepend(entry);
-    }
-
-    // Patch fetch to log all AJAX requests
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-      debugLog('📤 Request:', args[0], args[1]);
-      const response = await originalFetch(...args);
-      try {
-        const clone = response.clone();
-        const data = await clone.json();
-        debugLog('📥 Response:', data);
-      } catch (e) {
-        debugLog('⚠️ Non-JSON Response');
-      }
-      return response;
-    };
-  </script>
-
-
-  <!-- Scripts -->
+  <!-- JS Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
   <script>
-    // Load template into the "New Notification" form
+    // Initialize DataTable (no paging, since we have custom paging)
+    $(document).ready(function() {
+      // Destroy if already exists to avoid reinitialization errors
+      if ($.fn.dataTable.isDataTable('#notificationTable')) {
+        $('#notificationTable').DataTable().clear().destroy();
+      }
+      $('#notificationTable').DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        ordering: false
+      });
+    });
+
+    // Load a template into the "New Notification" form
     function loadTemplate(template) {
       const modalEl = document.getElementById('newNotificationModal');
       const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -785,7 +492,7 @@ unset($_SESSION['success'], $_SESSION['error']);
       modal.show();
     }
 
-    // Edit modal logic
+    // Edit notification modal logic
     const editModal = document.getElementById('editNotificationModal');
     editModal.addEventListener('show.bs.modal', function(event) {
       const button = event.relatedTarget;
@@ -797,143 +504,6 @@ unset($_SESSION['success'], $_SESSION['error']);
       const expiryDate = button.getAttribute('data-expiry-date');
       editModal.querySelector('#editStartDate').value = startDate ? startDate.split(' ')[0] : '';
       editModal.querySelector('#editExpiryDate').value = expiryDate ? expiryDate.split(' ')[0] : '';
-    });
-
-    // Auto-focus first input in modals
-    document.querySelectorAll('.modal').forEach(modal => {
-      modal.addEventListener('shown.bs.modal', () => {
-        const input = modal.querySelector('input[type="text"], textarea');
-        if (input) input.focus();
-      });
-    });
-
-    // Initialize DataTable (no paging to avoid conflict with custom paging)
-    $(document).ready(function() {
-      $('#notificationTable').DataTable({
-        paging: false,
-        searching: false,
-        info: false,
-        ordering: false
-      });
-    });
-  </script>
-
-  <script>
-    // Handle all form submissions via AJAX
-    document.addEventListener('DOMContentLoaded', function() {
-      // Intercept form submissions
-      document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', async function(e) {
-          e.preventDefault();
-
-          const formData = new FormData(form);
-          const submitBtn = form.querySelector('button[type="submit"]');
-
-          try {
-            // Disable submit button to prevent duplicate submissions
-            if (submitBtn) {
-              submitBtn.disabled = true;
-              submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-            }
-
-            const response = await fetch(form.action, {
-              method: 'POST',
-              body: formData, // ✅ correct
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-              }
-            });
-
-
-            const data = await response.json();
-
-            if (data.success) {
-              const newRow = createNotificationRow(data.notification);
-              document.querySelector('#notificationTable tbody').prepend(newRow);
-              showAlert('success', data.message);
-
-              // Close modal if this was a modal form
-              const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
-              if (modal) {
-                modal.hide();
-              }
-
-              // Refresh page if needed (for non-AJAX fallback)
-              if (data.redirect) {
-                window.location.reload();
-              } else {
-                // Update UI dynamically
-                if (data.notification_id) {
-                  refreshNotification(data.notification_id);
-                }
-                if (data.template) {
-                  addNewTemplate(data.template);
-                }
-              }
-            } else {
-              showAlert('danger', data.message);
-            }
-          } catch (error) {
-            showAlert('danger', 'Request failed: ' + error.message);
-          } finally {
-            // Re-enable submit button
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = form.id.includes('Template') ? 'Save Template' : 'Submit';
-            }
-          }
-        });
-      });
-
-      // Show alert message
-      function showAlert(type, message) {
-        // Remove any existing alerts
-        document.querySelectorAll('.alert-dismissible').forEach(alert => {
-          bootstrap.Alert.getInstance(alert)?.close();
-        });
-
-        // Create new alert
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-
-        // Add to page
-        const container = document.querySelector('.main-content') || document.body;
-        container.prepend(alertDiv);
-
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => {
-          bootstrap.Alert.getOrCreateInstance(alertDiv).close();
-        }, 5000);
-      }
-
-      // Refresh notification in UI
-      function refreshNotification(id) {
-        // You can implement more specific UI updates here
-        window.location.reload(); // Simple reload for now
-      }
-
-      // Add new template to UI
-      function addNewTemplate(template) {
-        const templateItem = document.createElement('div');
-        templateItem.className = 'template-item';
-        templateItem.onclick = () => loadTemplate(template);
-        templateItem.innerHTML = `
-            <div class="d-flex justify-content-between">
-                <strong>${template.title}</strong>
-                <small class="text-muted">${new Date(template.created_at).toLocaleDateString()}</small>
-            </div>
-            <p class="small text-muted mb-0 text-truncate">${template.message}</p>
-        `;
-
-        const templatesContainer = document.querySelector('.list-group-flush');
-        if (templatesContainer) {
-          templatesContainer.prepend(templateItem);
-        }
-      }
     });
   </script>
 </body>
