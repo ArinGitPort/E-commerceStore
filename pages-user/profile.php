@@ -201,7 +201,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         </div>
 
                         <div class="row mb-3">
-                        <div class="col-md-6">
+                            <div class="col-md-6">
                                 <label class="form-label">Membership Tier</label><br>
                                 <span class="badge bg-info text-dark p-2">
                                     <?= htmlspecialchars($user['membership_type'] ?? 'None') ?>
@@ -218,7 +218,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                                             ) ?>"
                                     disabled>
                             </div>
-                            </div>
+                        </div>
 
                         <div class="mb-3">
                             <label for="address" class="form-label">Address</label>
@@ -361,65 +361,77 @@ unset($_SESSION['error'], $_SESSION['success']);
             });
         });
 
-            // NOTIFICATIONS
+        // NOTIFICATIONS
 
-    const notifBell = document.getElementById('notifBell');
-    const notifDropdown = document.getElementById('notifDropdown');
-
-    notifBell.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!e.target.closest('.notif-dropdown')) {
-        notifDropdown.style.display = 'none';
-      }
-    });
-
-    async function fetchNotifications() {
-      try {
-        const res = await fetch('../pages/ajax/fetch-notifications.php');
-        const data = await res.json();
-
-        const notifItems = document.getElementById('notifItems');
-        const notifCount = document.getElementById('notifCount');
-
-        if (data.success) {
-          const notifications = data.notifications;
-          notifCount.textContent = notifications.length;
-          notifCount.style.display = notifications.length > 0 ? 'inline-block' : 'none';
-
-          notifItems.innerHTML = '';
-
-          if (notifications.length > 0) {
-            notifications.forEach(notif => {
-              const notifElement = document.createElement('div');
-              notifElement.className = 'notif-item mb-2';
-              notifElement.innerHTML = `
-                <div class="fw-semibold">${notif.title}</div>
-                <div class="text-muted small">${notif.message}</div>
-                <hr class="my-2">
-              `;
-              notifItems.appendChild(notifElement);
-            });
-          } else {
-            notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
-          }
-        } else {
-          console.error('Notification error:', data.error);
+        function fetchNotifications() {
+            fetch('../pages/get_notifications.php')
+                .then(response => response.json()) // Add this line
+                .then(data => {
+                    notifCount.textContent = data.count || '0';
+                    updateNotificationList(data.notifications);
+                })
+                .catch(error => console.error('Error:', error));
         }
 
-      } catch (err) {
-        console.error('Fetch failed:', err);
-      }
-    }
+        function updateNotificationList(notifications) {
+            notifItems.innerHTML = '';
 
-    // Initial fetch and polling
-    fetchNotifications();
-    setInterval(fetchNotifications, 30000);
+            if (notifications.length === 0) {
+                notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+                return;
+            }
 
+            notifications.forEach(notification => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = `d-block p-2 notification-item ${!notification.is_read ? 'bg-light' : ''}`;
+                item.innerHTML = `
+  <div class="d-flex justify-content-between">
+    <h6 class="mb-1">${notification.title}</h6>
+    <small class="text-muted">
+      ${new Date(notification.created_at).toLocaleString('en-US', {
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}
+    </small>
+  </div>
+  <p class="small mb-0">${notification.message}</p>
+`;
+
+                if (!notification.is_read) {
+                    item.addEventListener('click', () => markAsRead(notification.notification_id));
+                }
+
+                notifItems.appendChild(item);
+            });
+        }
+
+        function markAsRead(notificationId) {
+            fetch('/api/mark_notification_read.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        notificationId
+                    })
+                })
+                .then(() => fetchNotifications())
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Toggle dropdown
+        notifBell.addEventListener('click', function(e) {
+            e.preventDefault();
+            notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+            fetchNotifications();
+        });
+
+        // Initial fetch
+        fetchNotifications();
+        setInterval(fetchNotifications, 30000); // Refresh every 30 seconds
     </script>
 </body>
 

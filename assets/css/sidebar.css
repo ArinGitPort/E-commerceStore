@@ -122,8 +122,8 @@ html, body {
   position: relative;
 }
 .listDiv:hover {
-  background-color: #354359;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  background-color: #354359; /* Dark background on hover */
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }
 .listDiv::after {
   content: "";
@@ -149,15 +149,20 @@ html, body {
   transition: color 0.3s ease;
 }
 .listDiv:hover .menuDashboard {
-  color: white;
+  color: white; /* Text becomes white on hover */
 }
 
-/* Icon Classes (Font Awesome) */
+/* Make icons also turn white on hover */
 .imgIcon {
   font-size: 20px;
   width: 24px;
   height: 24px;
   margin-right: 10px;
+}
+
+/* Force icons to become white on .listDiv hover */
+.listDiv:hover .imgIcon {
+  color: white;
 }
 
 /* ---------------------
@@ -187,9 +192,18 @@ html, body {
   width: 100%;
   transition: background-color 0.3s, color 0.3s;
 }
+
+/* Ensure all text and icons become white on hover */
 .dropdown-content-vertical .dropdown-item:hover {
   background-color: #1e293b;
   color: white;
+}
+/* Also make the icons within dropdown items white on hover */
+.dropdown-content-vertical .dropdown-item i {
+  color: black; /* Default */
+}
+.dropdown-content-vertical .dropdown-item:hover i {
+  color: white; /* White on hover */
 }
 
 /* ---------------------
@@ -231,15 +245,11 @@ html, body {
     position: fixed;
     top: 15px;
     left: 15px;
-    z-index: 9999; 
-    /* Possibly add color or background if needed, e.g.:
-    background-color: #fff; 
-    color: #354359; 
-    */
+    z-index: 9999;
   }
 
   .main-content {
-    margin-left: 0; 
+    margin-left: 0;
   }
 
   .main-content.expanded {

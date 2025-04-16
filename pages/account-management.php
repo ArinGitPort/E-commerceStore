@@ -14,19 +14,32 @@ $offset = ($currentPage - 1) * $usersPerPage;
 
 // Filters
 $filterRole = $_GET['role'] ?? 'all';
+$filterMembership = $_GET['membership'] ?? 'all';
 $search = $_GET['search'] ?? '';
 
-// Base query
-$query = "SELECT u.*, r.role_name 
+// Base query with membership data
+$query = "SELECT u.*, r.role_name, m.membership_type_id, mt.type_name AS membership_type, m.expiry_date
           FROM users u 
-          JOIN roles r ON u.role_id = r.role_id";
+          JOIN roles r ON u.role_id = r.role_id
+          LEFT JOIN memberships m ON u.user_id = m.user_id
+          LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id";
 
 $where = [];
 $params = [];
 
+if (isset($_GET['clear_filters'])) {
+    header("Location: account-management.php");
+    exit;
+}
+
 if ($filterRole !== 'all') {
     $where[] = "u.role_id = ?";
     $params[] = $filterRole;
+}
+
+if ($filterMembership !== 'all') {
+    $where[] = "m.membership_type_id = ?";
+    $params[] = $filterMembership;
 }
 
 if ($search) {
@@ -44,9 +57,20 @@ $countQuery = "SELECT COUNT(*) FROM ($query) AS total";
 $totalStmt = $pdo->prepare($countQuery);
 $totalStmt->execute($params);
 $totalUsers = $totalStmt->fetchColumn();
+// Sorting
+$allowedSortColumns = ['user_id', 'name', 'email', 'role_name', 'membership_type', 'expiry_date', 'created_at'];
+$defaultSort = 'created_at';
+$sort = $_GET['sort'] ?? $defaultSort;
+$direction = $_GET['direction'] ?? 'DESC';
+
+// Validate sort parameters
+if (!in_array($sort, $allowedSortColumns)) {
+    $sort = $defaultSort;
+}
+$direction = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
 
 // Pagination and sorting
-$query .= " ORDER BY u.created_at DESC LIMIT ? OFFSET ?";
+$query .= " ORDER BY $sort $direction LIMIT ? OFFSET ?";
 $params[] = $usersPerPage;
 $params[] = $offset;
 
@@ -54,8 +78,18 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get roles for filter
+// Get roles and membership types for filters
 $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
+$membershipTypes = $pdo->query("SELECT * FROM membership_types")->fetchAll(PDO::FETCH_ASSOC);
+
+function getMembershipStats($pdo)
+{
+    return [
+        'active_members' => $pdo->query("SELECT COUNT(*) FROM memberships WHERE expiry_date > NOW()")->fetchColumn(),
+        'expiring_soon' => $pdo->query("SELECT COUNT(*) FROM memberships WHERE expiry_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->fetchColumn(),
+        'inactive_users' => $pdo->query("SELECT COUNT(*) FROM users WHERE is_active = 0")->fetchColumn()
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,6 +99,29 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
     <title>User Management - BunniShop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../assets/css/account-management.css">
+    <style>
+        .membership-badge {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .membership-badge:hover .membership-tooltip {
+            display: block;
+        }
+
+        .membership-tooltip {
+            display: none;
+            position: absolute;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 5px 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            white-space: nowrap;
+        }
+    </style>
 </head>
 
 <body>
@@ -73,12 +130,49 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-md-12">
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Users</h5>
+                                <p class="card-text display-6"><?= $totalUsers ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Members</h5>
+                                <p class="card-text display-6"><?= getMembershipStats($pdo)['active_members'] ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">Expiring Soon</h5>
+                                <p class="card-text display-6"><?= getMembershipStats($pdo)['expiring_soon'] ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body">
+                                <h5 class="card-title">Inactive Users</h5>
+                                <p class="card-text display-6"><?= getMembershipStats($pdo)['inactive_users'] ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-3">
-                            <form method="GET" class="d-flex gap-2">
-                                <input type="text" name="search" class="form-control" placeholder="Search users..." value="<?= htmlspecialchars($search) ?>">
-                                <select name="role" class="form-select">
+                            <form method="GET" class="d-flex gap-2 flex-wrap" autocomplete="off">
+                                <input type="text" name="search" class="form-control" placeholder="Search users..."
+                                    value="<?= htmlspecialchars($search) ?>" style="width: 250px;">
+                                <select name="role" class="form-select" style="width: 180px;">
                                     <option value="all" <?= $filterRole === 'all' ? 'selected' : '' ?>>All Roles</option>
                                     <?php foreach ($roles as $role): ?>
                                         <option value="<?= $role['role_id'] ?>" <?= $filterRole == $role['role_id'] ? 'selected' : '' ?>>
@@ -86,34 +180,81 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <select name="membership" class="form-select" style="width: 180px;">
+                                    <option value="all" <?= $filterMembership === 'all' ? 'selected' : '' ?>>All Memberships</option>
+                                    <?php foreach ($membershipTypes as $type): ?>
+                                        <option value="<?= $type['membership_type_id'] ?>" <?= $filterMembership == $type['membership_type_id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($type['type_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                                 <button class="btn btn-primary">Filter</button>
-                                <a href="user-management.php" class="btn btn-outline-secondary">Reset</a>
+                                <a href="?clear_filters=1" class="btn btn-outline-secondary">Reset</a>
+
                             </form>
 
-                            <a href="admin-notifications.php" class="btn btn-success">
-                                <i class="bi bi-megaphone"></i> Send Notification
-                            </a>
-
+                            <div class="d-flex gap-2">
+                                <a href="admin-notifications.php" class="btn btn-success">
+                                    <i class="bi bi-megaphone"></i> Notify
+                                </a>
+                                <button class="btn btn-info" id="exportUsers">
+                                    <i class="bi bi-download"></i> Export
+                                </button>
+                            </div>
                         </div>
-
-
 
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Registered</th>
+                                        <?php
+                                        function getSortLink($column, $label)
+                                        {
+                                            global $sort, $direction, $filterRole, $filterMembership, $search, $currentPage;
+                                            $newDirection = ($sort === $column && $direction === 'DESC') ? 'ASC' : 'DESC';
+                                            $queryParams = [
+                                                'sort' => $column,
+                                                'direction' => ($sort === $column) ? $newDirection : 'DESC',
+                                                'role' => $filterRole,
+                                                'membership' => $filterMembership,
+                                                'search' => $search,
+                                                'page' => $currentPage
+                                            ];
+                                            $arrow = ($sort === $column)
+                                                ? ($direction === 'ASC' ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>')
+                                                : '';
+                                            return '<a href="?' . http_build_query($queryParams) . '" class="text-decoration-none text-dark">'
+                                                . htmlspecialchars($label) . $arrow . '</a>';
+                                        }
+                                        ?>
+                                        <th><?= getSortLink('user_id', 'ID') ?></th>
+                                        <th><?= getSortLink('name', 'Name') ?></th>
+                                        <th><?= getSortLink('email', 'Email') ?></th>
+                                        <th><?= getSortLink('role_name', 'Role') ?></th>
+                                        <th><?= getSortLink('membership_type', 'Membership') ?></th>
+                                        <th><?= getSortLink('expiry_date', 'Expiry') ?></th>
+                                        <th><?= getSortLink('created_at', 'Registered') ?></th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
+
                                 <tbody>
-                                    <?php foreach ($users as $user): ?>
-                                        <tr>
+                                    <?php foreach ($users as $user):
+                                        $isFree = $user['membership_type_id'] == 1; // Check by ID instead of name
+                                        $isExpired = false;
+                                        $expiresSoon = false;
+                                        $daysLeft = null;
+
+                                        if (!$isFree && $user['expiry_date']) {
+                                            $expiryDate = new DateTime($user['expiry_date']);
+                                            $today = new DateTime();
+                                            $interval = $today->diff($expiryDate);
+                                            $daysLeft = $interval->days * ($interval->invert ? -1 : 1);
+                                            $isExpired = $daysLeft < 0;
+                                            $expiresSoon = !$isExpired && $daysLeft <= 7;
+                                        }
+                                    ?>
+                                        <tr class="<?= $expiresSoon ? 'table-warning' : '' ?>">
                                             <td><?= $user['user_id'] ?></td>
                                             <td><?= htmlspecialchars($user['name']) ?></td>
                                             <td><?= htmlspecialchars($user['email']) ?></td>
@@ -123,23 +264,80 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                                                 </span>
                                             </td>
                                             <td>
+                                                <?php
+                                                $isFree = $user['membership_type'] === 'Free';
+                                                $expiresSoon = false;
+                                                $daysLeft = null;
+
+                                                if (!$isFree && $user['expiry_date']) {
+                                                    $expiryDate = new DateTime($user['expiry_date']);
+                                                    $today = new DateTime();
+                                                    $interval = $today->diff($expiryDate);
+                                                    $daysLeft = $interval->days * ($interval->invert ? -1 : 1);
+
+                                                    $isExpired = $daysLeft < 0;
+                                                    $expiresSoon = !$isExpired && $daysLeft <= 7;
+                                                } else {
+                                                    $isExpired = false;
+                                                }
+
+                                                ?>
+
+                                                <?php if ($user['membership_type'] || $isExpired): ?>
+                                                    <div class="membership-badge position-relative">
+                                                        <span class="badge <?= $isExpired ? 'bg-secondary' : ($expiresSoon ? 'bg-warning' : 'bg-primary') ?>">
+                                                            <?= $isExpired ? 'Free (Expired)' : $user['membership_type'] ?>
+                                                            <?php if ($expiresSoon): ?>
+                                                                <i class="bi bi-exclamation-triangle-fill ms-1"></i>
+                                                            <?php elseif ($isExpired): ?>
+                                                                <i class="bi bi-arrow-counterclockwise ms-1"></i>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                        <div class="membership-tooltip">
+                                                            <?php if ($isExpired): ?>
+                                                                <div class="text-muted">
+                                                                    Auto-downgraded on <?= date('M d, Y', strtotime($user['expiry_date'])) ?>
+                                                                </div>
+                                                            <?php elseif ($expiresSoon): ?>
+                                                                <div class="text-warning fw-bold mb-1">
+                                                                    ⚠️ Expires in <?= $daysLeft ?> days!
+                                                                </div>
+                                                                Expires: <?= date('M d, Y', strtotime($user['expiry_date'])) ?>
+                                                            <?php else: ?>
+                                                                <?= $user['expiry_date'] ? 'Expires: ' . date('M d, Y', strtotime($user['expiry_date'])) : 'Permanent' ?>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">None</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
                                                 <span class="badge <?= $user['is_active'] ? 'bg-success' : 'bg-danger' ?>">
                                                     <?= $user['is_active'] ? 'Active' : 'Inactive' ?>
                                                 </span>
                                             </td>
                                             <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                                             <td>
-                                                <button class="btn btn-sm btn-primary edit-user"
-                                                    data-user-id="<?= $user['user_id'] ?>"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#editUserModal">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </button>
-                                                <button class="btn btn-sm <?= $user['is_active'] ? 'btn-danger' : 'btn-success' ?> toggle-status"
-                                                    data-user-id="<?= $user['user_id'] ?>"
-                                                    data-new-status="<?= $user['is_active'] ? 0 : 1 ?>">
-                                                    <?= $user['is_active'] ? 'Deactivate' : 'Activate' ?>
-                                                </button>
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-sm btn-primary edit-user"
+                                                        data-user-id="<?= $user['user_id'] ?>"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#editUserModal">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-warning manage-membership"
+                                                        data-user-id="<?= $user['user_id'] ?>"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#membershipModal">
+                                                        <i class="bi bi-credit-card"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm <?= $user['is_active'] ? 'btn-danger' : 'btn-success' ?> toggle-status"
+                                                        data-user-id="<?= $user['user_id'] ?>"
+                                                        data-new-status="<?= $user['is_active'] ? 0 : 1 ?>">
+                                                        <?= $user['is_active'] ? 'Deactivate' : 'Activate' ?>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -147,12 +345,50 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                             </table>
                         </div>
 
+                        <!-- Deactivation Modal -->
+                        <div class="modal fade" id="deactivateModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Confirm Deactivation</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to deactivate this account? The user will lose access to the system.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-danger" id="confirmDeactivate">Deactivate</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activation Modal -->
+                        <div class="modal fade" id="activateModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Confirm Activation</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to activate this account? The user will regain access to the system.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-success" id="confirmActivate">Activate</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Pagination -->
                         <nav>
                             <ul class="pagination justify-content-center">
                                 <?php for ($i = 1; $i <= ceil($totalUsers / $usersPerPage); $i++): ?>
                                     <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $i ?>&role=<?= $filterRole ?>&search=<?= $search ?>">
+                                        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>">
                                             <?= $i ?>
                                         </a>
                                     </li>
@@ -161,6 +397,49 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
                         </nav>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Membership Management Modal -->
+    <div class="modal fade" id="membershipModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Membership</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="membershipForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="membershipUserId" name="user_id">
+                        <div class="mb-3">
+                            <label class="form-label">Membership Type</label>
+                            <select class="form-select" name="membership_type_id" required>
+                                <option value="">Select Membership Type</option>
+                                <?php foreach ($membershipTypes as $type): ?>
+                                    <option value="<?= $type['membership_type_id'] ?>">
+                                        <?= htmlspecialchars($type['type_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" name="start_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Expiry Date</label>
+                                <input type="date" class="form-control" name="expiry_date" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Membership</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -202,68 +481,256 @@ $roles = $pdo->query("SELECT * FROM roles")->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Automatic search implementation
-            let searchTimeout;
-            const searchInput = $('input[name="search"]');
+            // Initialize modals once
+            const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            const membershipModal = new bootstrap.Modal(document.getElementById('membershipModal'));
 
-            // Search debounce function
-            searchInput.on('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    $(this.form).submit();
-                }, 300); // 300ms delay after typing stops
+            // Handle modal hidden events
+            $('#editUserModal').on('hidden.bs.modal', function() {
+                $('#editUserForm')[0].reset();
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
             });
 
-            // Original code below remains the same
-            // Edit User Modal
-            $('.edit-user').click(function() {
+            $('#membershipModal').on('hidden.bs.modal', function() {
+                $('#membershipForm')[0].reset();
+                $('#membershipUserId').val('');
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
+            });
+
+            // Edit User Modal Handler
+            $('.edit-user').click(function(e) {
+                e.preventDefault();
                 const userId = $(this).data('user-id');
-                $.get('ajax/get_user.php', {
-                        user_id: userId
+
+                $.ajax({
+                        url: 'ajax/get_user.php',
+                        method: 'GET',
+                        data: {
+                            user_id: userId
+                        },
+                        dataType: 'json'
                     })
-                    .done(function(data) {
-                        $('#editUserId').val(data.user_id);
-                        $('input[name="name"]').val(data.name);
-                        $('input[name="email"]').val(data.email);
-                        $('select[name="role_id"]').val(data.role_id);
+                    .done(function(response) {
+                        if (response.success) {
+                            $('#editUserId').val(response.data.user_id);
+                            $('input[name="name"]').val(response.data.name);
+                            $('input[name="email"]').val(response.data.email);
+                            $('select[name="role_id"]').val(response.data.role_id);
+                            editModal.show();
+                        } else {
+                            showAlert('Error: ' + (response.error || 'Unknown error'), 'danger');
+                        }
                     })
-                    .fail(function() {
-                        alert('Error loading user data');
+                    .fail(function(xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        showAlert('Failed to load user data', 'danger');
                     });
             });
 
             // Save User Changes
             $('#editUserForm').submit(function(e) {
                 e.preventDefault();
-                $.post('ajax/update_user.php', $(this).serialize())
-                    .done(function() {
-                        location.reload();
+                const form = $(this);
+                const submitBtn = form.find('button[type="submit"]');
+                const originalHtml = submitBtn.html();
+
+                submitBtn.prop('disabled', true).html(`
+                <span class="spinner-border spinner-border-sm" role="status"></span> Saving...
+            `);
+
+                $.post('ajax/update_user.php', form.serialize())
+                    .done(function(response) {
+                        if (response.success) {
+                            submitBtn.html(`
+                            <i class="bi bi-check-circle"></i> Saved!
+                        `).removeClass('btn-primary').addClass('btn-success');
+
+                            setTimeout(() => {
+                                editModal.hide();
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            submitBtn.html(originalHtml).prop('disabled', false);
+                            showAlert('Error: ' + (response.error || 'Unknown error'), 'danger');
+                        }
                     })
-                    .fail(function() {
-                        alert('Error saving changes');
+                    .fail(function(xhr, status, error) {
+                        console.error('Update Error:', status, error);
+                        submitBtn.html(originalHtml).prop('disabled', false);
+                        showAlert('Failed to save changes', 'danger');
+                    });
+            });
+
+            // Membership Management
+            $('.manage-membership').click(function() {
+                const userId = $(this).data('user-id');
+
+                // Reset form and set user ID
+                $('#membershipForm')[0].reset();
+                $('#membershipUserId').val(userId);
+
+                $.ajax({
+                        url: 'ajax/get_membership.php',
+                        method: 'GET',
+                        data: {
+                            user_id: userId
+                        },
+                        dataType: 'json'
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            const isFree = response.data?.membership_type_id == 1;
+
+                            // Set membership type (default to Free if no data)
+                            $('select[name="membership_type_id"]').val(
+                                response.data?.membership_type_id || 1
+                            );
+
+                            // Handle date fields
+                            if (response.data && !isFree) {
+                                $('input[name="start_date"]').val(response.data.start_date.split('T')[0]);
+                                $('input[name="expiry_date"]').val(response.data.expiry_date.split('T')[0]);
+                            } else {
+                                // Clear dates for Free membership
+                                $('input[name="start_date"], input[name="expiry_date"]').val('');
+                            }
+
+                            // Disable date fields for Free membership
+                            $('input[name="start_date"], input[name="expiry_date"]').prop('disabled', isFree);
+
+                            // Set up membership type change handler
+                            $('select[name="membership_type_id"]').off('change').on('change', function() {
+                                const isNowFree = $(this).val() == 1;
+                                $('input[name="start_date"], input[name="expiry_date"]')
+                                    .prop('disabled', isNowFree)
+                                    .val(isNowFree ? '' : new Date().toISOString().split('T')[0]);
+
+                                if (!isNowFree) {
+                                    const nextYear = new Date();
+                                    nextYear.setFullYear(nextYear.getFullYear() + 1);
+                                    $('input[name="expiry_date"]').val(nextYear.toISOString().split('T')[0]);
+                                }
+                            });
+
+                            membershipModal.show();
+                        }
+                    })
+                    .fail(function(error) {
+                        console.error('Error:', error);
+                        showAlert('Failed to load membership data', 'danger');
+                    });
+            });
+
+            // Save Membership
+            $('#membershipForm').submit(function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const submitBtn = form.find('button[type="submit"]');
+                const originalHtml = submitBtn.html();
+
+                submitBtn.prop('disabled', true).html(`
+                <span class="spinner-border spinner-border-sm" role="status"></span> Saving...
+            `);
+
+                $.post('ajax/update_membership.php', form.serialize())
+                    .done(function(response) {
+                        if (response.success) {
+                            submitBtn.html(`
+                            <i class="bi bi-check-circle"></i> Saved!
+                        `).removeClass('btn-primary').addClass('btn-success');
+
+                            setTimeout(() => {
+                                membershipModal.hide();
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            submitBtn.html(originalHtml).prop('disabled', false);
+                            showAlert('Error: ' + (response.error || 'Unknown error'), 'danger');
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        console.error('Error:', error);
+                        submitBtn.html(originalHtml).prop('disabled', false);
+                        showAlert('Error saving membership', 'danger');
                     });
             });
 
             // Toggle User Status
             $('.toggle-status').click(function() {
-                const userId = $(this).data('user-id');
-                const newStatus = $(this).data('new-status');
+                const btn = $(this);
+                const userId = btn.data('user-id');
+                const newStatus = btn.data('new-status');
+                const originalHtml = btn.html();
 
-                $.post('ajax/toggle_user_status.php', {
-                    user_id: userId,
-                    new_status: newStatus
-                }).done(function() {
-                    location.reload();
-                }).fail(function() {
-                    alert('Error updating status');
-                });
+                if (newStatus === 0) {
+                    $('#deactivateModal').modal('show');
+                    $('#confirmDeactivate').off('click').on('click', function() {
+                        $('#deactivateModal').modal('hide');
+                        performStatusUpdate(userId, newStatus, btn, originalHtml);
+                    });
+                } else {
+                    $('#activateModal').modal('show');
+                    $('#confirmActivate').off('click').on('click', function() {
+                        $('#activateModal').modal('hide');
+                        performStatusUpdate(userId, newStatus, btn, originalHtml);
+                    });
+                }
             });
+
+            function performStatusUpdate(userId, newStatus, btn, originalHtml) {
+                btn.prop('disabled', true).html(`
+        <span class="spinner-border spinner-border-sm" role="status"></span>
+    `);
+
+                $.ajax({
+                        url: 'ajax/toggle_user_status.php',
+                        method: 'POST',
+                        data: {
+                            user_id: userId,
+                            new_status: newStatus
+                        },
+                        dataType: 'json'
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            showAlert('Status updated successfully', 'success');
+                            // Refresh page after 1 second to show updated status
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showAlert('Error: ' + (response.error || 'Failed to update status'), 'danger');
+                            btn.html(originalHtml).data('new-status', newStatus);
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        console.error('Toggle Status Error:', status, error);
+                        showAlert('Error: Failed to update status', 'danger');
+                        btn.html(originalHtml).data('new-status', newStatus);
+                    })
+                    .always(() => btn.prop('disabled', false));
+            }
+
+            // Alert system
+            function showAlert(message, type = 'success') {
+                const alert = $(`
+                <div class="alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+
+                $('body').append(alert);
+                setTimeout(() => alert.alert('close'), 3000);
+            }
+
+            // Export Users
+            $('#exportUsers').click(() => window.location = 'ajax/export_users.php?' + $('form').serialize());
         });
     </script>
 </body>

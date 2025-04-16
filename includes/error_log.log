@@ -1,0 +1,38 @@
+[16-Apr-2025 11:44:26 Europe/Berlin] Database Error: SQLSTATE[HY093]: Invalid parameter number
+[16-Apr-2025 11:44:26 Europe/Berlin] Query: 
+  SELECT 
+      n.notification_id,
+      n.title,
+      n.message,
+      n.start_date,
+      n.expiry_date,
+      n.created_at,
+      n.created_by,
+      GROUP_CONCAT(DISTINCT mt.type_name ORDER BY mt.type_name) AS target_groups
+  FROM notifications n
+  LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
+  LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
+ WHERE (n.title LIKE :search OR n.message LIKE :search) 
+  GROUP BY n.notification_id
+  ORDER BY n.created_at DESC
+  LIMIT :limit OFFSET :offset
+
+[16-Apr-2025 11:44:26 Europe/Berlin] Params: {":search":"%holiday%"}
+[16-Apr-2025 11:44:26 Europe/Berlin] Final Query with parameters: 
+  SELECT 
+      n.notification_id,
+      n.title,
+      n.message,
+      n.start_date,
+      n.expiry_date,
+      n.created_at,
+      n.created_by,
+      GROUP_CONCAT(DISTINCT mt.type_name ORDER BY mt.type_name) AS target_groups
+  FROM notifications n
+  LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
+  LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
+ WHERE (n.title LIKE %holiday% OR n.message LIKE %holiday%) 
+  GROUP BY n.notification_id
+  ORDER BY n.created_at DESC
+  LIMIT :limit OFFSET :offset
+

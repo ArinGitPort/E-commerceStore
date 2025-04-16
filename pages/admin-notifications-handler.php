@@ -19,7 +19,6 @@ $response = [
 
 $action = $_POST['action'] ?? '';
 
-
 try {
     switch ($action) {
         case 'create_notification':
@@ -96,6 +95,31 @@ try {
             $response['success'] = true;
             $response['message'] = 'Notification created successfully';
             $response['data']    = ['notification' => $notification];
+            break;
+
+        case 'delete_notification':
+            // Process "Delete Notification"
+            $notification_id = (int)($_POST['notification_id'] ?? 0);
+
+            if ($notification_id <= 0) {
+                $response['message'] = 'Invalid notification ID';
+                break;
+            }
+
+            $pdo->beginTransaction();
+
+            // First, delete related entries from notification_membership_targets
+            $deleteTargetsStmt = $pdo->prepare("DELETE FROM notification_membership_targets WHERE notification_id = ?");
+            $deleteTargetsStmt->execute([$notification_id]);
+
+            // Then, delete the notification itself
+            $deleteNotificationStmt = $pdo->prepare("DELETE FROM notifications WHERE notification_id = ?");
+            $deleteNotificationStmt->execute([$notification_id]);
+
+            $pdo->commit();
+
+            $response['success'] = true;
+            $response['message'] = 'Notification deleted successfully';
             break;
 
         case 'update_notification':

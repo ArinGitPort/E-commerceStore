@@ -12,6 +12,7 @@ $notifications = [];
 $totalNotifications = 0;
 $totalPages = 1;
 $templates = [];
+$membershipTypes = [];
 $success = '';
 $error = '';
 
@@ -22,11 +23,12 @@ $limit = 15;
 $offset = ($page - 1) * $limit;
 
 try {
-  // Fetch notification templates
-  $templates = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch notification templates
+    $templates = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    $membershipTypes = $pdo->query("SELECT * FROM membership_types ORDER BY type_name")->fetchAll(PDO::FETCH_ASSOC);
 
-  // Main notifications query
-  $notificationsQuery = "
+    // Main notifications query
+    $baseQuery = "
         SELECT 
             n.notification_id,
             n.title,
@@ -35,77 +37,105 @@ try {
             n.expiry_date,
             n.created_at,
             n.created_by,
-            GROUP_CONCAT(DISTINCT mt.membership_type_id ORDER BY mt.membership_type_id) AS target_group_ids
+            GROUP_CONCAT(DISTINCT mt.type_name ORDER BY mt.type_name) AS target_groups
         FROM notifications n
         LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
         LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
     ";
 
-  $where = [];
-  $params = [];
+    // Initialize search conditions
+    $searchConditions = [];
+    $searchParams = [];
+    
+    if (!empty($search)) {
+        // Sanitize and prepare search term
+        $searchTerm = trim($search);
+        $searchTerm = str_replace(['%', '_'], ['\%', '\_'], $searchTerm); // Escape wildcards
+        $searchTerm = "%$searchTerm%"; // Add wildcards for partial matching
+        
+        // Search across multiple fields
+        $searchConditions[] = "(n.title LIKE :search OR n.message LIKE :search)";
+        $searchParams[':search'] = $searchTerm;
+        
+        // Optional: Add search by target groups if needed
+        // $searchConditions[] = "mt.type_name LIKE :search";
+    }
 
-  if (!empty($search)) {
-    $where[] = "(n.title LIKE :search OR n.message LIKE :search)";
-    $params[':search'] = "%$search%";
-  }
+    // Build final query
+    $query = $baseQuery;
+    if (!empty($searchConditions)) {
+        $query .= " WHERE " . implode(' OR ', $searchConditions);
+    }
+    $query .= " GROUP BY n.notification_id ORDER BY n.created_at DESC LIMIT :limit OFFSET :offset";
 
-  if (!empty($where)) {
-    $notificationsQuery .= " WHERE " . implode(' AND ', $where);
-  }
+    // Prepare and execute main query
+    $stmt = $pdo->prepare($query);
+    
+    // Bind search parameters if they exist
+    foreach ($searchParams as $param => $value) {
+        $stmt->bindValue($param, $value, PDO::PARAM_STR);
+    }
+    
+    // Bind pagination parameters
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    
+    $stmt->execute();
+    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-  $notificationsQuery .= " 
-        GROUP BY n.notification_id
-        ORDER BY n.created_at DESC
-        LIMIT :limit OFFSET :offset
-    ";
+    // Count query for pagination
+    $countQuery = "SELECT COUNT(DISTINCT n.notification_id) FROM notifications n";
+    if (!empty($searchConditions)) {
+        $countQuery .= " WHERE " . implode(' OR ', $searchConditions);
+    }
+    
+    $countStmt = $pdo->prepare($countQuery);
+    foreach ($searchParams as $param => $value) {
+        $countStmt->bindValue($param, $value, PDO::PARAM_STR);
+    }
+    
+    $countStmt->execute();
+    $totalNotifications = $countStmt->fetchColumn();
+    $totalPages = max(1, ceil($totalNotifications / $limit));
 
-  $stmt = $pdo->prepare($notificationsQuery);
-
-  if (!empty($search)) {
-    $stmt->bindValue(':search', $params[':search'], PDO::PARAM_STR);
-  }
-  $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-  $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-
-  $stmt->execute();
-  $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-  // Count query
-  $countQuery = "SELECT COUNT(*) FROM notifications n";
-  $countParams = [];
-
-  if (!empty($search)) {
-    $countQuery .= " WHERE n.title LIKE :search OR n.message LIKE :search";
-    $countParams[':search'] = "%$search%";
-  }
-
-  $countStmt = $pdo->prepare($countQuery);
-
-  if (!empty($countParams)) {
-    $countStmt->bindValue(':search', $countParams[':search'], PDO::PARAM_STR);
-  }
-
-  $countStmt->execute();
-  $totalNotifications = $countStmt->fetchColumn();
-  $totalPages = max(1, ceil($totalNotifications / $limit));
 } catch (PDOException $e) {
-  error_log("Database Error: " . $e->getMessage());
-  $error = "Failed to load notifications. Please try again.";
-  // For debugging: $error = "Error: " . $e->getMessage();
+    error_log("Database Error: " . $e->getMessage());
+    error_log("Query: " . $query ?? '');
+    error_log("Params: " . json_encode($searchParams));
+    $error = "Failed to load notifications. Please try again.";
+    
+    // Fallback to non-searched results if search fails
+    try {
+        $notifications = $pdo->query("
+            SELECT n.*, GROUP_CONCAT(DISTINCT mt.type_name) AS target_groups
+            FROM notifications n
+            LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
+            LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
+            GROUP BY n.notification_id
+            ORDER BY n.created_at DESC
+            LIMIT $limit OFFSET $offset
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        
+        $totalNotifications = $pdo->query("SELECT COUNT(*) FROM notifications")->fetchColumn();
+        $totalPages = max(1, ceil($totalNotifications / $limit));
+    } catch (PDOException $e) {
+        error_log("Fallback query also failed: " . $e->getMessage());
+    }
 }
 
 // Flash messages
 if (isset($_SESSION['success'])) {
-  $success = $_SESSION['success'];
-  unset($_SESSION['success']);
+    $success = $_SESSION['success'];
+    unset($_SESSION['success']);
 }
 
 if (isset($_SESSION['error'])) {
-  $error = $_SESSION['error'];
-  unset($_SESSION['error']);
+    $error = $_SESSION['error'];
+    unset($_SESSION['error']);
 }
-
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -217,6 +247,7 @@ if (isset($_SESSION['error'])) {
               </div>
             </form>
           </div>
+
 
           <div class="card-body p-0">
             <div class="table-responsive">
@@ -465,12 +496,7 @@ if (isset($_SESSION['error'])) {
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
   <script>
-    // Initialize DataTable (no paging, since we have custom paging)
     $(document).ready(function() {
-      // Destroy if already exists to avoid reinitialization errors
-      if ($.fn.dataTable.isDataTable('#notificationTable')) {
-        $('#notificationTable').DataTable().clear().destroy();
-      }
       $('#notificationTable').DataTable({
         paging: false,
         searching: false,
@@ -478,7 +504,6 @@ if (isset($_SESSION['error'])) {
         ordering: false
       });
     });
-
     // Load a template into the "New Notification" form
     function loadTemplate(template) {
       const modalEl = document.getElementById('newNotificationModal');

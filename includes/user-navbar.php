@@ -239,179 +239,195 @@ if ($user_id) {
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
 
-    // Mobile menu toggle
-    document.getElementById('mobileMenuToggle').addEventListener('click', function () {
-      this.classList.toggle('active');
-      document.getElementById('navMenu').classList.toggle('active');
-    });
-
-    // Cart dropdown
-    const cartIcon = document.querySelector('.cart-icon');
-    const cartDropdown = document.querySelector('.cart-dropdown-content');
-    if (cartIcon && cartDropdown) {
-      cartIcon.addEventListener('click', function (e) {
-        if (window.innerWidth > 768) {
-          e.preventDefault();
-          cartDropdown.classList.toggle('show');
-          document.querySelectorAll('.cart-dropdown-content.show').forEach(dd => {
-            if (dd !== cartDropdown) dd.classList.remove('show');
-          });
-        }
+      // Mobile menu toggle
+      document.getElementById('mobileMenuToggle').addEventListener('click', function() {
+        this.classList.toggle('active');
+        document.getElementById('navMenu').classList.toggle('active');
       });
-      document.addEventListener('click', function (e) {
-        if (!e.target.closest('.cart-dropdown')) {
-          cartDropdown.classList.remove('show');
-        }
-      });
-    }
 
-    // Highlight current page
-    const currentPage = location.pathname.split('/').pop() || 'homepage.php';
-    document.querySelectorAll('.nav-link').forEach(link => {
-      if (link.getAttribute('href').includes(currentPage)) {
-        link.classList.add('active');
-      }
-    });
-
-    // Logout confirmation
-    const logoutConfirm = document.getElementById('logoutConfirm');
-    const logoutButtons = [document.getElementById('navLogout'), document.getElementById('mobileLogout')].filter(Boolean);
-    logoutButtons.forEach(btn => {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        logoutConfirm.style.display = 'flex';
-      });
-    });
-
-    document.getElementById('logoutCancel').addEventListener('click', function () {
-      logoutConfirm.style.display = 'none';
-    });
-
-    logoutConfirm.addEventListener('click', function (e) {
-      if (e.target === this) {
-        logoutConfirm.style.display = 'none';
-      }
-    });
-
-    // Login confirmation
-    const mobileLogin = document.getElementById('mobileLogin');
-    const loginConfirm = document.getElementById('loginConfirm');
-    if (mobileLogin && loginConfirm) {
-      mobileLogin.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        loginConfirm.style.display = 'flex';
-      });
-    }
-
-    document.querySelectorAll('.login-trigger').forEach(trigger => {
-      trigger.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        loginConfirm.style.display = 'flex';
-      });
-    });
-
-    document.getElementById('loginCancel').addEventListener('click', function () {
-      loginConfirm.style.display = 'none';
-    });
-
-    loginConfirm.addEventListener('click', function (e) {
-      if (e.target === this) {
-        loginConfirm.style.display = 'none';
-      }
-    });
-
-    document.getElementById('logoutConfirmBtn').addEventListener('click', function (e) {
-      e.preventDefault();
-      logoutConfirm.style.display = 'none';
-      document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
-      let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
-      redirectModal.show();
-      setTimeout(() => window.location.href = "../pages/logout.php", 2000);
-    });
-
-    document.getElementById('loginConfirmBtn').addEventListener('click', function (e) {
-      e.preventDefault();
-      loginConfirm.style.display = 'none';
-      document.getElementById('redirectMessage').innerText = "Redirecting to Login Page...";
-      let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
-      redirectModal.show();
-      setTimeout(() => window.location.href = "../pages/login.php", 2000);
-    });
-
-    document.getElementById('redirectModal').addEventListener('click', function (e) {
-      if (e.target === this) {
-        let modalInstance = bootstrap.Modal.getInstance(this);
-        modalInstance.hide();
-      }
-    });
-
-    // NOTIFICATIONS
-
-    const notifBell = document.getElementById('notifBell');
-    const notifDropdown = document.getElementById('notifDropdown');
-
-    notifBell.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!e.target.closest('.notif-dropdown')) {
-        notifDropdown.style.display = 'none';
-      }
-    });
-
-    async function fetchNotifications() {
-      try {
-        const res = await fetch('../pages/ajax/fetch-notifications.php');
-        const data = await res.json();
-
-        const notifItems = document.getElementById('notifItems');
-        const notifCount = document.getElementById('notifCount');
-
-        if (data.success) {
-          const notifications = data.notifications;
-          notifCount.textContent = notifications.length;
-          notifCount.style.display = notifications.length > 0 ? 'inline-block' : 'none';
-
-          notifItems.innerHTML = '';
-
-          if (notifications.length > 0) {
-            notifications.forEach(notif => {
-              const notifElement = document.createElement('div');
-              notifElement.className = 'notif-item mb-2';
-              notifElement.innerHTML = `
-                <div class="fw-semibold">${notif.title}</div>
-                <div class="text-muted small">${notif.message}</div>
-                <hr class="my-2">
-              `;
-              notifItems.appendChild(notifElement);
+      // Cart dropdown
+      const cartIcon = document.querySelector('.cart-icon');
+      const cartDropdown = document.querySelector('.cart-dropdown-content');
+      if (cartIcon && cartDropdown) {
+        cartIcon.addEventListener('click', function(e) {
+          if (window.innerWidth > 768) {
+            e.preventDefault();
+            cartDropdown.classList.toggle('show');
+            document.querySelectorAll('.cart-dropdown-content.show').forEach(dd => {
+              if (dd !== cartDropdown) dd.classList.remove('show');
             });
-          } else {
-            notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
           }
-        } else {
-          console.error('Notification error:', data.error);
+        });
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.cart-dropdown')) {
+            cartDropdown.classList.remove('show');
+          }
+        });
+      }
+
+      // Highlight current page
+      const currentPage = location.pathname.split('/').pop() || 'homepage.php';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.getAttribute('href').includes(currentPage)) {
+          link.classList.add('active');
+        }
+      });
+
+      // Logout confirmation
+      const logoutConfirm = document.getElementById('logoutConfirm');
+      const logoutButtons = [document.getElementById('navLogout'), document.getElementById('mobileLogout')].filter(Boolean);
+      logoutButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          logoutConfirm.style.display = 'flex';
+        });
+      });
+
+      document.getElementById('logoutCancel').addEventListener('click', function() {
+        logoutConfirm.style.display = 'none';
+      });
+
+      logoutConfirm.addEventListener('click', function(e) {
+        if (e.target === this) {
+          logoutConfirm.style.display = 'none';
+        }
+      });
+
+      // Login confirmation
+      const mobileLogin = document.getElementById('mobileLogin');
+      const loginConfirm = document.getElementById('loginConfirm');
+      if (mobileLogin && loginConfirm) {
+        mobileLogin.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          loginConfirm.style.display = 'flex';
+        });
+      }
+
+      document.querySelectorAll('.login-trigger').forEach(trigger => {
+        trigger.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          loginConfirm.style.display = 'flex';
+        });
+      });
+
+      document.getElementById('loginCancel').addEventListener('click', function() {
+        loginConfirm.style.display = 'none';
+      });
+
+      loginConfirm.addEventListener('click', function(e) {
+        if (e.target === this) {
+          loginConfirm.style.display = 'none';
+        }
+      });
+
+      document.getElementById('logoutConfirmBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        logoutConfirm.style.display = 'none';
+        document.getElementById('redirectMessage').innerText = "Redirecting to Logout Page...";
+        let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
+        redirectModal.show();
+        setTimeout(() => window.location.href = "../pages/logout.php", 2000);
+      });
+
+      document.getElementById('loginConfirmBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        loginConfirm.style.display = 'none';
+        document.getElementById('redirectMessage').innerText = "Redirecting to Login Page...";
+        let redirectModal = new bootstrap.Modal(document.getElementById('redirectModal'));
+        redirectModal.show();
+        setTimeout(() => window.location.href = "../pages/login.php", 2000);
+      });
+
+      document.getElementById('redirectModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+          let modalInstance = bootstrap.Modal.getInstance(this);
+          modalInstance.hide();
+        }
+      });
+
+      const notifBell = document.getElementById('notifBell');
+      const notifCount = document.getElementById('notifCount');
+      const notifDropdown = document.getElementById('notifDropdown');
+      const notifItems = document.getElementById('notifItems');
+
+      // Fetch notifications every 30 seconds
+      function fetchNotifications() {
+        fetch('../pages/get_notifications.php')
+          .then(response => response.json()) // Add this line
+          .then(data => {
+            notifCount.textContent = data.count || '0';
+            updateNotificationList(data.notifications);
+          })
+          .catch(error => console.error('Error:', error));
+      }
+
+      function updateNotificationList(notifications) {
+        notifItems.innerHTML = '';
+
+        if (notifications.length === 0) {
+          notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+          return;
         }
 
-      } catch (err) {
-        console.error('Fetch failed:', err);
+        notifications.forEach(notification => {
+          const item = document.createElement('a');
+          item.href = '#';
+          item.className = `d-block p-2 notification-item ${!notification.is_read ? 'bg-light' : ''}`;
+          item.innerHTML = `
+  <div class="d-flex justify-content-between">
+    <h6 class="mb-1">${notification.title}</h6>
+    <small class="text-muted">
+      ${new Date(notification.created_at).toLocaleString('en-US', {
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}
+    </small>
+  </div>
+  <p class="small mb-0">${notification.message}</p>
+`;
+
+          if (!notification.is_read) {
+            item.addEventListener('click', () => markAsRead(notification.notification_id));
+          }
+
+          notifItems.appendChild(item);
+        });
       }
-    }
 
-    // Initial fetch and polling
-    fetchNotifications();
-    setInterval(fetchNotifications, 30000);
+      function markAsRead(notificationId) {
+        fetch('/api/mark_notification_read.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notificationId
+            })
+          })
+          .then(() => fetchNotifications())
+          .catch(error => console.error('Error:', error));
+      }
 
-  });
-</script>
+      // Toggle dropdown
+      notifBell.addEventListener('click', function(e) {
+        e.preventDefault();
+        notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+        fetchNotifications();
+      });
+
+      // Initial fetch
+      fetchNotifications();
+      setInterval(fetchNotifications, 30000); // Refresh every 30 seconds
+    });
+  </script>
 
 </body>
 
