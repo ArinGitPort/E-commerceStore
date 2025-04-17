@@ -555,3 +555,27 @@ body.login-modal-open {
   50% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
+
+
+.notif-dropdown { position: relative; z-index:2000; }
+.notif-dropdown-content {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  width: 300px;
+  max-height: 350px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 .5rem 1rem rgba(0,0,0,0.1);
+  overflow-y: auto;
+  display: none;
+  z-index: 2001;
+}
+.notif-dropdown-content.show {
+  display: block;
+}
+
+/* 3) “Show” helper */
+.notif-dropdown-content.show {
+  display: block;
+}

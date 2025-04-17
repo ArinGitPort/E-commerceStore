@@ -182,6 +182,53 @@ try {
             $response['message'] = 'Notification updated successfully';
             $response['data']    = ['notification' => $notification];
             break;
+
+        case 'create_template':
+            $title   = trim($_POST['title']   ?? '');
+            $message = trim($_POST['message'] ?? '');
+            $errors  = [];
+
+            if ($title === '') {
+                $errors['title'] = 'Template title is required.';
+            }
+            if ($message === '') {
+                $errors['message'] = 'Template message is required.';
+            }
+
+            if (!empty($errors)) {
+                $response['errors']  = $errors;
+                $response['message'] = 'Please fix the errors below.';
+                break;
+            }
+
+            $stmt = $pdo->prepare("
+                    INSERT INTO notification_templates (title, message, created_by)
+                    VALUES (?, ?, ?)
+                ");
+            $stmt->execute([
+                $title,
+                $message,
+                $_SESSION['user_id']
+            ]);
+
+            $response['success'] = true;
+            $response['message'] = 'Template saved!';
+            break;
+
+        case 'delete_template':
+            $tpl_id = (int)($_POST['template_id'] ?? 0);
+            if ($tpl_id > 0) {
+                $stmt = $pdo->prepare("DELETE FROM notification_templates WHERE template_id = ?");
+                $stmt->execute([$tpl_id]);
+                $response['success'] = true;
+                $response['message'] = 'Template deleted';
+            } else {
+                $response['message'] = 'Invalid template ID';
+            }
+            break;
+
+        default:
+            $response['message'] = 'Unknown action';
     }
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

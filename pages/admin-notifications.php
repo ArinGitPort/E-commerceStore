@@ -8,27 +8,32 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Initialize variables
-$notifications = [];
+$notifications      = [];
 $totalNotifications = 0;
-$totalPages = 1;
-$templates = [];
-$membershipTypes = [];
-$success = '';
-$error = '';
+$totalPages         = 1;
+$templates          = [];
+$membershipTypes    = [];
+$success            = '';
+$error              = '';
 
-// Pagination
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$limit = 15;
+// Debug variables
+$debugQuery  = '';
+$debugParams = [];
+$debugError  = '';
+
+// Pagination & search
+$page   = max(1, (int)($_GET['page']   ?? 1));
+$search = trim($_GET['search'] ?? '');
+$limit  = 15;
 $offset = ($page - 1) * $limit;
 
 try {
-    // Fetch notification templates
-    $templates = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
-    $membershipTypes = $pdo->query("SELECT * FROM membership_types ORDER BY type_name")->fetchAll(PDO::FETCH_ASSOC);
+  // Fetch templates & membership types
+  $templates       = $pdo->query("SELECT * FROM notification_templates ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+  $membershipTypes = $pdo->query("SELECT * FROM membership_types ORDER BY type_name")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Main notifications query
-    $baseQuery = "
+  // Base SQL
+  $baseSQL = "
         SELECT 
             n.notification_id,
             n.title,
@@ -39,102 +44,88 @@ try {
             n.created_by,
             GROUP_CONCAT(DISTINCT mt.type_name ORDER BY mt.type_name) AS target_groups
         FROM notifications n
-        LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
-        LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
+        LEFT JOIN notification_membership_targets nt 
+            ON n.notification_id = nt.notification_id
+        LEFT JOIN membership_types mt 
+            ON nt.membership_type_id = mt.membership_type_id
     ";
 
-    // Initialize search conditions
-    $searchConditions = [];
-    $searchParams = [];
-    
-    if (!empty($search)) {
-        // Sanitize and prepare search term
-        $searchTerm = trim($search);
-        $searchTerm = str_replace(['%', '_'], ['\%', '\_'], $searchTerm); // Escape wildcards
-        $searchTerm = "%$searchTerm%"; // Add wildcards for partial matching
-        
-        // Search across multiple fields
-        $searchConditions[] = "(n.title LIKE :search OR n.message LIKE :search)";
-        $searchParams[':search'] = $searchTerm;
-        
-        // Optional: Add search by target groups if needed
-        // $searchConditions[] = "mt.type_name LIKE :search";
-    }
+  // Build dynamic WHERE
+  $conds  = [];
+  $params = [];
 
-    // Build final query
-    $query = $baseQuery;
-    if (!empty($searchConditions)) {
-        $query .= " WHERE " . implode(' OR ', $searchConditions);
-    }
-    $query .= " GROUP BY n.notification_id ORDER BY n.created_at DESC LIMIT :limit OFFSET :offset";
+  if ($search !== '') {
+    $term = "%{$search}%";
+    $conds[] = "(
+            n.title LIKE :search_title
+         OR n.message LIKE :search_message
+         OR EXISTS (
+             SELECT 1
+               FROM notification_membership_targets nt2
+               JOIN membership_types mt2 
+                 ON nt2.membership_type_id = mt2.membership_type_id
+              WHERE nt2.notification_id = n.notification_id
+                AND mt2.type_name LIKE :search_target
+         )
+        )";
+    $params[':search_title']   = $term;
+    $params[':search_message'] = $term;
+    $params[':search_target']  = $term;
+  }
 
-    // Prepare and execute main query
-    $stmt = $pdo->prepare($query);
-    
-    // Bind search parameters if they exist
-    foreach ($searchParams as $param => $value) {
-        $stmt->bindValue($param, $value, PDO::PARAM_STR);
-    }
-    
-    // Bind pagination parameters
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    
-    $stmt->execute();
-    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  // Finalize SQL
+  $sql = $baseSQL
+    . (count($conds) ? " WHERE " . implode(' AND ', $conds) : "")
+    . "
+        GROUP BY n.notification_id
+        ORDER BY n.created_at DESC
+        LIMIT :limit OFFSET :offset
+    ";
 
-    // Count query for pagination
-    $countQuery = "SELECT COUNT(DISTINCT n.notification_id) FROM notifications n";
-    if (!empty($searchConditions)) {
-        $countQuery .= " WHERE " . implode(' OR ', $searchConditions);
-    }
-    
-    $countStmt = $pdo->prepare($countQuery);
-    foreach ($searchParams as $param => $value) {
-        $countStmt->bindValue($param, $value, PDO::PARAM_STR);
-    }
-    
-    $countStmt->execute();
-    $totalNotifications = $countStmt->fetchColumn();
-    $totalPages = max(1, ceil($totalNotifications / $limit));
+  // Capture for debug
+  $debugQuery  = $sql;
+  $debugParams = $params + [':limit' => $limit, ':offset' => $offset];
 
+  // Prepare & bind
+  $stmt = $pdo->prepare($sql);
+  foreach ($params as $key => $val) {
+    $stmt->bindValue($key, $val, PDO::PARAM_STR);
+  }
+  $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+  $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+  $stmt->execute();
+  $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  // Count total for pagination
+  $countSQL = "SELECT COUNT(DISTINCT n.notification_id) FROM notifications n"
+    . (count($conds) ? " WHERE " . implode(' AND ', $conds) : "");
+
+  $countStmt = $pdo->prepare($countSQL);
+  foreach ([':search_title', ':search_message', ':search_target'] as $p) {
+    if (isset($params[$p])) {
+      $countStmt->bindValue($p, $params[$p], PDO::PARAM_STR);
+    }
+  }
+  $countStmt->execute();
+  $totalNotifications = (int)$countStmt->fetchColumn();
+  $totalPages         = max(1, ceil($totalNotifications / $limit));
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
-    error_log("Query: " . $query ?? '');
-    error_log("Params: " . json_encode($searchParams));
-    $error = "Failed to load notifications. Please try again.";
-    
-    // Fallback to non-searched results if search fails
-    try {
-        $notifications = $pdo->query("
-            SELECT n.*, GROUP_CONCAT(DISTINCT mt.type_name) AS target_groups
-            FROM notifications n
-            LEFT JOIN notification_membership_targets nt ON n.notification_id = nt.notification_id
-            LEFT JOIN membership_types mt ON nt.membership_type_id = mt.membership_type_id
-            GROUP BY n.notification_id
-            ORDER BY n.created_at DESC
-            LIMIT $limit OFFSET $offset
-        ")->fetchAll(PDO::FETCH_ASSOC);
-        
-        $totalNotifications = $pdo->query("SELECT COUNT(*) FROM notifications")->fetchColumn();
-        $totalPages = max(1, ceil($totalNotifications / $limit));
-    } catch (PDOException $e) {
-        error_log("Fallback query also failed: " . $e->getMessage());
-    }
+  error_log("Database Error: " . $e->getMessage());
+  $debugError = $e->getMessage();
+  $error = "Failed to load notifications. Please try again.";
 }
 
 // Flash messages
 if (isset($_SESSION['success'])) {
-    $success = $_SESSION['success'];
-    unset($_SESSION['success']);
+  $success = $_SESSION['success'];
+  unset($_SESSION['success']);
 }
-
 if (isset($_SESSION['error'])) {
-    $error = $_SESSION['error'];
-    unset($_SESSION['error']);
+  $error = $_SESSION['error'];
+  unset($_SESSION['error']);
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -399,7 +390,6 @@ if (isset($_SESSION['error'])) {
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Quick Templates</h5>
-            <!-- This button triggers the "New Template" modal -->
             <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
               <i class="bi bi-plus-lg"></i> New Template
             </button>
@@ -413,24 +403,70 @@ if (isset($_SESSION['error'])) {
             <?php else: ?>
               <div class="list-group list-group-flush">
                 <?php foreach ($templates as $template): ?>
-                  <div class="template-item"
-                    onclick="loadTemplate(<?= htmlspecialchars(json_encode($template)) ?>)">
-                    <div class="d-flex justify-content-between">
-                      <strong><?= htmlspecialchars($template['title']) ?></strong>
-                      <small class="text-muted">
-                        <?= date('M j, Y', strtotime($template['created_at'])) ?>
-                      </small>
-                    </div>
-                    <p class="small text-muted mb-0 text-truncate">
-                      <?= htmlspecialchars($template['message']) ?>
-                    </p>
+                  <div class="list-group-item d-flex justify-content-between align-items-start">
+                    <!-- Prefill New Notification modal -->
+                    <button
+                      type="button"
+                      class="btn p-0 text-start template-item flex-grow-1"
+                      data-title="<?= htmlspecialchars($template['title'], ENT_QUOTES) ?>"
+                      data-message="<?= htmlspecialchars($template['message'], ENT_QUOTES) ?>"
+                      data-bs-toggle="modal"
+                      data-bs-target="#newNotificationModal">
+                      <div class="d-flex justify-content-between">
+                        <strong><?= htmlspecialchars($template['title']) ?></strong>
+                        <small class="text-muted"><?= date('M j, Y', strtotime($template['created_at'])) ?></small>
+                      </div>
+                      <p class="small text-truncate mb-0"><?= htmlspecialchars($template['message']) ?></p>
+                    </button>
+
+                    <!-- Delete button triggers delete modal -->
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger ms-2 delete-template-btn"
+                      data-bs-toggle="modal"
+                      data-bs-target="#deleteTemplateModal"
+                      data-template-id="<?= $template['template_id'] ?>"
+                      data-template-title="<?= htmlspecialchars($template['title'], ENT_QUOTES) ?>">
+                      <i class="bi bi-trash"></i>
+                    </button>
+
                   </div>
                 <?php endforeach; ?>
               </div>
+
             <?php endif; ?>
           </div>
         </div>
       </div>
+
+      <!-- New Template Modal -->
+      <div class="modal fade" id="newTemplateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <form method="post" action="admin-notifications-handler.php" class="modal-content">
+            <input type="hidden" name="action" value="create_template">
+            <div class="modal-header">
+              <h5 class="modal-title">New Template</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Template Title</label>
+                <input type="text" name="title" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Message</label>
+                <textarea name="message" class="form-control" rows="4" required></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Template</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+
 
       <!-- Notification Stats -->
       <div class="col-md-6">
@@ -531,6 +567,29 @@ if (isset($_SESSION['error'])) {
       editModal.querySelector('#editExpiryDate').value = expiryDate ? expiryDate.split(' ')[0] : '';
     });
   </script>
+
+  <script>
+    document.querySelectorAll('.template-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const title = btn.dataset.title;
+        const message = btn.dataset.message;
+        const modalEl = document.getElementById('newNotificationModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+        modalEl.querySelector('input[name="title"]').value = title;
+        modalEl.querySelector('textarea[name="message"]').value = message;
+        modal.show();
+      });
+    });
+
+    const deleteTplModal = document.getElementById('deleteTemplateModal');
+    deleteTplModal.addEventListener('show.bs.modal', event => {
+      const btn = event.relatedTarget;
+      const tplTitle = btn.getAttribute('data-template-title');
+      deleteTplModal.querySelector('#deleteTemplateTitle').textContent = tplTitle;
+    });
+  </script>
+
 </body>
 
 </html>

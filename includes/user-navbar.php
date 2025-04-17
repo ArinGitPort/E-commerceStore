@@ -215,11 +215,15 @@ if ($user_id) {
 
         <!-- Notification Bell Icon -->
         <div class="notif-dropdown position-relative" style="margin-left: 15px;">
-          <a href="#" class="icon" id="notifBell" title="Notifications" style="font-size: 1.1rem; position: relative;">
+          <a href="#" class="icon" id="notifBell" title="Notifications" style="font-size:1.1rem;">
             <i class="fas fa-bell"></i>
-            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle p-1 rounded-circle" id="notifCount" style="font-size: 0.65rem; transform: translate(-30%, -30%);">0</span>
+            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
+              id="notifCount"
+              style="font-size:0.65rem; transform: translate(-30%, -30%);">
+              0
+            </span>
           </a>
-          <div class="notif-dropdown-content shadow-sm border" id="notifDropdown" style="display: none; position: absolute; right: 0; background: #fff; width: 300px; max-height: 350px; overflow-y: auto; z-index: 999; border-radius: 8px;">
+          <div class="notif-dropdown-content shadow-sm border" id="notifDropdown">
             <div class="p-3">
               <h6 class="fw-bold mb-2">Notifications</h6>
               <div id="notifItems">
@@ -228,11 +232,6 @@ if ($user_id) {
             </div>
           </div>
         </div>
-
-
-
-
-
       </div>
     </div>
   </nav>
@@ -350,84 +349,73 @@ if ($user_id) {
           modalInstance.hide();
         }
       });
-
-      const notifBell = document.getElementById('notifBell');
-      const notifCount = document.getElementById('notifCount');
-      const notifDropdown = document.getElementById('notifDropdown');
-      const notifItems = document.getElementById('notifItems');
-
-      // Fetch notifications every 30 seconds
-      function fetchNotifications() {
-        fetch('../pages/get_notifications.php')
-          .then(response => response.json()) // Add this line
-          .then(data => {
-            notifCount.textContent = data.count || '0';
-            updateNotificationList(data.notifications);
-          })
-          .catch(error => console.error('Error:', error));
-      }
-
-      function updateNotificationList(notifications) {
-        notifItems.innerHTML = '';
-
-        if (notifications.length === 0) {
-          notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
-          return;
-        }
-
-        notifications.forEach(notification => {
-          const item = document.createElement('a');
-          item.href = '#';
-          item.className = `d-block p-2 notification-item ${!notification.is_read ? 'bg-light' : ''}`;
-          item.innerHTML = `
-  <div class="d-flex justify-content-between">
-    <h6 class="mb-1">${notification.title}</h6>
-    <small class="text-muted">
-      ${new Date(notification.created_at).toLocaleString('en-US', {
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })}
-    </small>
-  </div>
-  <p class="small mb-0">${notification.message}</p>
-`;
-
-          if (!notification.is_read) {
-            item.addEventListener('click', () => markAsRead(notification.notification_id));
-          }
-
-          notifItems.appendChild(item);
-        });
-      }
-
-      function markAsRead(notificationId) {
-        fetch('/api/mark_notification_read.php', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              notificationId
-            })
-          })
-          .then(() => fetchNotifications())
-          .catch(error => console.error('Error:', error));
-      }
-
-      // Toggle dropdown
-      notifBell.addEventListener('click', function(e) {
-        e.preventDefault();
-        notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
-        fetchNotifications();
-      });
-
-      // Initial fetch
-      fetchNotifications();
-      setInterval(fetchNotifications, 30000); // Refresh every 30 seconds
     });
   </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const notifBell     = document.getElementById('notifBell');
+  const notifCount    = document.getElementById('notifCount');
+  const notifDropdown = document.getElementById('notifDropdown');
+  const notifItems    = document.getElementById('notifItems');
+
+  // Always point to the same absolute URL
+  const API_URL = '/pages/get_notifications.php';
+
+  async function fetchNotifications() {
+    try {
+      console.log('[Notifications] fetching from', API_URL);
+      const resp = await fetch(API_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      console.log('[Notifications] JSON', data);
+
+      notifCount.textContent = data.count ?? '0';
+      renderList(data.notifications || []);
+    } catch (err) {
+      console.error('[Notifications] FETCH ERROR:', err);
+      notifCount.textContent = '!';
+      notifItems.innerHTML = '<p class="text-danger small mb-0">Couldn’t load.</p>';
+    }
+  }
+
+  function renderList(list) {
+    notifItems.innerHTML = '';
+    if (!list.length) {
+      notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+      return;
+    }
+    list.forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'd-block p-2 notification-item';
+      item.innerHTML = `
+        <div class="d-flex justify-content-between">
+          <h6 class="mb-1">${n.title}</h6>
+          <small class="text-muted">
+            ${new Date(n.created_at).toLocaleString('en-US',{
+              month:'short', day:'numeric',
+              hour:'2-digit', minute:'2-digit'
+            })}
+          </small>
+        </div>
+        <p class="small mb-0">${n.message}</p>
+      `;
+      notifItems.appendChild(item);
+    });
+  }
+
+  notifBell.addEventListener('click', e => {
+    e.preventDefault();
+    notifDropdown.classList.toggle('show');
+    fetchNotifications();
+  });
+
+  // initial load + poll every 30s
+  fetchNotifications();
+  setInterval(fetchNotifications, 30000);
+});
+</script>
+
 
 </body>
 

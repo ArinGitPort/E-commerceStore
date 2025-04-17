@@ -59,9 +59,11 @@ $totalStmt->execute($params);
 $totalUsers = $totalStmt->fetchColumn();
 // Sorting
 $allowedSortColumns = ['user_id', 'name', 'email', 'role_name', 'membership_type', 'expiry_date', 'created_at'];
-$defaultSort = 'created_at';
-$sort = $_GET['sort'] ?? $defaultSort;
-$direction = $_GET['direction'] ?? 'DESC';
+$defaultSort  = 'user_id';
+$defaultDir   = 'ASC';
+$sort      = $_GET['sort']      ?? $defaultSort;
+$direction = $_GET['direction'] ?? $defaultDir;
+
 
 // Validate sort parameters
 if (!in_array($sort, $allowedSortColumns)) {

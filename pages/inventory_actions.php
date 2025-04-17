@@ -4,11 +4,6 @@ ob_start(); // Start output buffering
 require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 
-// Check admin authentication. If not authenticated as Admin, redirect to login.
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: ../pages/login.php");
-    exit;
-}
 
 
 //ADD MEMBERSHIP LEVEL PRODUCT ACCESS
