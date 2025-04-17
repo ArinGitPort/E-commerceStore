@@ -305,6 +305,41 @@ unset($_SESSION['error'], $_SESSION['success']);
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutConfirm = document.getElementById('logoutConfirm');
+            const logoutTriggers = ['navLogout', 'mobileLogout'];
+            const confirmBtn = document.getElementById('logoutConfirmBtn');
+            const cancelBtn = document.getElementById('logoutCancel');
+
+            // Show modal
+            logoutTriggers.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.addEventListener('click', e => {
+                        e.preventDefault();
+                        logoutConfirm.style.display = 'flex';
+                    });
+                }
+            });
+
+            // Hide modal
+            cancelBtn?.addEventListener('click', () => logoutConfirm.style.display = 'none');
+            logoutConfirm?.addEventListener('click', e => {
+                if (e.target === logoutConfirm) logoutConfirm.style.display = 'none';
+            });
+
+            // Confirm logout
+            confirmBtn?.addEventListener('click', () => {
+                document.getElementById('redirectMessage').innerText = 'Logging out...';
+                const modal = new bootstrap.Modal(document.getElementById('redirectModal'));
+                modal.show();
+                setTimeout(() => window.location.href = '/pages/logout.php', 2000);
+            });
+        });
+    </script>
+
+
     <!-- Bootstrap Bundle JS (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Enable Bootstrap tabs -->

@@ -154,7 +154,16 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                         <div id="liveAlerts" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
                     </div>
                 </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Returns</h5>
+                        <div id="liveReturnAlerts" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
             </div>
+
+
 
             <!-- Orders Table -->
             <div class="col-md-9">

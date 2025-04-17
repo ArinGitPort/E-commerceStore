@@ -3,38 +3,43 @@ require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
 // Default filters
-$start_date   = date('Y-m-d', strtotime('-30 days'));
-$end_date     = date('Y-m-d');
+$start_date   = date('Y-m-d', strtotime('-1 days'));
+$end_date     = date('Y-m-d', strtotime('+30 days'));;
 $user_id      = 'all';
 $action_type  = 'all';
 $table_name   = 'all';
 
 // Get filter parameters
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $start_date  = $_POST['start_date']  ?? $start_date;
-    $end_date    = $_POST['end_date']    ?? $end_date;
-    $user_id     = $_POST['user_id']     ?? 'all';
-    $action_type = $_POST['action_type'] ?? 'all';
-    $table_name  = $_POST['table_name']  ?? 'all';
+    $user_input_start = $_POST['start_date'] ?? $start_date;
+    $user_input_end   = $_POST['end_date']   ?? $end_date;
 
-    // Ensure end date is not before start date; swap if needed
-    if ($end_date < $start_date) {
-        list($start_date, $end_date) = [$end_date, $start_date];
+    // Normalize: make sure $start_date is always the earlier date
+    if (strtotime($user_input_start) <= strtotime($user_input_end)) {
+        $start_date = $user_input_start;
+        $end_date   = $user_input_end;
+    } else {
+        $start_date = $user_input_end;
+        $end_date   = $user_input_start;
     }
+
+    $user_id      = $_POST['user_id']     ?? 'all';
+    $action_type  = $_POST['action_type'] ?? 'all';
+    $table_name   = $_POST['table_name']  ?? 'all';
 }
 
 // Build query
-$query = "SELECT al.log_id, al.timestamp, al.action, al.action_type,
+$query = "SELECT DISTINCT al.log_id, al.timestamp, al.action, al.action_type,
                  al.table_name, al.record_id, al.affected_data,
                  u.user_id, u.name AS user_name, r.role_name
           FROM audit_logs al
           LEFT JOIN users u ON al.user_id = u.user_id
           LEFT JOIN roles r ON u.role_id = r.role_id
-          WHERE al.timestamp BETWEEN :start_date AND :end_date";
+          WHERE al.timestamp BETWEEN :start_date AND :end_date_plus";
 
 $params = [
-    ':start_date' => "{$start_date} 00:00:00",
-    ':end_date'   => "{$end_date} 23:59:59"
+    ':start_date'   => "{$start_date} 00:00:00",
+    ':end_date_plus' => "{$end_date} 23:59:59"
 ];
 
 if ($user_id !== 'all') {
@@ -51,33 +56,32 @@ if ($table_name !== 'all') {
 }
 $query .= " ORDER BY al.timestamp DESC";
 
+// Execute query
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Filter dropdown data
+// Dropdown data
 $users = $pdo->query("SELECT user_id, name, email FROM users ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
-$action_types = $pdo->query("SELECT DISTINCT action_type FROM audit_logs")->fetchAll(PDO::FETCH_COLUMN);
-$table_names  = $pdo->query("SELECT DISTINCT table_name FROM audit_logs")->fetchAll(PDO::FETCH_COLUMN);
+$action_types = $pdo->query("SELECT DISTINCT action_type FROM audit_logs ORDER BY action_type")->fetchAll(PDO::FETCH_COLUMN);
+$table_names  = $pdo->query("SELECT DISTINCT table_name FROM audit_logs ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
 
+// Recursive render helper
 function renderAffectedData($data) {
     if (is_array($data)) {
         echo '<ul class="ps-3">';
         foreach ($data as $key => $value) {
-            echo '<li><strong>'.ucfirst($key).':</strong> ';
-            if (is_array($value)) {
-                renderAffectedData($value);
-            } else {
-                echo htmlspecialchars($value);
-            }
+            echo '<li><strong>' . ucfirst($key) . ':</strong> ';
+            echo is_array($value) ? renderAffectedData($value) : htmlspecialchars($value);
             echo '</li>';
         }
         echo '</ul>';
     } elseif ($data) {
-        echo '<div class="json-data">'.htmlspecialchars($data).'</div>';
+        echo '<div class="json-data">' . htmlspecialchars($data) . '</div>';
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

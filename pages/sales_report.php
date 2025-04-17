@@ -16,7 +16,13 @@ $end_date = date('Y-m-d');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $start_date = $_POST['start_date'] ?? $start_date;
   $end_date = $_POST['end_date'] ?? $end_date;
+
+  // Validate range
+  if ($end_date < $start_date) {
+    $end_date = $start_date;
+  }
 }
+
 
 // Get archived orders with customer names
 $query = "SELECT 

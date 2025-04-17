@@ -28,8 +28,8 @@
           <h5>Quick Links</h5>
           <ul class="list-unstyled">
             <li><a href="shop.php" class="footer-link">Shop</a></li>
-            <li><a href="about.php" class="footer-link">About Us</a></li>
-            <li><a href="contact.php" class="footer-link">Contact</a></li>
+            <li><a href="../pages-user/about-us.php" class="footer-link">About Us</a></li>
+            <li><a href="../pages-user/contact-us.php" class="footer-link">Contact</a></li>
           </ul>
         </div>
 
@@ -37,9 +37,9 @@
         <div class="col-md-4">
           <h5>Follow Us</h5>
           <div class="d-flex gap-3">
-            <a href="#" class="footer-icon"><i class="fab fa-facebook-f"></i></a>
-            <a href="#" class="footer-icon"><i class="fab fa-instagram"></i></a>
-            <a href="#" class="footer-icon"><i class="fab fa-tiktok"></i></a>
+            <a href="https://web.facebook.com/bunniwinkle" class="footer-icon" target="_blank"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://www.instagram.com/bunniwinkle/" class="footer-icon" target="_blank"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.tiktok.com/@bunniwinklestore" class="footer-icon" target="_blank"><i class="fab fa-tiktok"></i></a>
           </div>
         </div>
 

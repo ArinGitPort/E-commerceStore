@@ -1,4 +1,5 @@
 <?php
+//This is unused fr fr
 // mark_notification_read.php
 session_start();
 require_once '../config/db_connection.php';

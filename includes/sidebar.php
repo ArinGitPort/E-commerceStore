@@ -51,6 +51,14 @@
             <a href="../pages/order-management.php" class="menuDashboard">Order Management</a>
           </div>
         </li>
+
+        <li>
+          <div class="listDiv">
+            <i class="fas fa-undo imgIcon"></i>
+            <a href="../pages/process_returns.php" class="menuDashboard">Return Process</a>
+          </div>
+        </li>
+
         <li>
           <div class="listDiv">
             <i class="fas fa-warehouse imgIcon"></i>
@@ -108,7 +116,7 @@
         <li>
           <div class="listDiv">
             <i class="fas fa-sign-out-alt imgIcon"></i>
-            <a href="../pages/logout_admin.php" class="menuDashboard">Logout</a>
+            <a href="../pages/logout.php" class="menuDashboard">Logout</a>
           </div>
         </li>
       </ul>
