@@ -375,7 +375,6 @@ if ($user_id) {
         } catch (err) {
           console.error('[Notifications] FETCH ERROR:', err);
           notifCount.textContent = '!';
-          notifItems.innerHTML = '<p class="text-danger small mb-0">Couldn’t load.</p>';
         }
       }
 

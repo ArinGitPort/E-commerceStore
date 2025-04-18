@@ -57,20 +57,41 @@ html {
 
 /* ========== Features Section ========== */
 .feature-section {
-  background: white;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-radius: 20px;
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.06);
-  margin: 50px auto;
-  padding: 50px;
+  padding: 40px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: inherit;
+  margin: 50px;
 }
-.feature-section h5 {
-  color: #444;
-  font-weight: 600;
-}
+
+/* Optional: Inherit text color smoothly from surrounding context */
+.feature-section h5,
 .feature-section p {
-  font-size: 15px;
-  color: #555;
+  color: inherit;
 }
+
+/* Icon styling */
+.feature-section i {
+  color: #354359;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.feature-section i:hover {
+  transform: scale(1.1);
+  color: #95cef5;
+}
+
+/* Responsive touch */
+@media (max-width: 768px) {
+  .feature-section {
+    padding: 30px 15px;
+  }
+}
+
 
 /* ========== Decorative Shapes ========== */
 body::before,
