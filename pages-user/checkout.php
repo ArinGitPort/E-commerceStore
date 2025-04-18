@@ -139,18 +139,38 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
           <h4 class="section-title">Shipping Information</h4>
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="fullName" class="form-label">Full Name</label>
-              <input type="text" class="form-control" id="fullName" name="fullName" required value="<?= htmlspecialchars($userFullName) ?>">
+              <label for="shippingName" class="form-label">Full Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="shippingName"
+                name="shipping_name"
+                required
+                value="<?= htmlspecialchars($userFullName) ?>">
             </div>
             <div class="col-md-6 mb-3">
-              <label for="phone" class="form-label">Phone Number</label>
-              <input type="text" class="form-control" id="phone" name="phone" required value="<?= htmlspecialchars($userPhone) ?>" placeholder="+63 912 345 6789">
+              <label for="shippingPhone" class="form-label">Phone Number</label>
+              <input
+                type="text"
+                class="form-control"
+                id="shippingPhone"
+                name="shipping_phone"
+                required
+                value="<?= htmlspecialchars($userPhone) ?>"
+                placeholder="+63 912 345 6789">
             </div>
           </div>
           <div class="mb-3">
-            <label for="address" class="form-label">Shipping Address</label>
-            <textarea class="form-control" id="address" name="address" rows="3" required placeholder="House #, Street, Barangay, City, Province"><?= htmlspecialchars($userAddress) ?></textarea>
+            <label for="shippingAddress" class="form-label">Shipping Address</label>
+            <textarea
+              class="form-control"
+              id="shippingAddress"
+              name="shipping_address"
+              rows="3"
+              required
+              placeholder="House #, Street, Barangay, City, Province"><?= htmlspecialchars($userAddress) ?></textarea>
           </div>
+
           <div class="mb-4">
             <label for="delivery_method" class="form-label">Delivery Method</label>
             <select name="delivery_method" class="form-select" required>
@@ -200,18 +220,15 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Payment method selection styling
+    // highlight selected payment method
     $('input[name="payment_method"]').change(function() {
       $('.payment-method').removeClass('active');
       $(this).closest('.payment-method').addClass('active');
-    });
-    $('input[name="payment_method"]:checked').closest('.payment-method').addClass('active');
+    }).filter(':checked').closest('.payment-method').addClass('active');
 
-    // Form submission with confirmation
+    // confirmation dialog
     $('#checkoutForm').on('submit', function(e) {
       e.preventDefault();
-
-      // Show confirmation dialog
       Swal.fire({
         title: 'Confirm Your Order',
         html: `
@@ -219,49 +236,37 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
           <p>You are about to place an order for <strong>₱<?= number_format($grandTotal, 2) ?></strong>.</p>
           <p>Please review your shipping information:</p>
           <ul class="text-muted">
-            <li>Name: ${$('#fullName').val()}</li>
-            <li>Address: ${$('#address').val()}</li>
-            <li>Phone: ${$('#phone').val()}</li>
+            <li>Name: ${$('#shippingName').val()}</li>
+            <li>Address: ${$('#shippingAddress').val()}</li>
+            <li>Phone: ${$('#shippingPhone').val()}</li>
           </ul>
         </div>
       `,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
         confirmButtonText: 'Yes, place order!',
         cancelButtonText: 'Review order',
-        backdrop: `
-        rgba(0,0,0,0.7)
-        url("/assets/images/loading.gif")
-        center top
-        no-repeat
-      `
-      }).then((result) => {
+        backdrop: `rgba(0,0,0,0.7) url("/assets/images/loading.gif") center top no-repeat`
+      }).then(result => {
         if (result.isConfirmed) {
-          // Proceed with order submission
-          const form = $(this);
-          const btn = form.find('button[type="submit"]');
-          const originalText = btn.html();
-          btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Processing Order...');
-
+          const form = $(this),
+            btn = form.find('button[type="submit"]');
+          const txt = btn.html();
+          btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Processing...');
           $.ajax({
             url: form.attr('action'),
             type: 'POST',
             data: form.serialize(),
             dataType: 'json',
-            success: function(response) {
-              if (response.success) {
-                window.location.href = 'order-confirmation.php?order_id=' + response.order_id;
-              } else {
-                Swal.fire('Error', response.error || 'An error occurred. Please try again.', 'error');
-              }
+            success(resp) {
+              if (resp.success) window.location = 'order-confirmation.php?order_id=' + resp.order_id;
+              else Swal.fire('Error', resp.error || 'Please try again', 'error');
             },
-            error: function() {
-              Swal.fire('Error', 'Failed to connect to server. Please check your connection.', 'error');
+            error() {
+              Swal.fire('Error', 'Server error, check connection', 'error');
             },
-            complete: function() {
-              btn.prop('disabled', false).html(originalText);
+            complete() {
+              btn.prop('disabled', false).html(txt);
             }
           });
         }

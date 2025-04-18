@@ -27,13 +27,15 @@ try {
 
     if ($stmt->rowCount() > 0) {
         // Log this change
-        $logStmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)");
+        $logStmt = $pdo->prepare(" INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type)
+  VALUES (?, ?, 'orders', ?, ?)");
         $logStmt->execute([
             $_SESSION['user_id'],
-            "Updated order status to $newStatus",
-            'orders',
-            $orderId
+            "Updated order #{$orderId} status to {$newStatus}",
+            $orderId,
+            'UPDATE'  
         ]);
+
 
         echo 'success';
     } else {

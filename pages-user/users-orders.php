@@ -9,11 +9,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 $userId = $_SESSION['user_id'];
 
-// 1. Fetch active (live) orders
+// 1. Fetch active (live) orders, including shipping info
 $activeSql = "
-    SELECT o.*, dm.method_name
+    SELECT
+      o.order_id,
+      o.order_date,
+      o.total_price,
+      o.order_status,
+      o.shipping_address,
+      o.shipping_phone,
+      dm.method_name
     FROM orders o
-    JOIN delivery_methods dm ON o.delivery_method_id = dm.delivery_method_id
+    JOIN delivery_methods dm
+      ON o.delivery_method_id = dm.delivery_method_id
     WHERE o.customer_id = ?
     ORDER BY o.order_date DESC
 ";
@@ -21,12 +29,14 @@ $activeStmt = $pdo->prepare($activeSql);
 $activeStmt->execute([$userId]);
 $activeOrders = $activeStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 2. Fetch completed (archived) orders
+// 2. Fetch completed (archived) orders, including shipping info
 $completedSql = "
     SELECT 
       ao.order_id,
       ao.order_date,
       ao.total_price,
+      ao.shipping_address,
+      ao.shipping_phone,
       dm.method_name,
       (SELECT COUNT(*) FROM returns r WHERE r.order_id = ao.order_id) AS return_count
     FROM archived_orders ao
@@ -89,7 +99,6 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
         #orderDetailsModal .modal-dialog {
             max-width: 800px;
         }
-        
     </style>
 </head>
 
@@ -97,7 +106,6 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include '../includes/user-navbar.php'; ?>
 
     <div class="container py-5">
-
         <!-- Active Orders -->
         <h2 class="mb-4">Active Orders</h2>
         <?php if (empty($activeOrders)): ?>
@@ -107,23 +115,26 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Order #</th>
+                            <th>Order #</th>
                             <th>Date</th>
                             <th>Items</th>
                             <th>Total</th>
                             <th>Status</th>
                             <th>Delivery</th>
+                            <th>Address</th>
+                            <th>Phone</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($activeOrders as $order):
-                            $countStmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM order_details WHERE order_id = ?");
+                            // count items for this order
+                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM order_details WHERE order_id = ?");
                             $countStmt->execute([$order['order_id']]);
                             $itemCount = $countStmt->fetchColumn();
                         ?>
                             <tr class="order-card <?= htmlspecialchars($order['order_status']) ?>">
-                                <td>#<?= $order['order_id'] ?></td>
+                                <td>#<?= htmlspecialchars($order['order_id']) ?></td>
                                 <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
                                 <td><?= $itemCount ?></td>
                                 <td>₱<?= number_format($order['total_price'], 2) ?></td>
@@ -131,13 +142,16 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <span class="badge status-badge bg-<?= match ($order['order_status']) {
                                                                             'Pending'   => 'warning',
                                                                             'Shipped'   => 'info',
+                                                                            'Delivered' => 'success',
                                                                             'Cancelled' => 'danger',
-                                                                            default     => 'primary'
+                                                                            default     => 'secondary'
                                                                         } ?>">
                                         <?= htmlspecialchars($order['order_status']) ?>
                                     </span>
                                 </td>
                                 <td><?= htmlspecialchars($order['method_name']) ?></td>
+                                <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
+                                <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary view-order-details"
                                         data-order-id="<?= $order['order_id'] ?>">
@@ -166,15 +180,14 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                             <th>Total</th>
                             <th>Status</th>
                             <th>Delivery</th>
+                            <th>Address</th>
+                            <th>Phone</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($completedOrders as $order):
-                            // count items from archived_order_details
-                            $countStmt = $pdo->prepare("
-            SELECT COUNT(*) FROM archived_order_details WHERE order_id = ?
-          ");
+                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM archived_order_details WHERE order_id = ?");
                             $countStmt->execute([$order['order_id']]);
                             $itemCount = $countStmt->fetchColumn();
                         ?>
@@ -185,14 +198,14 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <td>₱<?= number_format($order['total_price'], 2) ?></td>
                                 <td><span class="badge status-badge bg-secondary">Completed</span></td>
                                 <td><?= htmlspecialchars($order['method_name']) ?></td>
+                                <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
+                                <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
                                 <td>
-                                    <button
-                                        class="btn btn-sm btn-outline-primary view-order-details"
+                                    <button class="btn btn-sm btn-outline-primary view-order-details"
                                         data-order-id="<?= htmlspecialchars($order['order_id']) ?>">
                                         View Details
                                     </button>
-                                    <button
-                                        class="btn btn-sm btn-outline-warning order-action"
+                                    <button class="btn btn-sm btn-outline-warning order-action"
                                         data-action="return"
                                         data-order-id="<?= htmlspecialchars($order['order_id']) ?>"
                                         <?= $order['return_count'] ? 'disabled' : '' ?>>

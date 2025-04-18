@@ -1,0 +1,88 @@
+/* FAQ Hero */
+.faq-hero {
+    background: linear-gradient(
+        135deg,
+        var(--primary-color) 0%,
+        var(--secondary-color) 100%
+      );    background-size: cover;
+    background-position: center;
+    min-height: 300px;
+}
+
+/* Search Section */
+.search-section .input-group {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-section .form-control {
+    border-right: 0;
+}
+
+.search-section .btn {
+    border-left: 0;
+}
+
+/* Category Cards */
+.category-card {
+    transition: all 0.3s ease;
+    background: white;
+    color: inherit;
+    text-decoration: none;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.icon-wrapper {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Accordion Styling */
+.accordion-button {
+    font-size: 1.1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: rgba(13, 110, 253, 0.05);
+    color: #0d6efd;
+}
+
+.accordion-body {
+    padding: 1.5rem;
+}
+
+.category-title {
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #0d6efd;
+    display: inline-block;
+}
+
+/* Contact CTA */
+.contact-cta {
+    background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('../assets/images/pattern-bg.png');
+    background-size: cover;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .faq-hero {
+        min-height: 250px;
+    }
+    
+    .faq-hero h1 {
+        font-size: 2.5rem;
+    }
+    
+    .category-card {
+        margin-bottom: 1.5rem;
+    }
+}

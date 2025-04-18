@@ -29,11 +29,13 @@ html {
 }
 
 .hero-image {
-  max-width: 100%;
+  width: 60%;           /* Make it 60% of its container’s width */
+  max-width: 400px;     /* But no larger than 400px */
   border-radius: 20px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  animation: floatUp 3s ease-in-out infinite; /* Faster cycle */
+  animation: floatUp 3s ease-in-out infinite;
 }
+
 
 /* More noticeable floating */
 @keyframes floatUp {

@@ -8,8 +8,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Default date range (last 30 days)
-$start_date = date('Y-m-d', strtotime('-30 days'));
-$end_date = date('Y-m-d');
+$start_date = date('Y-m-d', strtotime('-2 days'));
+$end_date = date('Y-m-d', strtotime('+5 days'));;
 $membership_type = 'all';
 $order_status = 'all';
 $category_id = 'all';

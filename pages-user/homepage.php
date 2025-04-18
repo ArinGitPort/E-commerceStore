@@ -32,10 +32,10 @@ require_once __DIR__ . '/../includes/session-init.php';
             <div class="col-md-6 hero-text animate__animated animate__fadeInLeft">
                 <h1 class="display-4 fw-bold">
                     Experience a <br>
-                    <span class="highlight">fresh way</span> to <span class="highlight">shop cute</span>
+                    <span class="highlight">fresh way</span> to <span class="highlight">shop</span>
                 </h1>
                 <p class="lead mt-3">
-                    Discover handcrafted and customizable products that bring warmth and joy to your everyday life.
+                    Discover handcrafted products that bring warmth and joy to your everyday life.
                 </p>
                 <a href="../pages-user/shop.php" class="shop-btn">Shop Now</a>
 
@@ -43,7 +43,7 @@ require_once __DIR__ . '/../includes/session-init.php';
 
             <!-- Right Image Content -->
             <div class="col-md-6 text-center animate__animated animate__fadeInRight">
-                <img src="../assets/images/company assets/bunniwinkleBG.jpg" class="img-fluid hero-image" alt="Hero Image">
+                <img src="../assets/images/company assets/bunniartscraft.jpg" class="img-fluid hero-image" alt="Hero Image">
             </div>
 
         </div>
@@ -58,22 +58,23 @@ require_once __DIR__ . '/../includes/session-init.php';
     <section class="container feature-section py-5">
         <div class="row text-center">
             <div class="col-md-4">
-                <img src="../assets/images/icons/fast-delivery.png" alt="Fast Delivery" style="height: 60px;">
+                <i class="fas fa-truck fa-3x mb-3"></i>
                 <h5 class="mt-3">Fast Delivery</h5>
                 <p>We ship your favorite items right to your door – fast and secure.</p>
             </div>
             <div class="col-md-4">
-                <img src="../assets/images/icons/gift-box.png" alt="Handpicked Gifts" style="height: 60px;">
+                <i class="fas fa-gift fa-3x mb-3"></i>
                 <h5 class="mt-3">Curated Products</h5>
                 <p>Every product is carefully selected for quality and charm.</p>
             </div>
             <div class="col-md-4">
-                <img src="../assets/images/icons/membership.png" alt="Exclusive Deals" style="height: 60px;">
+                <i class="fas fa-tags fa-3x mb-3"></i>
                 <h5 class="mt-3">Exclusive Member Deals</h5>
                 <p>Sign up to unlock member-only discounts and offers.</p>
             </div>
         </div>
     </section>
+
 
     <!-- ✅ Footer -->
     <?php include '../includes/footer.php'; ?>

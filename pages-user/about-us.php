@@ -134,7 +134,7 @@
             <p class="lead mb-4">Discover what makes Bunniwinkle special</p>
             <div class="d-flex flex-column flex-md-row justify-content-center">
                 <a href="../pages-user/shop.php" class="btn btn-primary btn-lg me-md-3 mb-3 mb-md-0">Shop Now</a>
-                <a href="../pages-user/contact.php" class="btn btn-outline-primary btn-lg">Contact Us</a>
+                <a href="../pages-user/contact-us.php" class="btn btn-outline-primary btn-lg">Contact Us</a>
             </div>
         </div>
     </section>

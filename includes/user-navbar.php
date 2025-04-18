@@ -97,12 +97,12 @@ if ($user_id) {
       <ul class="nav-menu" id="navMenu">
         <li class="nav-item"><a href="../pages-user/shop.php" class="nav-link">Shop</a></li>
         <li class="nav-item"><a href="../pages-user/about-us.php" class="nav-link">About Us</a></li>
-        <li class="nav-item"><a href="../pages-user/contact.php" class="nav-link">Contact Us</a></li>
+        <li class="nav-item"><a href="../pages-user/contact-us.php" class="nav-link">Contact Us</a></li>
         <li class="nav-item dropdown">
           <a href="#" class="nav-link">Others <span class="dropdown-icon">▼</span></a>
           <ul class="dropdown-menu">
-            <li class="dropdown-item"><a href="../pages-user/faq.php">FAQ</a></li>
-            <li class="dropdown-item"><a href="../pages-user/blog.php">Blog</a></li>
+            <li class="dropdown-item"><a href="../pages-user/faq-page.php">FAQ</a></li>
+            <li class="dropdown-item"><a href="https://docs.google.com/forms/d/e/1FAIpQLSc7Io17OMGmlR9xlTA8kIxR--VmAEfslgxngDP1FkBsypAe9w/viewform" target="_blank">Apply As A Vendor</a></li>
             <?php if (isset($_SESSION['user_id'])): ?>
               <li class="dropdown-item"><a href="#" id="navLogout">Logout</a></li>
             <?php else: ?>
@@ -352,43 +352,43 @@ if ($user_id) {
     });
   </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const notifBell     = document.getElementById('notifBell');
-  const notifCount    = document.getElementById('notifCount');
-  const notifDropdown = document.getElementById('notifDropdown');
-  const notifItems    = document.getElementById('notifItems');
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const notifBell = document.getElementById('notifBell');
+      const notifCount = document.getElementById('notifCount');
+      const notifDropdown = document.getElementById('notifDropdown');
+      const notifItems = document.getElementById('notifItems');
 
-  // Always point to the same absolute URL
-  const API_URL = '/pages/get_notifications.php';
+      // Always point to the same absolute URL
+      const API_URL = '/pages/get_notifications.php';
 
-  async function fetchNotifications() {
-    try {
-      console.log('[Notifications] fetching from', API_URL);
-      const resp = await fetch(API_URL);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      console.log('[Notifications] JSON', data);
+      async function fetchNotifications() {
+        try {
+          console.log('[Notifications] fetching from', API_URL);
+          const resp = await fetch(API_URL);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+          console.log('[Notifications] JSON', data);
 
-      notifCount.textContent = data.count ?? '0';
-      renderList(data.notifications || []);
-    } catch (err) {
-      console.error('[Notifications] FETCH ERROR:', err);
-      notifCount.textContent = '!';
-      notifItems.innerHTML = '<p class="text-danger small mb-0">Couldn’t load.</p>';
-    }
-  }
+          notifCount.textContent = data.count ?? '0';
+          renderList(data.notifications || []);
+        } catch (err) {
+          console.error('[Notifications] FETCH ERROR:', err);
+          notifCount.textContent = '!';
+          notifItems.innerHTML = '<p class="text-danger small mb-0">Couldn’t load.</p>';
+        }
+      }
 
-  function renderList(list) {
-    notifItems.innerHTML = '';
-    if (!list.length) {
-      notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
-      return;
-    }
-    list.forEach(n => {
-      const item = document.createElement('div');
-      item.className = 'd-block p-2 notification-item';
-      item.innerHTML = `
+      function renderList(list) {
+        notifItems.innerHTML = '';
+        if (!list.length) {
+          notifItems.innerHTML = '<p class="text-muted small mb-0">No notifications yet.</p>';
+          return;
+        }
+        list.forEach(n => {
+          const item = document.createElement('div');
+          item.className = 'd-block p-2 notification-item';
+          item.innerHTML = `
         <div class="d-flex justify-content-between">
           <h6 class="mb-1">${n.title}</h6>
           <small class="text-muted">
@@ -400,21 +400,21 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <p class="small mb-0">${n.message}</p>
       `;
-      notifItems.appendChild(item);
+          notifItems.appendChild(item);
+        });
+      }
+
+      notifBell.addEventListener('click', e => {
+        e.preventDefault();
+        notifDropdown.classList.toggle('show');
+        fetchNotifications();
+      });
+
+      // initial load + poll every 30s
+      fetchNotifications();
+      setInterval(fetchNotifications, 30000);
     });
-  }
-
-  notifBell.addEventListener('click', e => {
-    e.preventDefault();
-    notifDropdown.classList.toggle('show');
-    fetchNotifications();
-  });
-
-  // initial load + poll every 30s
-  fetchNotifications();
-  setInterval(fetchNotifications, 30000);
-});
-</script>
+  </script>
 
 
 </body>
