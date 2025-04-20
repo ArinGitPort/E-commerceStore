@@ -226,7 +226,7 @@ $sales_by_membership = $membership_stmt->fetchAll(PDO::FETCH_ASSOC);
           <div class="col-md-3">
             <div class="card-counter danger">
               <div class="count-numbers"><?= number_format($summary['unique_customers']) ?></div>
-              <div class="count-name">Unique Customers</div>
+              <div class="count-name">Customers</div>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@ $sales_by_membership = $membership_stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- Order Details -->
         <div class="card mb-4">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Order Details</h5>
+            <h5 class="card-title mb-0">Pending Orders</h5>
             <button class="btn btn-sm btn-primary" onclick="exportToExcel()">Export to Excel</button>
           </div>
           <div class="card-body">

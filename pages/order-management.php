@@ -59,7 +59,7 @@ if ($unviewed) {
 }
 
 // Define allowed statuses manually
-$allowedStatuses = ['Pending', 'Shipped', 'Delivered', 'Cancelled', 'Returned'];
+$allowedStatuses = ['Pending', 'Shipped', 'Delivered', 'Received', 'Cancelled', 'Returned'];
 
 $statusCounts = $pdo->query("SELECT order_status, COUNT(*) AS count FROM orders GROUP BY order_status")
     ->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -122,6 +122,12 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
         to {
             transform: translateX(0);
         }
+    }
+
+    .current-status.Received,
+    .badge.bg-Received {
+        background-color: #198754;
+        color: #fff;
     }
 </style>
 
@@ -221,14 +227,30 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">
-                                                    <button class="btn btn-sm btn-success order-action" data-action="completed" data-order-id="<?= $order['order_id'] ?>">
-                                                        Complete
-                                                    </button>
-                                                    <button class="btn btn-sm btn-primary view-details" data-order-id="<?= $order['order_id'] ?>">
+                                                    <?php if ($order['order_status'] === 'Pending'): ?>
+                                                        <button
+                                                            class="btn btn-sm btn-info order-action"
+                                                            data-action="ship"
+                                                            data-order-id="<?= $order['order_id'] ?>">
+                                                            Ship
+                                                        </button>
+                                                    <?php elseif ($order['order_status'] === 'Shipped'): ?>
+                                                        <button
+                                                            class="btn btn-sm btn-success order-action"
+                                                            data-action="completed"
+                                                            data-order-id="<?= $order['order_id'] ?>">
+                                                            Complete
+                                                        </button>
+                                                    <?php endif; ?>
+
+                                                    <button
+                                                        class="btn btn-sm btn-primary view-details"
+                                                        data-order-id="<?= $order['order_id'] ?>">
                                                         <i class="bi bi-eye"></i>
                                                     </button>
                                                 </div>
                                             </td>
+
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -404,31 +426,41 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                 const newStatus = $('input[name="new_status"]:checked').val();
 
                 if (!newStatus) {
-                    $("#updateStatusDebug").removeClass('d-none').html('Please select a status.');
-                    return;
+                    return $("#updateStatusDebug")
+                        .removeClass('d-none')
+                        .text('Please select a status.');
                 }
 
                 $.ajax({
                     url: 'ajax/update_order_status.php',
-                    type: 'POST',
-                    data: {
+                    method: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: JSON.stringify({
                         order_id: orderId,
                         new_status: newStatus
-                    },
-                    success: function(responseText) {
-                        $("#updateStatusDebug").removeClass('d-none').html(responseText);
-
-                        if (responseText.includes('success')) {
-                            $('#status-' + orderId).text(newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
-                            bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+                    }),
+                    success(data) {
+                        if (data.success) {
+                            $('#status-' + orderId).text(newStatus);
+                            bootstrap.Modal.getInstance(
+                                document.getElementById('updateStatusModal')
+                            ).hide();
+                        } else {
+                            $("#updateStatusDebug")
+                                .removeClass('d-none')
+                                .text(data.error);
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
-                        $("#updateStatusDebug").removeClass('d-none').html('AJAX Error: ' + error);
+                    error(xhr, status, err) {
+                        console.error(err);
+                        $("#updateStatusDebug")
+                            .removeClass('d-none')
+                            .text('AJAX error: ' + err);
                     }
                 });
             });
+
 
             // Open Set Delivery Date Modal
             $(document).on('click', '.btn-set-delivery-date', function() {
@@ -605,6 +637,40 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
             setInterval(checkNewOrders, 3000);
             checkNewOrders();
 
+        });
+
+        // Ship button
+        $(document).on('click', '.order-action[data-action="ship"]', async function() {
+            const btn = $(this);
+            const orderId = btn.data('order-id');
+
+            try {
+                const res = await fetch('ajax/ship_order.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId
+                    })
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error);
+
+                // Update UI
+                $('#status-' + orderId).text('Shipped');
+                btn.replaceWith(`
+  <button
+    class="btn btn-sm btn-success order-action"
+    data-action="completed"
+    data-order-id="${orderId}">
+    Complete
+  </button>
+`);
+                showToast(`Order #${orderId} marked as Shipped.`, 'info');
+            } catch (err) {
+                showToast(err.message, 'danger');
+            }
         });
     </script>
 

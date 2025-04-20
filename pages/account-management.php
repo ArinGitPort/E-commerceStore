@@ -196,6 +196,11 @@ function getMembershipStats($pdo)
                             </form>
 
                             <div class="d-flex gap-2">
+
+                                <button id="btnAddStaff" class="btn btn-primary">
+                                    <i class="bi bi-person-plus"></i> Add Staff
+                                </button>
+
                                 <a href="admin-notifications.php" class="btn btn-success">
                                     <i class="bi bi-megaphone"></i> Notify
                                 </a>
@@ -232,6 +237,8 @@ function getMembershipStats($pdo)
                                         <th><?= getSortLink('user_id', 'ID') ?></th>
                                         <th><?= getSortLink('name', 'Name') ?></th>
                                         <th><?= getSortLink('email', 'Email') ?></th>
+                                        <th>Phone</th>
+                                        <th>Address</th>
                                         <th><?= getSortLink('role_name', 'Role') ?></th>
                                         <th><?= getSortLink('membership_type', 'Membership') ?></th>
                                         <th><?= getSortLink('expiry_date', 'Expiry') ?></th>
@@ -260,6 +267,8 @@ function getMembershipStats($pdo)
                                             <td><?= $user['user_id'] ?></td>
                                             <td><?= htmlspecialchars($user['name']) ?></td>
                                             <td><?= htmlspecialchars($user['email']) ?></td>
+                                            <td><?= htmlspecialchars($user['phone'] ?? '—') ?></td>
+                                            <td><?= nl2br(htmlspecialchars($user['address'] ?? '—')) ?></td>
                                             <td>
                                                 <span class="badge bg-secondary">
                                                     <?= htmlspecialchars($user['role_name']) ?>
@@ -346,6 +355,84 @@ function getMembershipStats($pdo)
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Add Staff / Admin Registration Modal -->
+                        <div class="modal fade" id="addStaffModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form id="addStaffForm">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Create Staff Account</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <!-- Name -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Full Name<span class="text-danger">*</span></label>
+                                                <input name="name" class="form-control" required>
+                                            </div>
+
+                                            <!-- Email -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Email<span class="text-danger">*</span></label>
+                                                <input name="email" type="email" class="form-control" required>
+                                            </div>
+
+                                            <!-- Password -->
+                                            <!-- inside your Add Staff modal form -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Password <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="staffPassword"
+                                                        name="password"
+                                                        type="password"
+                                                        class="form-control"
+                                                        required>
+                                                    <button
+                                                        class="btn btn-outline-secondary toggle-password"
+                                                        type="button"
+                                                        tabindex="-1">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+
+                                            <!-- Role -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Role<span class="text-danger">*</span></label>
+                                                <select name="role_id" class="form-select" required>
+                                                    <?php foreach ($roles as $r): ?>
+                                                        <?php if (in_array($r['role_name'], ['Staff', 'Admin', 'Super Admin'])): ?>
+                                                            <option value="<?= $r['role_id'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
+                                                        <?php endif; ?>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+
+                                            <!-- Optional: Phone -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Contact Number</label>
+                                                <input name="phone" type="text" class="form-control" placeholder="e.g. +63 912 345 6789">
+                                            </div>
+
+                                            <!-- Optional: Address -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Address</label>
+                                                <textarea name="address" class="form-control" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Create Account</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+
 
                         <!-- Deactivation Modal -->
                         <div class="modal fade" id="deactivateModal" tabindex="-1">
@@ -615,10 +702,13 @@ function getMembershipStats($pdo)
                                     .val(isNowFree ? '' : new Date().toISOString().split('T')[0]);
 
                                 if (!isNowFree) {
-                                    const nextYear = new Date();
-                                    nextYear.setFullYear(nextYear.getFullYear() + 1);
-                                    $('input[name="expiry_date"]').val(nextYear.toISOString().split('T')[0]);
+                                    const inThirty = new Date();
+                                    inThirty.setDate(inThirty.getDate() + 30);
+                                    $('input[name="expiry_date"]').val(
+                                        inThirty.toISOString().split('T')[0]
+                                    );
                                 }
+
                             });
 
                             membershipModal.show();
@@ -733,6 +823,46 @@ function getMembershipStats($pdo)
 
             // Export Users
             $('#exportUsers').click(() => window.location = 'ajax/export_users.php?' + $('form').serialize());
+        });
+
+        const addStaffModal = new bootstrap.Modal($('#addStaffModal')[0]);
+
+        // Open the modal
+        $('#btnAddStaff').click(() => {
+            $('#addStaffForm')[0].reset();
+            addStaffModal.show();
+        });
+
+        // Handle form submission
+        $('#addStaffForm').submit(function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const btn = form.find('button[type="submit"]');
+            const origText = btn.html();
+
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Creating…');
+
+            $.post('ajax/create_user.php', form.serialize(), function(resp) {
+                if (resp.success) {
+                    addStaffModal.hide();
+                    location.reload();
+                } else {
+                    alert('Error: ' + resp.error);
+                    btn.prop('disabled', false).html(origText);
+                }
+            }, 'json').fail(() => {
+                alert('Server error');
+                btn.prop('disabled', false).html(origText);
+            });
+        });
+
+        // toggle show/hide password
+        $('#addStaffModal').on('click', '.toggle-password', function() {
+            const $btn = $(this);
+            const $input = $btn.siblings('input[name="password"]');
+            const showing = $input.attr('type') === 'password';
+            $input.attr('type', showing ? 'text' : 'password');
+            $btn.find('i').toggleClass('bi-eye bi-eye-slash');
         });
     </script>
 </body>

@@ -20,7 +20,7 @@
         <!-- Logo / About -->
         <div class="col-md-4 mb-4 mb-md-0">
           <h4 class="fw-bold">Bunniwinkle</h4>
-          <p class="small">Cute, custom, and comforting creations for every cozy soul 💖</p>
+          <p class="small">Creating everything handmade and cute!</p>
         </div>
 
         <!-- Quick Links -->

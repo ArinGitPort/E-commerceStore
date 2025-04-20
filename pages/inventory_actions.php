@@ -269,7 +269,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         if (isset($_POST['add_product'])) {
             // This code block adds a new product.
-            $stmt = $pdo->prepare("INSERT INTO products (product_name, sku, description, price, stock, is_exclusive, category_id) VALUES (?,?,?,?,?,?,?)");
+            $stmt = $pdo->prepare("
+            INSERT INTO products 
+              (product_name, sku, description, price, stock, is_exclusive, min_membership_level, category_id)
+            VALUES (?,?,?,?,?,?,?,?)
+          ");
             $stmt->execute([
                 $_POST['product_name'],
                 $_POST['sku'],
@@ -277,8 +281,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['price'],
                 $_POST['stock'],
                 isset($_POST['is_exclusive']) ? 1 : 0,
+                // only set this if the product is exclusive:
+                isset($_POST['is_exclusive'])
+                    ? ($_POST['min_membership_level'] ?: null)
+                    : null,
                 $_POST['category_id']
             ]);
+
             $productId = $pdo->lastInsertId();
             // Handle image uploads for the new product.
             if (!empty($_FILES['product_images']['name'][0])) {
@@ -301,7 +310,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
         } elseif (isset($_POST['update_product'])) {
             // This code block updates an existing product.
-            $stmt = $pdo->prepare("UPDATE products SET product_name=?, sku=?, description=?, price=?, stock=?, is_exclusive=?, category_id=? WHERE product_id=?");
+            $stmt = $pdo->prepare("
+            UPDATE products
+               SET product_name         = ?,
+                   sku                  = ?,
+                   description          = ?,
+                   price                = ?,
+                   stock                = ?,
+                   is_exclusive         = ?,
+                   min_membership_level = ?,
+                   category_id          = ?
+             WHERE product_id = ?
+          ");
             $stmt->execute([
                 $_POST['product_name'],
                 $_POST['sku'],
@@ -309,9 +329,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['price'],
                 $_POST['stock'],
                 isset($_POST['is_exclusive']) ? 1 : 0,
+                // clear it when not exclusive:
+                isset($_POST['is_exclusive'])
+                    ? ($_POST['min_membership_level'] ?: null)
+                    : null,
                 $_POST['category_id'],
                 $_POST['product_id']
             ]);
+
             // Update the primary image if selected.
             if (isset($_POST['primary_image'])) {
                 $stmt = $pdo->prepare("UPDATE product_images SET is_primary=0 WHERE product_id=?");

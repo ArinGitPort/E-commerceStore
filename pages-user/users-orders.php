@@ -91,6 +91,15 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
             border-left-color: #6c757d;
         }
 
+        .order-card.Received {
+            border-left-color: #198754;
+        }
+
+        .status-badge.bg-Received {
+            /* you can map it to “success” */
+        }
+
+
         .status-badge {
             font-size: 0.8rem;
             padding: 0.35em 0.65em;
@@ -157,8 +166,18 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                                         data-order-id="<?= $order['order_id'] ?>">
                                         View Details
                                     </button>
+                                    <?php if ($order['order_status'] === 'Shipped'): ?>
+                                        <button
+                                            class="btn btn-sm btn-outline-success order-action"
+                                            data-action="received"
+                                            data-order-id="<?= $order['order_id'] ?>">
+                                            Mark Received
+                                        </button>
+                                    <?php endif; ?>
+
                                 </td>
                             </tr>
+
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -406,6 +425,31 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
             } else {
                 alert('Error: ' + result.error);
             }
+        });
+
+        $(document).on('click', '.order-action[data-action="received"]', function() {
+            const orderId = $(this).data('order-id');
+            if (!confirm(`Confirm you’ve received order #${orderId}?`)) return;
+
+            fetch('/pages/ajax/update_order_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        new_status: 'Received'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // you could simply reload, or update the row in-place
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
         });
     </script>
 

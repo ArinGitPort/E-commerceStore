@@ -30,12 +30,25 @@
       </div>
 
       <!-- Logo/Profile -->
-      <div class="dashboardProfile">
+      <div class="dashboardProfile text-center p-3">
+        <!-- avatar -->
         <img
-          class="userIcon"
-          src="/assets/images/company assets/bunniwinkelanotherlogo.jpg"
-          alt="User Icon">
+          class="userIcon rounded-circle mb-2"
+          src="<?= htmlspecialchars($_SESSION['avatar'] ?? '/assets/images/company assets/bunniwinkelanotherlogo.jpg') ?>"
+          alt="User Avatar"
+          style="width: 200px; height: 200px; object-fit: cover;">
+
+        <!-- name -->
+        <div class="fw-bold">
+          <?= htmlspecialchars($_SESSION['name'] ?? 'Guest') ?>
+        </div>
+
+        <!-- role -->
+        <small class="text-secondary">
+          <?= htmlspecialchars($_SESSION['role_name'] ?? '') ?>
+        </small>
       </div>
+
 
       <!-- Navigation List -->
       <ul class="listDashboard">

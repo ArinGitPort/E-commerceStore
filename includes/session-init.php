@@ -68,6 +68,27 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
+// ——————————————————————————————————————————————
+// Load current user’s role into session
+// ——————————————————————————————————————————————
+if (!empty($_SESSION['user_id'])) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT u.role_id, r.role_name
+            FROM users u
+            JOIN roles  r USING(role_id)
+            WHERE u.user_id = ?
+        ");
+        $stmt->execute([ $_SESSION['user_id'] ]);
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $_SESSION['role_id']   = (int)$row['role_id'];
+            $_SESSION['role_name'] = $row['role_name'];
+        }
+    } catch (PDOException $e) {
+        error_log("Failed to fetch user role: ".$e->getMessage());
+    }
+}
+
 
 /**
  * Sync database cart to session — used for logged-in users only
