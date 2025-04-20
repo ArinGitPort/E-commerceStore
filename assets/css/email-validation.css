@@ -1,0 +1,98 @@
+/* Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Full‐page background */
+  html, body {
+    height: 100%;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    background: linear-gradient(135deg, #cce6f9 0%, #ffd5f3 100%);
+    background-attachment: fixed;
+    background-size: cover;
+  }
+  
+  /* Center everything */
+  .login-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  
+  /* Glass card */
+  .login-card {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 16px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+    padding: 32px;
+    text-align: center;
+  }
+  
+  /* Logo */
+  .logo-container {
+    margin-bottom: 20px;
+  }
+  .logo-image {
+    width: 100%;
+    max-width: 200px;
+    object-fit: contain;
+  }
+  
+  /* Message block */
+  .verification-container {
+    color: #333;
+  }
+  .verification-icon {
+    font-size: 72px;
+    margin-bottom: 16px;
+    /* override via inline style or extra class if you want red on error */
+  }
+  .verification-text {
+    margin-bottom: 24px;
+    font-size: 1rem;
+  }
+  
+  /* Continue/Back button */
+  .login-btn.action-link {
+    display: inline-block;
+    background: linear-gradient(135deg, #fdbfee, #95cef5);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 4px 12px rgba(253, 191, 238, 0.3),
+                0 2px 6px rgba(149, 206, 245, 0.25);
+  }
+  .login-btn.action-link:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+  }
+  
+  /* Responsive tweaks */
+  @media (max-width: 576px) {
+    .login-card {
+      padding: 24px;
+    }
+    .verification-icon {
+      font-size: 60px;
+    }
+    .login-btn.action-link {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+  

@@ -403,10 +403,26 @@ if ($user_id) {
         });
       }
 
+      // Toggle dropdown when clicking the bell
       notifBell.addEventListener('click', e => {
         e.preventDefault();
+        e.stopPropagation(); // Prevent this click from triggering the document click handler
         notifDropdown.classList.toggle('show');
         fetchNotifications();
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!notifDropdown.contains(e.target) && e.target !== notifBell) {
+          notifDropdown.classList.remove('show');
+        }
+      });
+
+      // Close dropdown when pressing Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          notifDropdown.classList.remove('show');
+        }
       });
 
       // initial load + poll every 30s

@@ -20,62 +20,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   try {
-    $stmt = $pdo->prepare("
-            SELECT u.user_id, u.name, u.email, u.password, u.is_active, r.role_name 
-            FROM users u
-            JOIN roles r ON u.role_id = r.role_id 
-            WHERE u.email = ?
-        ");
+    // Select the user with the given email, along with role info
+    $stmt = $pdo->prepare("SELECT u.user_id, u.name, u.email, u.password, u.is_active, r.role_name 
+                               FROM users u
+                               JOIN roles r ON u.role_id = r.role_id 
+                               WHERE u.email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // Check if user exists and password matches
     if (!$user || !password_verify($password, $user['password'])) {
       $_SESSION['login_error'] = 'Invalid email or password.';
       header("Location: login.php");
       exit;
     }
 
+    // Check if user is active
     if ($user['is_active'] != 1) {
       $_SESSION['login_error'] = 'Your account is not activated. Please verify your email.';
       header("Location: login.php");
       exit;
     }
 
-    // Regenerate session to prevent fixation
+    // Regenerate session to avoid session fixation
     session_regenerate_id(true);
 
-    // Set session
-    $_SESSION['user_id'] = $user['user_id'];
-    $_SESSION['name'] = $user['name'];
-    $_SESSION['email'] = $user['email'];
-    $_SESSION['role'] = $user['role_name'];
-    $_SESSION['last_login'] = time();
+    // Set session variables
+    $_SESSION['user_id']      = $user['user_id'];
+    $_SESSION['name']         = $user['name'];
+    $_SESSION['email']        = $user['email'];
+    $_SESSION['role']         = $user['role_name'];
+    $_SESSION['last_login']   = time();
     $_SESSION['last_activity'] = time();
 
-    // Update last_login_at
-    $stmt = $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE user_id = :user_id");
-    $stmt->execute(['user_id' => $user['user_id']]);
+    try {
+      // Update last login timestamp
+      $stmt = $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE user_id = :user_id");
+      $stmt->execute(['user_id' => $user['user_id']]);
 
-    // Log audit
-    $stmt = $pdo->prepare("
-            INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-            VALUES (:user_id, 'User logged in', 'users', :user_id, 'LOGIN', :ip_address, :user_agent, :affected_data)
-        ");
-    $stmt->execute([
-      'user_id'       => $user['user_id'],
-      'ip_address'    => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-      'user_agent'    => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-      'affected_data' => json_encode([])
-    ]);
+      // Log the login action in the audit logs
+      $stmt = $pdo->prepare("
+                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+                VALUES (:user_id, 'User logged in', 'users', :user_id, 'LOGIN', :ip_address, :user_agent, :affected_data)
+            ");
+      $stmt->execute([
+        'user_id'      => $user['user_id'],
+        'ip_address'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+        'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+        'affected_data' => json_encode([])
+      ]);
+      error_log("Login action successfully logged for user ID: " . $user['user_id']);
+    } catch (PDOException $e) {
+      error_log("Failed to insert login audit log: " . $e->getMessage());
+    }
 
-    // Role-based redirect
+    // Redirect based on role
     $redirect = match ($user['role_name']) {
       'Super Admin' => '../pages/dashboard.php',
-      'Admin'       => '../pages/inventory.php',
-      'Member'      => '../pages-user/homepage.php',
-      default       => '../pages-user/homepage.php',
+      'Admin'  => '../pages/inventory.php',
+      'Member' => '../pages-user/homepage.php',
+      default  => '../pages-user/homepage.php',
     };
 
+    // If a redirect was set prior to login, use it; otherwise use the default
     $redirect_url = $_SESSION['redirect_url'] ?? $redirect;
     unset($_SESSION['redirect_url']);
 
@@ -89,11 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 }
 
+// Grab any login error message stored in session
 $error = $_SESSION['login_error'] ?? null;
 unset($_SESSION['login_error']);
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -109,7 +115,7 @@ unset($_SESSION['login_error']);
   <link rel="icon" href="../assets/images/icon/logo_bunniwinkleIcon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <style>
     .floating-shop-btn {
       position: fixed;
@@ -171,12 +177,24 @@ unset($_SESSION['login_error']);
         top: 10px;
       }
     }
+
+    .minimalist-input:focus {
+      border-color: #354359;
+      box-shadow: 0 0 0 0.25rem rgba(53, 67, 89, 0.25);
+    }
+
+    .is-invalid {
+      border-color: #dc3545 !important;
+    }
+
+    .is-invalid:focus {
+      box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
   </style>
 </head>
 
 <body>
 
-  <div id="tsparticles" style="position: fixed; z-index: 0; width: 100%; height: 100%; pointer-events: none;"></div>
 
   <a href="../index.php" class="btn btn-success floating-shop-btn">
     <i class="fas fa-store me-2"></i> Visit Shop
@@ -192,6 +210,12 @@ unset($_SESSION['login_error']);
 
     <form action="login.php" method="POST" class="w-100" style="max-width: 400px;" novalidate>
       <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+      <?php if ($error): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <?= htmlspecialchars($error) ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <?php endif; ?>
 
       <div class="mb-3">
         <label for="email" class="form-label">Email</label>
@@ -199,9 +223,10 @@ unset($_SESSION['login_error']);
           type="email"
           name="email"
           id="email"
-          class="form-control minimalist-input"
+          class="form-control <?= isset($error) ? 'is-invalid' : '' ?>"
           placeholder="you@example.com"
-          required />
+          required
+          value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
       </div>
 
       <div class="mb-3">
@@ -210,9 +235,9 @@ unset($_SESSION['login_error']);
           type="password"
           name="password"
           id="password"
-          class="form-control minimalist-input"
-          placeholder="••••••••"
-          required />
+          class="form-control <?= isset($error) ? 'is-invalid' : '' ?>"
+          placeholder="your password"
+          required>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -233,11 +258,12 @@ unset($_SESSION['login_error']);
         <span class="mx-2 text-muted">or</span>
         <hr class="flex-grow-1" />
       </div>
-
-      <a href="login-google.php" class="btn-premium-google w-100">
-        <i class="fab fa-google"></i>
-        <span class="google-text-span">Continue with Google</span>
-      </a>
+      <div class="goole-btn-wrapper">
+        <a href="login-google.php" class="btn-premium-google w-100">
+          <i class="fab fa-google"></i>
+          <span class="google-text-span">Continue with Google</span>
+        </a>
+      </div>
     </form>
   </div>
   <footer class="text-center mt-5 text-muted" style="font-size: 18px;">
@@ -246,15 +272,24 @@ unset($_SESSION['login_error']);
   </footer>
 
 
+
   <script>
     function togglePassword() {
-      const passwordField = document.getElementById('password');
-      passwordField.type = (passwordField.type === 'password') ? 'text' : 'password';
+      const pw = document.getElementById('password');
+      pw.type = pw.type === 'password' ? 'text' : 'password';
     }
+
+    // Auto-close alert after 5 seconds
+    window.addEventListener('DOMContentLoaded', () => {
+      const alert = document.querySelector('.alert');
+      if (alert) {
+        setTimeout(() => {
+          alert.classList.remove('show');
+          alert.classList.add('fade');
+        }, 5000);
+      }
+    });
   </script>
-
-
 </body>
-
 
 </html>
