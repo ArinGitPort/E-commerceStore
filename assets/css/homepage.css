@@ -29,13 +29,12 @@ html {
 }
 
 .hero-image {
-  width: 60%;           /* Make it 60% of its container’s width */
-  max-width: 400px;     /* But no larger than 400px */
+  width: 60%; /* Make it 60% of its container’s width */
+  max-width: 400px; /* But no larger than 400px */
   border-radius: 20px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
   animation: floatUp 3s ease-in-out infinite;
 }
-
 
 /* More noticeable floating */
 @keyframes floatUp {
@@ -92,7 +91,6 @@ html {
   }
 }
 
-
 /* ========== Decorative Shapes ========== */
 body::before,
 body::after {
@@ -141,61 +139,95 @@ body::after {
 
 /* Floating Scroll Button at Bottom Center */
 .scroll-float-button {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-  }
-  
-  /* Button Styling */
-  .btn-scroll-down {
-    background-color: #e56ad5;
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    font-size: 16px;
-    border-radius: 30px;
-    cursor: pointer;
-    animation: bounce 2s infinite;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-    transition: background 0.3s ease;
-  }
-  
-  .btn-scroll-down:hover {
-    background-color: #c84abb;
-  }
-  
-  /* Bounce Animation */
-  @keyframes bounce {
-    0%, 100% {
-      transform: translateX(-50%) translateY(0);
-    }
-    50% {
-      transform: translateX(-50%) translateY(10px);
-    }
-  }
-  
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
 
-  .shop-btn {
-    display: inline-block;
-    padding: 12px 28px;
-    background-color: #e56ad5;
-    color: white;
-    border: none;
-    border-radius: 30px;
-    font-size: 16px;
-    font-weight: 600;
-    text-decoration: none;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+/* Button Styling */
+.btn-scroll-down {
+  background-color: #e56ad5;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  font-size: 16px;
+  border-radius: 30px;
+  cursor: pointer;
+  animation: bounce 2s infinite;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s ease;
+}
+
+.btn-scroll-down:hover {
+  background-color: #c84abb;
+}
+
+/* Bounce Animation */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
   }
-  
-  .shop-btn:hover {
-    background-color: #c84abb;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  50% {
+    transform: translateX(-50%) translateY(10px);
   }
-  
+}
+
+.shop-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  background-color: #e56ad5;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.shop-btn:hover {
+  background-color: #c84abb;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Membership Section Styles */
+.membership-section {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  margin: 50px auto;
+}
+
+.tier-card {
+  border: 2px solid rgba(229, 106, 213, 0.2);
+  border-radius: 15px;
+  transition: transform 0.3s ease;
+}
+
+.tier-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(229, 106, 213, 0.15);
+}
+
+.bg-pink {
+  background-color: #e56ad5 !important;
+  border-radius: 15px 15px 0 0 !important;
+}
+
+.text-pink {
+  color: #e56ad5 !important;
+}
+
+.price {
+  font-size: 2.5rem;
+  color: #fff;
+}

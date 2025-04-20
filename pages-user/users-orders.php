@@ -115,132 +115,173 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include '../includes/user-navbar.php'; ?>
 
     <div class="container py-5">
-        <!-- Active Orders -->
-        <h2 class="mb-4">Active Orders</h2>
-        <?php if (empty($activeOrders)): ?>
-            <div class="alert alert-info">No active orders at the moment.</div>
-        <?php else: ?>
-            <div class="table-responsive mb-5">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Order #</th>
-                            <th>Date</th>
-                            <th>Items</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Delivery</th>
-                            <th>Address</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($activeOrders as $order):
-                            // count items for this order
-                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM order_details WHERE order_id = ?");
-                            $countStmt->execute([$order['order_id']]);
-                            $itemCount = $countStmt->fetchColumn();
-                        ?>
-                            <tr class="order-card <?= htmlspecialchars($order['order_status']) ?>">
-                                <td>#<?= htmlspecialchars($order['order_id']) ?></td>
-                                <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
-                                <td><?= $itemCount ?></td>
-                                <td>₱<?= number_format($order['total_price'], 2) ?></td>
-                                <td>
-                                    <span class="badge status-badge bg-<?= match ($order['order_status']) {
-                                                                            'Pending'   => 'warning',
-                                                                            'Shipped'   => 'info',
-                                                                            'Delivered' => 'success',
-                                                                            'Cancelled' => 'danger',
-                                                                            default     => 'secondary'
-                                                                        } ?>">
-                                        <?= htmlspecialchars($order['order_status']) ?>
-                                    </span>
-                                </td>
-                                <td><?= htmlspecialchars($order['method_name']) ?></td>
-                                <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
-                                <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary view-order-details"
-                                        data-order-id="<?= $order['order_id'] ?>">
-                                        View Details
-                                    </button>
-                                    <?php if ($order['order_status'] === 'Shipped'): ?>
-                                        <button
-                                            class="btn btn-sm btn-outline-success order-action"
-                                            data-action="received"
-                                            data-order-id="<?= $order['order_id'] ?>">
-                                            Mark Received
-                                        </button>
-                                    <?php endif; ?>
 
-                                </td>
-                            </tr>
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="ordersTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-orders" type="button" role="tab">
+                    Active Orders <span class="badge bg-warning"><?= count($activeOrders) ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-orders" type="button" role="tab">
+                    Completed Orders <span class="badge bg-secondary"><?= count($completedOrders) ?></span>
+                </button>
+            </li>
+        </ul>
 
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+        <div class="tab-content" id="ordersTabContent">
+            <div class="tab-pane fade show active" id="active-orders" role="tabpanel" aria-labelledby="active-tab">
+                <!-- Active Orders -->
+                <h2 class="mb-4">Active Orders</h2>
+                <?php if (empty($activeOrders)): ?>
+                    <div class="alert alert-info">No active orders at the moment.</div>
+                <?php else: ?>
+                    <div class="table-responsive mb-5">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Delivery</th>
+                                    <th>Address</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($activeOrders as $order):
+                                    // count items for this order
+                                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM order_details WHERE order_id = ?");
+                                    $countStmt->execute([$order['order_id']]);
+                                    $itemCount = $countStmt->fetchColumn();
+                                ?>
+                                    <tr class="order-card <?= htmlspecialchars($order['order_status']) ?>">
+                                        <td>#<?= htmlspecialchars($order['order_id']) ?></td>
+                                        <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
+                                        <td><?= $itemCount ?></td>
+                                        <td>₱<?= number_format($order['total_price'], 2) ?></td>
+                                        <td>
+                                            <span class="badge status-badge bg-<?= match ($order['order_status']) {
+                                                                                    'Pending'   => 'warning',
+                                                                                    'Shipped'   => 'info',
+                                                                                    'Delivered' => 'success',
+                                                                                    'Cancelled' => 'danger',
+                                                                                    default     => 'secondary'
+                                                                                } ?>">
+                                                <?= htmlspecialchars($order['order_status']) ?>
+                                            </span>
+                                        </td>
+                                        <td><?= htmlspecialchars($order['method_name']) ?></td>
+                                        <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
+                                        <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary view-order-details"
+                                                data-order-id="<?= $order['order_id'] ?>">
+                                                View Details
+                                            </button>
+                                            <?php if ($order['order_status'] === 'Shipped'): ?>
+                                                <button
+                                                    class="btn btn-sm btn-outline-success order-action"
+                                                    data-action="received"
+                                                    data-order-id="<?= $order['order_id'] ?>">
+                                                    Mark Received
+                                                </button>
+                                            <?php endif; ?>
+
+                                        </td>
+                                    </tr>
+
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+                <?php if (empty($activeOrders)): ?>
+                    <div class="alert alert-info">No active orders at the moment.</div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <!-- … -->
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
 
-        <!-- Completed Orders -->
-        <h2 class="mb-4">Completed Orders</h2>
-        <?php if (empty($completedOrders)): ?>
-            <div class="alert alert-info">No completed orders yet.</div>
-        <?php else: ?>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Order #</th>
-                            <th>Date</th>
-                            <th>Items</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Delivery</th>
-                            <th>Address</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($completedOrders as $order):
-                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM archived_order_details WHERE order_id = ?");
-                            $countStmt->execute([$order['order_id']]);
-                            $itemCount = $countStmt->fetchColumn();
-                        ?>
-                            <tr class="order-card Returned">
-                                <td>#<?= htmlspecialchars($order['order_id']) ?></td>
-                                <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
-                                <td><?= $itemCount ?></td>
-                                <td>₱<?= number_format($order['total_price'], 2) ?></td>
-                                <td><span class="badge status-badge bg-secondary">Completed</span></td>
-                                <td><?= htmlspecialchars($order['method_name']) ?></td>
-                                <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
-                                <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary view-order-details"
-                                        data-order-id="<?= htmlspecialchars($order['order_id']) ?>">
-                                        View Details
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-warning order-action"
-                                        data-action="return"
-                                        data-order-id="<?= htmlspecialchars($order['order_id']) ?>"
-                                        <?= $order['return_count'] ? 'disabled' : '' ?>>
-                                        Return
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div class="tab-pane fade" id="completed-orders" role="tabpanel" aria-labelledby="completed-tab">
+                <!-- Completed Orders -->
+                <h2 class="mb-4">Completed Orders</h2>
+                <?php if (empty($completedOrders)): ?>
+                    <div class="alert alert-info">No completed orders yet.</div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Delivery</th>
+                                    <th>Address</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($completedOrders as $order):
+                                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM archived_order_details WHERE order_id = ?");
+                                    $countStmt->execute([$order['order_id']]);
+                                    $itemCount = $countStmt->fetchColumn();
+                                ?>
+                                    <tr class="order-card Returned">
+                                        <td>#<?= htmlspecialchars($order['order_id']) ?></td>
+                                        <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
+                                        <td><?= $itemCount ?></td>
+                                        <td>₱<?= number_format($order['total_price'], 2) ?></td>
+                                        <td><span class="badge status-badge bg-secondary">Completed</span></td>
+                                        <td><?= htmlspecialchars($order['method_name']) ?></td>
+                                        <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
+                                        <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary view-order-details"
+                                                data-order-id="<?= htmlspecialchars($order['order_id']) ?>">
+                                                View Details
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning order-action"
+                                                data-action="return"
+                                                data-order-id="<?= htmlspecialchars($order['order_id']) ?>"
+                                                <?= $order['return_count'] ? 'disabled' : '' ?>>
+                                                Return
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+
+
+                <?php if (empty($completedOrders)): ?>
+                    <div class="alert alert-info">No completed orders yet.</div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <!-- … -->
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
-
-
-
+        </div>
     </div>
+
+
 
     <!-- Return Modal -->
     <div class="modal fade" id="returnModal" tabindex="-1">

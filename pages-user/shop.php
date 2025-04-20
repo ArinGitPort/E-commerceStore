@@ -162,7 +162,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                                         </span>
                                     </div>
                                 <?php endif; ?>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -274,6 +274,22 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
                 setTimeout(() => {
                     alert.alert('close');
                 }, 3000);
+            }
+        });
+
+        // quantity +/- buttons (delegated so it works inside the AJAX‑loaded modal)
+        $(document).on('click', '.modal-quantity-btn', function() {
+            const $btn = $(this);
+            const $container = $btn.closest('.quantity-selector');
+            const $input = $container.find('.modal-quantity-input');
+            let val = parseInt($input.val(), 10) || 1;
+            const min = parseInt($input.attr('min'), 10) || 1;
+            const max = parseInt($input.attr('max'), 10) || Infinity;
+
+            if ($btn.hasClass('modal-plus')) {
+                if (val < max) $input.val(val + 1);
+            } else {
+                if (val > min) $input.val(val - 1);
             }
         });
     </script>

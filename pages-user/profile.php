@@ -1,126 +1,127 @@
 <?php
-// Initialize session and DB connection
+// pages-user/profile.php
+declare(strict_types=1);
 require_once __DIR__ . '/../includes/session-init.php';
-require_once '../config/db_connection.php';
+require_once __DIR__ . '/../config/db_connection.php';
 
-// Redirect if not logged in
 if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: ../pages/login.php?redirect=profile");
     exit;
 }
 
-// Get user data
-$user = [];
-try {
-    $stmt = $pdo->prepare("
-        SELECT u.*, r.role_name, mt.type_name AS membership_type, m.start_date, m.expiry_date
-        FROM users u
-        JOIN roles r ON u.role_id = r.role_id
-        LEFT JOIN memberships m ON u.user_id = m.user_id
-        LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
-        WHERE u.user_id = ?
+// Fetch user + membership info
+$stmt = $pdo->prepare(
+    <<<SQL
+    SELECT u.*, r.role_name, mt.type_name AS membership_type, m.start_date, m.expiry_date
+    FROM users u
+    JOIN roles r ON u.role_id = r.role_id
+    LEFT JOIN memberships m ON u.user_id = m.user_id
+    LEFT JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
+    WHERE u.user_id = ?
+SQL
+);
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch() ?: [];
 
-    ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
-} catch (PDOException $e) {
-    $_SESSION['error'] = "Error loading profile: " . $e->getMessage();
-}
-
-// Handle form submissions (profile update, password change, email change)
+// Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || !validate_csrf_token($_POST['csrf_token'])) {
-        $_SESSION['error'] = "Invalid CSRF token";
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        $_SESSION['profile_error'] = "Invalid CSRF token.";
         header("Location: profile.php");
         exit;
     }
 
-    // Profile update
+    $redirectHash = ''; // Initialize redirect hash
+
+    // Profile Update
     if (isset($_POST['update_profile'])) {
-        $name = htmlspecialchars(trim($_POST['name']));
-        $phone = htmlspecialchars(trim($_POST['phone']));
-        $address = htmlspecialchars(trim($_POST['address']));
+        $name = trim($_POST['name']);
+        $phone = trim($_POST['phone']);
+        $address = trim($_POST['address']);
 
-        try {
-            $stmt = $pdo->prepare("
-                UPDATE users 
-                SET name = ?, phone = ?, address = ?
-                WHERE user_id = ?
-            ");
-            $stmt->execute([$name, $phone, $address, $_SESSION['user_id']]);
-            $_SESSION['success'] = "Profile updated successfully!";
-        } catch (PDOException $e) {
-            $_SESSION['error'] = "Error updating profile: " . $e->getMessage();
-        }
-    }
-
-    // Password change
-    if (isset($_POST['change_password'])) {
-        $current_password = $_POST['current_password'];
-        $new_password = $_POST['new_password'];
-        $confirm_password = $_POST['confirm_password'];
-
-        try {
-            $stmt = $pdo->prepare("SELECT password FROM users WHERE user_id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $db_password = $stmt->fetchColumn();
-
-            if (!password_verify($current_password, $db_password)) {
-                $_SESSION['error'] = "Current password is incorrect";
-            } elseif ($new_password !== $confirm_password) {
-                $_SESSION['error'] = "New passwords don't match";
-            } else {
-                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
-                $stmt->execute([$hashed_password, $_SESSION['user_id']]);
-                $_SESSION['success'] = "Password changed successfully!";
-            }
-        } catch (PDOException $e) {
-            $_SESSION['error'] = "Error changing password: " . $e->getMessage();
-        }
-    }
-
-    // Email change
-    if (isset($_POST['change_email'])) {
-        $new_email = filter_var($_POST['new_email'], FILTER_VALIDATE_EMAIL);
-        $password = $_POST['password'];
-
-        if (!$new_email) {
-            $_SESSION['error'] = "Please enter a valid email address";
+        if ($name === '') {
+            $_SESSION['profile_error'] = "Name cannot be empty.";
         } else {
-            try {
-                $stmt = $pdo->prepare("SELECT password FROM users WHERE user_id = ?");
-                $stmt->execute([$_SESSION['user_id']]);
-                $db_password = $stmt->fetchColumn();
-
-                if (!password_verify($password, $db_password)) {
-                    $_SESSION['error'] = "Password is incorrect";
-                } else {
-                    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
-                    $stmt->execute([$new_email]);
-                    if ($stmt->fetch()) {
-                        $_SESSION['error'] = "Email already in use";
-                    } else {
-                        $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE user_id = ?");
-                        $stmt->execute([$new_email, $_SESSION['user_id']]);
-                        $_SESSION['success'] = "Email changed successfully!";
-                    }
-                }
-            } catch (PDOException $e) {
-                $_SESSION['error'] = "Error changing email: " . $e->getMessage();
-            }
+            $upd = $pdo->prepare("UPDATE users SET name=?, phone=?, address=? WHERE user_id=?");
+            $upd->execute([$name, $phone, $address, $_SESSION['user_id']]);
+            $_SESSION['profile_success'] = "Profile updated.";
         }
+        $redirectHash = '#profile';
     }
 
-    header("Location: profile.php");
+    // Password Change
+    if (isset($_POST['change_password'])) {
+        $cur = $_POST['current_password'] ?? '';
+        $new = $_POST['new_password'] ?? '';
+        $conf = $_POST['confirm_password'] ?? '';
+
+        $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
+        $h->execute([$_SESSION['user_id']]);
+        $dbpw = $h->fetchColumn();
+
+        if (!password_verify($cur, $dbpw)) {
+            $_SESSION['password_error'] = "Current password incorrect.";
+        } elseif (strlen($new) < 8) {
+            $_SESSION['password_error'] = "New password must be at least 8 characters.";
+        } elseif ($new !== $conf) {
+            $_SESSION['password_error'] = "New passwords don't match.";
+        } else {
+            $hp = password_hash($new, PASSWORD_DEFAULT);
+            $upd = $pdo->prepare("UPDATE users SET password=? WHERE user_id=?");
+            $upd->execute([$hp, $_SESSION['user_id']]);
+            $_SESSION['password_success'] = "Password changed.";
+        }
+        $redirectHash = '#password';
+    }
+
+    // Email Change
+    if (isset($_POST['change_email'])) {
+        $newEmail = filter_var($_POST['new_email'] ?? '', FILTER_VALIDATE_EMAIL);
+        $pw = $_POST['password'] ?? '';
+
+        if (!$newEmail) {
+            $_SESSION['email_error'] = "Enter a valid email.";
+        } else {
+            $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
+            $h->execute([$_SESSION['user_id']]);
+            $dbpw = $h->fetchColumn();
+
+            if (!password_verify($pw, $dbpw)) {
+                $_SESSION['email_error'] = "Password incorrect.";
+            } else {
+                $chk = $pdo->prepare("SELECT 1 FROM users WHERE email=? AND user_id<>?");
+                $chk->execute([$newEmail, $_SESSION['user_id']]);
+                if ($chk->fetch()) {
+                    $_SESSION['email_error'] = "Email already in use.";
+                } else {
+                    $upd = $pdo->prepare("UPDATE users SET email=? WHERE user_id=?");
+                    $upd->execute([$newEmail, $_SESSION['user_id']]);
+                    $_SESSION['email_success'] = "Email changed.";
+                }
+            }
+        }
+        $redirectHash = '#email';
+    }
+
+    // Redirect with proper hash
+    header("Location: profile.php$redirectHash");
     exit;
 }
 
-// Flash messages
-$error = $_SESSION['error'] ?? null;
-$success = $_SESSION['success'] ?? null;
-unset($_SESSION['error'], $_SESSION['success']);
+// Clear flash messages
+$profile_error = $_SESSION['profile_error'] ?? null;
+$profile_success = $_SESSION['profile_success'] ?? null;
+unset($_SESSION['profile_error'], $_SESSION['profile_success']);
+
+$password_error = $_SESSION['password_error'] ?? null;
+$password_success = $_SESSION['password_success'] ?? null;
+unset($_SESSION['password_error'], $_SESSION['password_success']);
+
+$email_error = $_SESSION['email_error'] ?? null;
+$email_success = $_SESSION['email_success'] ?? null;
+unset($_SESSION['email_error'], $_SESSION['email_success']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -128,15 +129,13 @@ unset($_SESSION['error'], $_SESSION['success']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - BunniShop</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/profile.css">
 </head>
 
 <body>
-    <!-- Include the user navbar; ensure its logout triggers are updated -->
     <?php include '../includes/user-navbar.php'; ?>
 
     <div class="profile-container">
@@ -147,36 +146,27 @@ unset($_SESSION['error'], $_SESSION['success']);
                 <small class="text-white-50">Member since <?= date('F Y', strtotime($user['created_at'])) ?></small>
             </div>
 
-            <!-- Flash Messages -->
-            <?php if ($error): ?>
-                <div class="alert alert-danger m-3"><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
-            <?php if ($success): ?>
-                <div class="alert alert-success m-3"><?= htmlspecialchars($success) ?></div>
-            <?php endif; ?>
-
-            <!-- Tab navigation -->
             <ul class="nav nav-tabs" id="profileTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab">
-                        <i class="fas fa-user me-2"></i>Profile
+                    <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">
+                        <i class="fas fa-user me-2"></i> Profile
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">
-                        <i class="fas fa-lock me-2"></i>Password
+                    <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">
+                        <i class="fas fa-lock me-2"></i> Password
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">
-                        <i class="fas fa-envelope me-2"></i>Email
+                    <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab" aria-controls="email" aria-selected="false">
+                        <i class="fas fa-envelope me-2"></i> Email
                     </button>
                 </li>
             </ul>
 
             <div class="tab-content" id="profileTabsContent">
                 <!-- Profile Tab -->
-                <div class="tab-pane fade show active" id="profile" role="tabpanel">
+                <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
                     <form method="POST" action="profile.php">
                         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <div class="row mb-3">
@@ -185,8 +175,8 @@ unset($_SESSION['error'], $_SESSION['success']);
                                 <input type="text" class="form-control" id="name" name="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email (cannot be changed here)</label>
-                                <input type="email" class="form-control" id="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
+                                <label for="profile_email" class="form-label">Email (cannot be changed here)</label>
+                                <input type="email" class="form-control" id="profile_email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -227,14 +217,21 @@ unset($_SESSION['error'], $_SESSION['success']);
                         <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
                     </form>
                 </div>
-
                 <!-- Password Tab -->
-                <div class="tab-pane fade" id="password" role="tabpanel">
-                    <div class="security-alert">
+                <div class="tab-pane fade" id="password" role="tabpanel" aria-labelledby="password-tab">
+                    <?php if ($password_error): ?><div class="alert alert-danger"><?= $password_error ?></div><?php endif; ?>
+                    <?php if ($password_success): ?><div class="alert alert-success"><?= $password_success ?></div><?php endif; ?>
+
+                    <!-- Password tab banner -->
+                    <div class="alert alert-info d-flex align-items-center mb-4">
                         <i class="fas fa-shield-alt me-2"></i>
-                        For security, please don't share your password with anyone.
+                        <div>
+                            <strong>Password security reminder:</strong>
+                            For your safety, never share your password with anyone.
+                        </div>
                     </div>
-                    <form method="POST" action="profile.php">
+
+                    <form method="POST">
                         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <div class="mb-3">
                             <label for="current_password" class="form-label">Current Password</label>
@@ -243,10 +240,10 @@ unset($_SESSION['error'], $_SESSION['success']);
                         <div class="mb-3">
                             <label for="new_password" class="form-label">New Password</label>
                             <input type="password" class="form-control" id="new_password" name="new_password" required>
-                            <div class="form-text">Minimum 8 characters</div>
+                            <div class="form-text">At least 8 characters</div>
                         </div>
                         <div class="mb-3">
-                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                         </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
@@ -254,16 +251,24 @@ unset($_SESSION['error'], $_SESSION['success']);
                 </div>
 
                 <!-- Email Tab -->
-                <div class="tab-pane fade" id="email" role="tabpanel">
-                    <div class="security-alert">
+                <div class="tab-pane fade" id="email" role="tabpanel" aria-labelledby="email-tab">
+                    <?php if ($email_error): ?><div class="alert alert-danger"><?= $email_error ?></div><?php endif; ?>
+                    <?php if ($email_success): ?><div class="alert alert-success"><?= $email_success ?></div><?php endif; ?>
+
+                    <!-- Email tab banner -->
+                    <div class="alert alert-warning d-flex align-items-center mb-4">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Changing your email will affect your login credentials.
+                        <div>
+                            <strong>Email change warning:</strong>
+                            Changing your email will affect your login credentials.
+                        </div>
                     </div>
-                    <form method="POST" action="profile.php">
+
+                    <form method="POST">
                         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <div class="mb-3">
-                            <label for="current_email" class="form-label">Current Email</label>
-                            <input type="email" class="form-control" id="current_email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
+                            <label class="form-label">Current Email</label>
+                            <input type="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
                         </div>
                         <div class="mb-3">
                             <label for="new_email" class="form-label">New Email</label>
@@ -272,7 +277,7 @@ unset($_SESSION['error'], $_SESSION['success']);
                         <div class="mb-3">
                             <label for="password" class="form-label">Confirm Password</label>
                             <input type="password" class="form-control" id="password" name="password" required>
-                            <div class="form-text">Enter your password to confirm this change</div>
+                            <div class="form-text">Verify your identity</div>
                         </div>
                         <button type="submit" name="change_email" class="btn btn-primary">Change Email</button>
                     </form>
@@ -281,21 +286,19 @@ unset($_SESSION['error'], $_SESSION['success']);
         </div>
     </div>
 
-    <!-- Logout Confirmation Modal -->
-    <div class="logout-confirm" id="logoutConfirm" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-        <div class="logout-dialog" style="background: white; padding: 2rem; border-radius: 8px; max-width: 400px; width: 90%; text-align: center;">
-            <h3>Are you sure you want to logout?</h3>
+    <!-- Modals -->
+    <div class="logout-confirm" id="logoutConfirm" style="display:none;">
+        <div class="logout-dialog">
+            <h3>Logout Confirmation</h3>
             <p>You'll need to sign in again to access your account.</p>
-            <div class="logout-actions" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
-                <button class="logout-btn logout-cancel-btn" id="logoutCancel" style="padding: 0.5rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-                <!-- Use a button here instead of a direct link -->
-                <button class="logout-btn logout-confirm-btn" id="logoutConfirmBtn" style="padding: 0.5rem 1.5rem; border: none; border-radius: 4px; background: #e74c3c; color: white; cursor: pointer;">Logout</button>
+            <div class="logout-actions">
+                <button class="btn btn-secondary" id="logoutCancel">Cancel</button>
+                <button class="btn btn-danger" id="logoutConfirmBtn">Logout</button>
             </div>
         </div>
     </div>
 
-    <!-- Redirecting Modal (Bootstrap) -->
-    <div class="modal fade" id="redirectModal" tabindex="-1" aria-labelledby="redirectModalLabel" aria-hidden="true">
+    <div class="modal fade" id="redirectModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-body text-center">
@@ -307,55 +310,58 @@ unset($_SESSION['error'], $_SESSION['success']);
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Logout handling
             const logoutConfirm = document.getElementById('logoutConfirm');
-            const logoutTriggers = ['navLogout', 'mobileLogout'];
             const confirmBtn = document.getElementById('logoutConfirmBtn');
             const cancelBtn = document.getElementById('logoutCancel');
 
-            // Show modal
-            logoutTriggers.forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) {
-                    btn.addEventListener('click', e => {
-                        e.preventDefault();
-                        logoutConfirm.style.display = 'flex';
-                    });
-                }
+            // Show logout modal
+            ['navLogout', 'mobileLogout'].forEach(id => {
+                document.getElementById(id)?.addEventListener('click', e => {
+                    e.preventDefault();
+                    logoutConfirm.style.display = 'flex';
+                });
             });
 
-            // Hide modal
+            // Hide logout modal
             cancelBtn?.addEventListener('click', () => logoutConfirm.style.display = 'none');
             logoutConfirm?.addEventListener('click', e => {
                 if (e.target === logoutConfirm) logoutConfirm.style.display = 'none';
             });
 
-            // Confirm logout
+            // Handle logout
             confirmBtn?.addEventListener('click', () => {
-                document.getElementById('redirectMessage').innerText = 'Logging out...';
-                const modal = new bootstrap.Modal(document.getElementById('redirectModal'));
-                modal.show();
-                setTimeout(() => window.location.href = '/pages/logout.php', 2000);
+                new bootstrap.Modal('#redirectModal').show();
+                setTimeout(() => window.location.href = '/pages/logout.php', 1500);
+            });
+
+            // Tab handling
+            const hash = window.location.hash;
+            if (hash) {
+                const tabTrigger = document.querySelector(`[data-bs-target="${hash}"]`);
+                if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
+            }
+
+            // Update URL hash when tabs change
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    window.location.hash = tab.getAttribute('data-bs-target');
+                });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // find all [data-bs-toggle="tooltip"] elements
+            var triggers = [].slice.call(
+                document.querySelectorAll('[data-bs-toggle="tooltip"]')
+            );
+            triggers.forEach(function(el) {
+                new bootstrap.Tooltip(el);
             });
         });
     </script>
 
-
-    <!-- Bootstrap Bundle JS (includes Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Enable Bootstrap tabs -->
-    <script>
-        const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
-        tabEls.forEach(tabEl => {
-            tabEl.addEventListener('click', function(event) {
-                event.preventDefault();
-                const tab = new bootstrap.Tab(this);
-                tab.show();
-            });
-        });
     </script>
-
-
-
 </body>
 
 </html>
