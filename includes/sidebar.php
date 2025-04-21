@@ -84,7 +84,12 @@
             <a href="/pages/account-management.php" class="menuDashboard">Account Management</a>
           </div>
         </li>
-
+        <li>
+          <div class="listDiv">
+            <i class="fas fa-id-card imgIcon"></i>
+            <a href="/pages/subscription-management.php" class="menuDashboard">Membership Management</a>
+          </div>
+        </li>
         <!-- Dropdown for Audit Logs -->
         <li>
           <div class="listDiv dropdown-toggle" id="auditLogsToggle">

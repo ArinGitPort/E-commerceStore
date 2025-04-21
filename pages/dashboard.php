@@ -258,7 +258,9 @@ $pendingOrders = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
       <!-- Main Content -->
       <div class="container-fluid">
-
+        <h1 class="h4 text-primary">
+          <i class="fas fa-users-cog me-2"></i>Dashboard
+        </h1>
         <!-- Filter Form -->
         <div class="report-filter mb-4">
           <form method="POST">
