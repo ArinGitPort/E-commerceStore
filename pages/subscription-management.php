@@ -46,7 +46,7 @@ $totalPages   = (int)ceil($totalResults / $perPage);
 
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard – Bunniwinkle</title>
+    <title>Subscription Management – Bunniwinkle</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap CSS -->
@@ -57,6 +57,17 @@ $totalPages   = (int)ceil($totalResults / $perPage);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
+        /* Force black text in Summernote editors */
+        .note-editable,
+        .note-editable p {
+            color: #000000 !important;
+        }
+
+        /* For code view mode */
+        .CodeMirror {
+            color: #000000 !important;
+        }
+        
         html,
         body {
             height: 100%;
@@ -87,6 +98,23 @@ $totalPages   = (int)ceil($totalResults / $perPage);
             top: -10px;
             right: -10px;
         }
+        
+        .section-header {
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .section-card {
+            margin-bottom: 3rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        
+        .section-card .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -96,13 +124,13 @@ $totalPages   = (int)ceil($totalResults / $perPage);
     <?php include __DIR__ . '/../includes/sidebar.php'; ?>
 
     <div class="main-content">
-        <!-- header -->
+        <!-- Main header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h4 text-primary">
-                <i class="fas fa-users-cog me-2"></i>Membership Management
+            <h1 class="h3 text-primary">
+                <i class="fas fa-users-cog me-2"></i>Subscription Management
             </h1>
             <div class="dropdown">
-                <button class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
                     Quick Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -120,23 +148,15 @@ $totalPages   = (int)ceil($totalResults / $perPage);
             </div>
         </div>
 
-        <!-- tabs -->
-        <ul class="nav nav-tabs mb-4">
-            <li class="nav-item">
-                <a class="nav-link active" data-bs-toggle="tab" href="#membershipTiers">
-                    <i class="fas fa-layer-group me-2"></i>Tiers
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#auditLog">
-                    <i class="fas fa-clipboard-list me-2"></i>Audit Log
-                </a>
-            </li>
-        </ul>
-
-        <div class="tab-content">
-            <!-- Tiers -->
-            <div class="tab-pane fade show active" id="membershipTiers">
+        <!-- Membership Tiers Section -->
+        <div class="section-card card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    <i class="fas fa-layer-group me-2"></i>Membership Tiers
+                </h2>
+                <small class="text-muted"><?= count($memberships) ?> tiers available</small>
+            </div>
+            <div class="card-body">
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                     <?php foreach ($memberships as $tier): ?>
                         <div class="col">
@@ -171,7 +191,7 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                                             <?= $tier['can_access_exclusive'] ? 'Exclusive' : 'Basic' ?>
                                         </span>
                                     </div>
-                                    <div class="tier-description mb-3"><?= htmlspecialchars_decode($tier['description'] ?? '') ?></div>
+                                    <div class="tier-description mb-3"><?= $tier['description'] ?? '' ?></div>
                                     <div class="text-end small text-muted">
                                         Updated <?= date('M j, Y', strtotime($tier['modified_at'])) ?>
                                     </div>
@@ -181,74 +201,114 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                     <?php endforeach; ?>
                 </div>
             </div>
+        </div>
 
-            <!-- Audit Log -->
-            <div class="tab-pane fade" id="auditLog">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-4">
-                            <form class="w-50" method="GET">
-                                <div class="input-group">
-                                    <input type="text" name="search" class="form-control"
-                                        placeholder="Search…"
-                                        value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </form>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
-                                <i class="fas fa-file-export me-2"></i>Export CSV
+        <!-- Subscription Audit Log Section -->
+        <div class="section-card card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>Subscription Transactions
+                </h2>
+                <small class="text-muted"><?= $totalResults ?> records found</small>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-4">
+                    <form class="w-50" method="GET">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control"
+                                placeholder="Search by name, email or tier..."
+                                value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>User</th>
-                                        <th>Tier</th>
-                                        <th>Amount</th>
-                                        <th>Txn ID</th>
-                                        <th>Info</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($subscriptionAudits as $audit): ?>
-                                        <tr>
-                                            <td><?= date('M j, Y H:i', strtotime($audit['payment_date'])) ?></td>
-                                            <td>
-                                                <?= htmlspecialchars($audit['name']) ?><br>
-                                                <small class="text-muted"><?= htmlspecialchars($audit['email']) ?></small>
-                                            </td>
-                                            <td><?= htmlspecialchars($audit['type_name']) ?></td>
-                                            <td class="fw-bold">₱<?= number_format($audit['payment_amount'], 2) ?></td>
-                                            <td><code><?= htmlspecialchars($audit['transaction_id']) ?></code></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#transactionDetailsModal"
-                                                    data-details="<?= htmlspecialchars(json_encode($audit)) ?>">
-                                                    <i class="fas fa-info-circle"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <nav class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $i ?>&search=<?= urlencode($_GET['search'] ?? '') ?>">
-                                            <?= $i ?></a>
-                                    </li>
-                                <?php endfor; ?>
-                            </ul>
-                        </nav>
-                    </div>
+                    </form>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
+                        <i class="fas fa-file-export me-2"></i>Export CSV
+                    </button>
                 </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>User</th>
+                                <th>Tier</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th>Reference</th>
+                                <th>Info</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($subscriptionAudits) > 0): ?>
+                                <?php foreach ($subscriptionAudits as $audit): ?>
+                                    <tr>
+                                        <td><?= date('M j, Y H:i', strtotime($audit['payment_date'] ?? 'now')) ?></td>
+                                        <td>
+                                            <?= htmlspecialchars($audit['name'] ?? 'Unknown User') ?><br>
+                                            <small class="text-muted"><?= htmlspecialchars($audit['email'] ?? '') ?></small>
+                                        </td>
+                                        <td><?= htmlspecialchars($audit['type_name'] ?? 'Unknown Tier') ?></td>
+                                        <td class="fw-bold">₱<?= number_format($audit['payment_amount'] ?? 0, 2) ?></td>
+                                        <td>
+                                            <?php
+                                            $method = $audit['payment_method'] ?? '';
+                                            $badgeClass = [
+                                                'credit_card' => 'bg-primary',
+                                                'paypal' => 'bg-info',
+                                                'gcash' => 'bg-success',
+                                                'bank_transfer' => 'bg-warning'
+                                            ][$method] ?? 'bg-secondary';
+                                            ?>
+                                            <span class="badge <?= $badgeClass ?>">
+                                                <?= ucfirst(str_replace('_', ' ', $method)) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-<?=
+                                                ($audit['payment_status'] ?? '') === 'completed' ? 'success' : 
+                                                (($audit['payment_status'] ?? '') === 'pending' ? 'warning' : 'danger')
+                                            ?>">
+                                                <?= ucfirst($audit['payment_status'] ?? 'unknown') ?>
+                                            </span>
+                                        </td>
+                                        <td><small><code><?= htmlspecialchars($audit['reference_number'] ?? 'N/A') ?></code></small></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#transactionDetailsModal"
+                                                data-details="<?= htmlspecialchars(json_encode($audit ?: [])) ?>">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-search me-2"></i>No matching records found
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                                <a class="page-link" href="?page=<?= $i ?>&search=<?= urlencode($_GET['search'] ?? '') ?>">
+                                    <?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -263,12 +323,12 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Click “Download CSV” below to export the current subscription audit list.</p>
+                    <p>Click "Download CSV" below to export the current subscription audit list.</p>
                 </div>
                 <div class="modal-footer">
                     <form method="GET" action="/pages/ajax/export_subscription_audit.php">
                         <input type="hidden" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
-                        <button type="submit" class="btn btn-primary btn-sm">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fas fa-file-csv me-1"></i> Download CSV
                         </button>
                     </form>
@@ -304,8 +364,8 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Create Tier</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Tier</button>
                 </div>
             </form>
         </div>
@@ -339,8 +399,8 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -364,29 +424,19 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                     <p><strong>Tier:</strong> <span class="tier-details"></span></p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
-
-
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
     <script>
-        // Initialize both editors
+        // Initialize Summernote editors
         $('#membershipDescEditor, #newMembershipDescEditor').summernote({
-            toolbar: [
-                ['style', ['bold', 'italic', 'underline']],
-                ['para', ['ul', 'ol']],
-                ['view', ['codeview']]
-            ],
-            height: 200 // Set same height for both
-        });
-        $('#newMembershipDescEditor').summernote({
             toolbar: [
                 ['style', ['bold', 'italic', 'underline']],
                 ['para', ['ul', 'ol']],
@@ -437,7 +487,39 @@ $totalPages   = (int)ceil($totalResults / $perPage);
                 e.target.querySelector('.user-details').innerHTML = `<div>${data.name}</div><small>${data.email}</small>`;
                 e.target.querySelector('.tier-details').textContent = data.type_name;
             });
+
+        // Form submission for editing tier
+        $('#editTierForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            $.ajax({
+                url: '/pages/ajax/update_membership_tier.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $('#editTierModal').modal('hide');
+                    
+                    const alertHTML = `
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>Membership tier updated successfully!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.main-content').prepend(alertHTML);
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                },
+                error: function(xhr, status, error) {
+                    alert('Error updating tier: ' + error);
+                }
+            });
+        });
     </script>
 </body>
-
 </html>

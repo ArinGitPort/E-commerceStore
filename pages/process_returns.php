@@ -13,11 +13,16 @@ try {
             r.return_id, 
             r.return_date, 
             r.reason, 
-            ao.order_id, 
+            r.order_id,
+            r.is_archived,
             u.name AS customer_name
         FROM returns r
-        JOIN archived_orders ao ON r.order_id = ao.order_id
-        JOIN users u ON ao.customer_id = u.user_id
+        JOIN (
+            SELECT o.order_id, o.customer_id, FALSE AS is_archived FROM orders o
+            UNION ALL
+            SELECT ao.order_id, ao.customer_id, TRUE AS is_archived FROM archived_orders ao
+        ) AS combined_orders ON r.order_id = combined_orders.order_id
+        JOIN users u ON combined_orders.customer_id = u.user_id
         WHERE r.return_status = 'Pending'
         ORDER BY r.return_date DESC
     ");
@@ -30,14 +35,19 @@ try {
             r.return_id, 
             r.return_date, 
             r.reason, 
-            ao.order_id, 
+            r.order_id,
+            r.is_archived,
             u.name AS customer_name, 
             r.return_status,
             r.last_status_update
         FROM returns r
-        JOIN archived_orders ao ON r.order_id = ao.order_id
-        JOIN users u ON ao.customer_id = u.user_id
-        WHERE r.return_status IN ('Approved', 'Rejected')
+        JOIN (
+            SELECT o.order_id, o.customer_id, FALSE AS is_archived FROM orders o
+            UNION ALL
+            SELECT ao.order_id, ao.customer_id, TRUE AS is_archived FROM archived_orders ao
+        ) AS combined_orders ON r.order_id = combined_orders.order_id
+        JOIN users u ON combined_orders.customer_id = u.user_id
+        WHERE r.return_status IN ('Approved', 'Rejected', 'Processed')
         ORDER BY r.return_date DESC
     ");
     $processedStmt->execute();
@@ -47,6 +57,8 @@ try {
     exit;
 }
 ?>
+
+<!-- Rest of your HTML remains the same -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -63,8 +75,9 @@ try {
     <?php include '../includes/sidebar.php'; ?>
 
     <div class="container-fluid px-4 mt-4">
-        <h1 class="mb-4">Process Returns</h1>
-
+        <h1 class="h4 text-primary">
+            <i class="fas fa-users-cog me-2"></i>Process Returns
+        </h1>
         <!-- Pending Returns -->
         <div class="card mb-5 shadow">
             <div class="card-header bg-warning text-dark d-flex align-items-center">
@@ -107,6 +120,10 @@ try {
                                                 data-return-id="<?= $r['return_id'] ?>">
                                                 <i class="bi bi-x-lg"></i> Reject
                                             </button>
+                                            <button class="btn btn-sm btn-outline-primary view-order-details"
+                                                data-order-id="<?= htmlspecialchars($r['order_id']) ?>">
+                                                View Details
+                                            </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -114,6 +131,24 @@ try {
                         </table>
                     </div>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Order Details Modal -->
+        <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="orderDetailsModalLabel">Order Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="orderDetailsContent">
+                        <!-- Content will be loaded here via AJAX -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -219,7 +254,30 @@ try {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modals -->
+    <div class="logout-confirm" id="logoutConfirm" style="display:none;">
+        <div class="logout-dialog">
+            <h3>Logout Confirmation</h3>
+            <p>You'll need to sign in again to access your account.</p>
+            <div class="logout-actions">
+                <button class="btn btn-secondary" id="logoutCancel">Cancel</button>
+                <button class="btn btn-danger" id="logoutConfirmBtn">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="redirectModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <p id="redirectMessage">Redirecting...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -272,7 +330,8 @@ try {
                         },
                         body: JSON.stringify({
                             return_id: currentReturnId,
-                            new_status: currentAction === 'approve' ? 'Approved' : 'Rejected'
+                            new_status: currentAction === 'approve' ? 'Approved' : 'Rejected',
+                            processed_by: <?= $_SESSION['user_id'] ?? 'null' ?>
                         })
                     });
 
@@ -286,22 +345,28 @@ try {
 
                     // Add to processed table
                     const processedTable = document.querySelector('.processed-returns tbody');
-                    const newRow = document.createElement('tr');
-                    newRow.innerHTML = `
-        <td>${data.return.return_id}</td>
-        <td>#${data.return.order_id}</td>
-        <td>${data.return.customer_name}</td>
-        <td>${new Date(data.return.return_date).toLocaleDateString('en-US', { 
-          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
-        })}</td>
-        <td>${data.return.reason}</td>
-        <td>
-          <span class="badge bg-${data.return.return_status === 'Approved' ? 'success' : 'danger'}">
-            ${data.return.return_status}
-          </span>
-        </td>
-      `;
-                    processedTable.prepend(newRow);
+
+                    // Ensure the processedTable exists before trying to prepend
+                    if (processedTable) {
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                <td>${data.return.return_id}</td>
+                <td>#${data.return.order_id}</td>
+                <td>${data.return.customer_name}</td>
+                <td>${new Date(data.return.return_date).toLocaleDateString('en-US', { 
+                  month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                })}</td>
+                <td>${data.return.reason}</td>
+                <td>
+                  <span class="badge bg-${data.return.return_status === 'Approved' ? 'success' : 'danger'}">
+                    ${data.return.return_status}
+                  </span>
+                </td>
+            `;
+                        processedTable.prepend(newRow);
+                    } else {
+                        console.error('Processed returns table not found');
+                    }
 
                     showToast('success', `Return #${currentReturnId} ${currentAction}d successfully!`);
                 } catch (error) {
@@ -316,6 +381,7 @@ try {
                 }
             });
 
+
             // Toast Helper Function
             function showToast(type, message) {
                 const iconMap = {
@@ -329,6 +395,99 @@ try {
                 toast.className = `toast align-items-center text-white bg-${type} border-0`;
                 toastEl.show();
             }
+        });
+    </script>
+    <script>
+        $(document).ready(function() {
+            const orderDetailsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+
+            $('.view-order-details').on('click', function() {
+                const orderId = $(this).data('order-id');
+                const isArchived = $(this).data('is-archived');
+
+                $('#orderDetailsModalLabel').text('Order #' + orderId + ' Details');
+                $('#orderDetailsContent').html(`
+            <div class="text-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `);
+
+                $.ajax({
+                    url: '/pages/ajax/get_order_details.php',
+                    method: 'GET',
+                    data: {
+                        order_id: orderId,
+                        is_archived: isArchived
+                    },
+                    success: function(response) {
+                        $('#orderDetailsContent').html(response);
+                        orderDetailsModal.show();
+                    },
+                    error: function(xhr) {
+                        $('#orderDetailsContent').html(`
+                    <div class="alert alert-danger">
+                        Failed to load order details. Please try again later.
+                    </div>
+                `);
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Logout handling
+            const logoutConfirm = document.getElementById('logoutConfirm');
+            const confirmBtn = document.getElementById('logoutConfirmBtn');
+            const cancelBtn = document.getElementById('logoutCancel');
+
+            // Show logout modal
+            ['navLogout', 'mobileLogout'].forEach(id => {
+                document.getElementById(id)?.addEventListener('click', e => {
+                    e.preventDefault();
+                    logoutConfirm.style.display = 'flex';
+                });
+            });
+
+            // Hide logout modal
+            cancelBtn?.addEventListener('click', () => logoutConfirm.style.display = 'none');
+            logoutConfirm?.addEventListener('click', e => {
+                if (e.target === logoutConfirm) logoutConfirm.style.display = 'none';
+            });
+
+            // Handle logout
+            confirmBtn?.addEventListener('click', () => {
+                new bootstrap.Modal('#redirectModal').show();
+                setTimeout(() => window.location.href = '/pages/logout.php', 1500);
+            });
+
+            // Tab handling
+            const hash = window.location.hash;
+            if (hash) {
+                const tabTrigger = document.querySelector(`[data-bs-target="${hash}"]`);
+                if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
+            }
+
+            // Update URL hash when tabs change
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    window.location.hash = tab.getAttribute('data-bs-target');
+                });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // find all [data-bs-toggle="tooltip"] elements
+            var triggers = [].slice.call(
+                document.querySelectorAll('[data-bs-toggle="tooltip"]')
+            );
+            triggers.forEach(function(el) {
+                new bootstrap.Tooltip(el);
+            });
         });
     </script>
 

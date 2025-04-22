@@ -1,94 +1,126 @@
 <?php
-// ../pages/ajax/return_order.php
-header('Content-Type: application/json');
-
+// pages/ajax/return_order.php
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../../includes/session-init.php';
 
-// Only allow POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    die(json_encode(['success' => false, 'error' => 'Invalid request method']));
+// Set content type to JSON
+header('Content-Type: application/json');
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['success' => false, 'error' => 'User not logged in']);
+    exit();
 }
 
-// Decode JSON input
-$input = json_decode(file_get_contents('php://input'), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    http_response_code(400);
-    die(json_encode(['success' => false, 'error' => 'Invalid JSON']));
+// Get the JSON input
+$data = json_decode(file_get_contents('php://input'), true);
+
+// Validate input
+if (!isset($data['order_id']) || !isset($data['reason']) || !isset($data['items']) || empty($data['items'])) {
+    echo json_encode(['success' => false, 'error' => 'Invalid input data']);
+    exit();
 }
 
-$order_id = $input['order_id'] ?? null;
-$items    = $input['items']    ?? [];
-$reason   = trim($input['reason'] ?? '');
+$orderId = filter_var($data['order_id'], FILTER_VALIDATE_INT);
+$reason = trim($data['reason']);
+$items = $data['items'];
+$userId = $_SESSION['user_id'];
 
-if (!$order_id || !is_array($items) || empty($items)) {
-    http_response_code(400);
-    die(json_encode(['success' => false, 'error' => 'Missing order ID or items']));
+if (!$orderId || strlen($reason) < 20) {
+    echo json_encode(['success' => false, 'error' => 'Invalid order ID or reason too short']);
+    exit();
 }
 
 try {
+    // Start transaction
     $pdo->beginTransaction();
-
-    // 1. Verify this order exists in archived_orders
-    $archived = $pdo->prepare("SELECT 1 FROM archived_orders WHERE order_id = ?");
-    $archived->execute([$order_id]);
-    if (! $archived->fetch()) {
-        throw new Exception("Order not found or not completed");
+    
+    // Verify this is a completed order in archived_orders
+    $orderSql = "SELECT ao.order_id, ao.customer_id, ao.total_price 
+                FROM archived_orders ao 
+                WHERE ao.order_id = ? AND ao.customer_id = ?";
+    $orderStmt = $pdo->prepare($orderSql);
+    $orderStmt->execute([$orderId, $userId]);
+    $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$order) {
+        throw new Exception("Order not found or doesn't belong to you");
     }
-
-    // 2. Insert into returns table
-    $insReturn = $pdo->prepare("
-        INSERT INTO returns (order_id, processed_by, reason)
-        VALUES (?, ?, ?)
-    ");
-    $insReturn->execute([
-        $order_id,
-        $_SESSION['user_id'],
-        $reason
-    ]);
+    
+    // Check if return already exists for this order
+    $checkSql = "SELECT return_id FROM returns WHERE archived_order_id = ?";
+    $checkStmt = $pdo->prepare($checkSql);
+    $checkStmt->execute([$orderId]);
+    
+    if ($checkStmt->rowCount() > 0) {
+        throw new Exception("A return request already exists for this order");
+    }
+    
+    // Insert return
+    $returnSql = "INSERT INTO returns (archived_order_id, is_archived, order_id, reason, return_status) 
+                  VALUES (?, TRUE, ?, ?, 'Pending')";
+    $returnStmt = $pdo->prepare($returnSql);
+    $returnStmt->execute([$orderId, $orderId, $reason]);
     $returnId = $pdo->lastInsertId();
-
-    // 3. Prepare restock and detail‑insert statements
-    $restockSt = $pdo->prepare("
-        UPDATE products
-        SET stock = stock + ?
-        WHERE product_id = ?
-    ");
-    $detailSt  = $pdo->prepare("
-        INSERT INTO return_details (return_id, product_id, quantity)
-        VALUES (?, ?, ?)
-    ");
-
-    // 4. Process each returned item
-    foreach ($items as $it) {
-        $prodId = (int)($it['product_id'] ?? 0);
-        $qty    = (int)($it['quantity']   ?? 0);
-        if ($prodId <= 0 || $qty <= 0) {
-            throw new Exception("Invalid product or quantity");
+    
+    // Insert return items
+    $itemSql = "INSERT INTO return_items (return_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)";
+    $itemStmt = $pdo->prepare($itemSql);
+    
+    // Get products and their prices
+    foreach ($items as $item) {
+        // Verify product exists in the order
+        $checkProdSql = "SELECT aod.total_price / aod.quantity as unit_price
+                        FROM archived_order_details aod 
+                        WHERE aod.order_id = ? AND aod.product_id = ?";
+        $checkProdStmt = $pdo->prepare($checkProdSql);
+        $checkProdStmt->execute([$orderId, $item['product_id']]);
+        $prodInfo = $checkProdStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$prodInfo) {
+            throw new Exception("Product ID {$item['product_id']} not found in order");
         }
-        // Restock
-        $restockSt->execute([$qty, $prodId]);
-        // Record return detail
-        $detailSt->execute([$returnId, $prodId, $qty]);
+        
+        // Insert the return item
+        $itemStmt->execute([
+            $returnId, 
+            $item['product_id'], 
+            $item['quantity'], 
+            $prodInfo['unit_price']
+        ]);
     }
-
-    // 5. (Optional) Audit log entry
-    $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type)
-        VALUES (?, ?, ?, ?, 'UPDATE')
-    ")->execute([
-        $_SESSION['user_id'],
-        "Processed return for order $order_id",
-        'returns',
-        $returnId
-    ]);
-
+    
+    // Add status history entry
+    $historySql = "INSERT INTO return_status_history (return_id, old_status, new_status, notes) 
+                  VALUES (?, NULL, 'Pending', 'Return request created by customer')";
+    $historyStmt = $pdo->prepare($historySql);
+    $historyStmt->execute([$returnId]);
+    
+    // Commit transaction
     $pdo->commit();
-    echo json_encode(['success' => true, 'return_id' => $returnId]);
-
+    
+    // Return success
+    echo json_encode([
+        'success' => true, 
+        'message' => 'Return request submitted successfully', 
+        'return_id' => $returnId
+    ]);
+    
 } catch (Exception $e) {
-    $pdo->rollBack();
-    http_response_code(500);
+    // Rollback transaction on error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    
+} catch (PDOException $e) {
+    // Rollback transaction on database error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    
+    // Log error instead of showing raw DB error to user
+    error_log("Return processing error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Database error occurred. Please try again.']);
 }

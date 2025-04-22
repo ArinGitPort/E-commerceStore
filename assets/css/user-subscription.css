@@ -1,0 +1,34 @@
+    /* Subscription Successful Modal */
+    .success-modal {
+        background: linear-gradient(to right, #c8e2f6, #ffdffe); /* Gradient matching your theme */
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .success-modal .modal-header {
+        background-color: #6C4AB6; /* Primary color */
+        color: white;
+    }
+
+    .success-modal .modal-footer {
+        background: transparent;
+    }
+
+    .success-modal .btn-success {
+        background-color: #6C4AB6; /* Primary color */
+        border: none;
+    }
+
+    .success-modal .btn-secondary {
+        background-color: #8D72E1; /* Secondary color */
+        border: none;
+    }
+
+    .success-modal h5 {
+        color: #6C4AB6; /* Primary color */
+    }
+
+    .success-modal .spinner-border {
+        color: #6C4AB6;
+    }

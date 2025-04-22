@@ -1,31 +1,49 @@
 <?php
 // pages/ajax/create_membership_tier.php
-session_start();
+
 require_once __DIR__ . '/../../includes/session-init.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
+header('Content-Type: application/json');
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../subscription-management.php');
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
     exit;
 }
 
-$name = trim($_POST['type_name'] ?? '');
-$price = floatval($_POST['price'] ?? 0);
-$description = $_POST['description'] ?? '';
-$exclusive = isset($_POST['can_access_exclusive']) ? 1 : 0;
-
 try {
+    // Validate input
+    $name = trim($_POST['type_name'] ?? '');
+    $price = filter_input(INPUT_POST, 'price', FILTER_VALIDATE_FLOAT);
+    $description = $_POST['description'] ?? '';
+    $exclusive = isset($_POST['can_access_exclusive']) ? 1 : 0;
+
+    if (empty($name) || $price === false || $price < 0) {
+        throw new InvalidArgumentException('Invalid input parameters');
+    }
+
+    // Insert into database
     $stmt = $pdo->prepare("
         INSERT INTO membership_types 
         (type_name, price, description, can_access_exclusive)
-        VALUES (?, ?, ?, ?)
+        VALUES (:name, :price, :desc, :exclusive)
     ");
-    $stmt->execute([$name, $price, $description, $exclusive]);
-    $_SESSION['message'] = 'Tier created successfully';
-} catch (PDOException $e) {
-    $_SESSION['error'] = 'Create failed: ' . $e->getMessage();
-}
+    
+    $stmt->execute([
+        ':name' => $name,
+        ':price' => $price,
+        ':desc' => $description,
+        ':exclusive' => $exclusive
+    ]);
 
-header('Location: ../subscription-management.php');
+    $_SESSION['message'] = 'Tier created successfully';
+    echo json_encode(['success' => true]);
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Create failed: ' . $e->getMessage()
+    ]);
+}
 exit;
-?>

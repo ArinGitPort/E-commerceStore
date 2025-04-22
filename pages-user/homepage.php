@@ -37,7 +37,7 @@ require_once __DIR__ . '/../includes/session-init.php';
                 <p class="lead mt-3">
                     Discover handcrafted products that bring warmth and joy to your everyday life.
                 </p>
-                <a href="../pages-user/shop.php" class="shop-btn">Shop Now</a>
+                <a href="../pages-user/user-subscription-application.php" class="shop-btn">Be a member!</a>
 
             </div>
 

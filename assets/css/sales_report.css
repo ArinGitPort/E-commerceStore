@@ -69,3 +69,19 @@
   background-color: #1cc88a;
   color: white;
 }
+
+
+/* Minimal Flat Design Alternative */
+.badge-status {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: white;
+}
+
+.status-completed { background-color: #10B981; }
+.status-returned { background-color: #F59E0B; }
+.status-rejected { background-color: #EF4444; }

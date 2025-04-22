@@ -30,6 +30,7 @@ $query = "SELECT
             ao.order_date,
             ao.total_price,
             ao.discount,
+            ao.order_status,
             u.name AS customer_name,
             dm.method_name AS delivery_method
           FROM archived_orders ao
@@ -92,13 +93,13 @@ $products_query = "SELECT
                     p.product_id,
                     p.product_name,
                     c.category_name,
-                    SUM(od.quantity) as total_quantity,
-                    SUM(od.total_price) as total_revenue
-                  FROM order_details od
-                  JOIN products p ON od.product_id = p.product_id
+                    SUM(aod.quantity) as total_quantity,
+                    SUM(aod.total_price) as total_revenue
+                  FROM archived_order_details aod
+                  JOIN products p ON aod.product_id = p.product_id
                   JOIN categories c ON p.category_id = c.category_id
-                  JOIN orders o ON od.order_id = o.order_id
-                  WHERE o.order_date BETWEEN :start_date AND :end_date
+                  JOIN archived_orders ao ON aod.order_id = ao.order_id
+                  WHERE ao.order_date BETWEEN :start_date AND :end_date
                   GROUP BY p.product_id
                   ORDER BY total_quantity DESC
                   LIMIT 5";
@@ -137,151 +138,177 @@ $top_products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 
-        <!-- Filter Form -->
-        <div class="report-filter mb-4">
-          <form method="POST">
-            <div class="row g-3">
-              <div class="col-md-3">
-                <label for="start_date" class="form-label">Start Date</label>
-                <input type="date" class="form-control" id="start_date" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
-              </div>
-              <div class="col-md-3">
-                <label for="end_date" class="form-label">End Date</label>
-                <input type="date" class="form-control" id="end_date" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-success w-100" onclick="exportToExcel()">Export to Excel</button>
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-info w-100" onclick="window.print()">Print Report</button>
-              </div>
+      <!-- Filter Form -->
+      <div class="report-filter mb-4">
+        <form method="POST">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label for="start_date" class="form-label">Start Date</label>
+              <input type="date" class="form-control" id="start_date" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
             </div>
-          </form>
-        </div>
+            <div class="col-md-3">
+              <label for="end_date" class="form-label">End Date</label>
+              <input type="date" class="form-control" id="end_date" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="button" class="btn btn-success w-100" onclick="exportToExcel()">Export to Excel</button>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="button" class="btn btn-info w-100" onclick="window.print()">Print Report</button>
+            </div>
+          </div>
+        </form>
+      </div>
 
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-          <div class="col-md-3">
-            <div class="card-counter primary">
-              <div class="count-numbers"><?= number_format($summary['total_orders']) ?></div>
-              <div class="count-name">Completed Orders</div>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="card-counter success">
-              <div class="count-numbers">₱<?= number_format($summary['total_revenue'], 2) ?></div>
-              <div class="count-name">Total Revenue</div>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="card-counter warning">
-              <div class="count-numbers">₱<?= number_format($summary['avg_order_value'], 2) ?></div>
-              <div class="count-name">Avg. Order Value</div>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="card-counter info">
-              <div class="count-numbers"><?= number_format($summary['unique_customers']) ?></div>
-              <div class="count-name">Unique Customers</div>
-            </div>
+      <!-- Summary Cards -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card-counter primary">
+            <div class="count-numbers"><?= number_format($summary['total_orders']) ?></div>
+            <div class="count-name">Completed Orders</div>
           </div>
         </div>
+        <div class="col-md-3">
+          <div class="card-counter success">
+            <div class="count-numbers">₱<?= number_format($summary['total_revenue'], 2) ?></div>
+            <div class="count-name">Total Revenue</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card-counter warning">
+            <div class="count-numbers">₱<?= number_format($summary['avg_order_value'], 2) ?></div>
+            <div class="count-name">Avg. Order Value</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card-counter info">
+            <div class="count-numbers"><?= number_format($summary['unique_customers']) ?></div>
+            <div class="count-name">Unique Customers</div>
+          </div>
+        </div>
+      </div>
 
+      <!-- Sales Trend Chart -->
+      <!-- Charts Row - Sales Trend + Top Products -->
+      <div class="row mb-4">
         <!-- Sales Trend Chart -->
-        <!-- Charts Row - Sales Trend + Top Products -->
-        <div class="row mb-4">
-          <!-- Sales Trend Chart -->
-          <div class="col-md-6">
-            <div class="card h-100">
-              <div class="card-header">
-                <h5 class="card-title">Sales Trend (<?= date('M j', strtotime($start_date)) ?> - <?= date('M j', strtotime($end_date)) ?>)</h5>
-              </div>
-              <div class="card-body">
-                <div class="chart-container">
-                  <canvas id="salesTrendChart"></canvas>
-                </div>
-              </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="card-title">Sales Trend (<?= date('M j', strtotime($start_date)) ?> - <?= date('M j', strtotime($end_date)) ?>)</h5>
             </div>
-          </div>
-
-          <!-- Top Products Chart -->
-          <div class="col-md-6">
-            <div class="card h-100">
-              <div class="card-header">
-                <h5 class="card-title">Top Selling Products</h5>
-              </div>
-              <div class="card-body">
-                <div class="chart-container">
-                  <canvas id="topProductsChart"></canvas>
-                </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="salesTrendChart"></canvas>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Order Details -->
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="card-title">Completed Order Details</h5>
-          </div>
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-striped" id="orderTable">
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Delivery Method</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                    <th>Discount</th>
-                    <th>Net Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php foreach ($archivedOrders as $order): ?>
-                    <tr>
-                      <td>#<?= $order['order_id'] ?></td>
-                      <td><?= date('M d, Y h:i A', strtotime($order['order_date'])) ?></td>
-                      <td><?= htmlspecialchars($order['customer_name']) ?></td>
-                      <td>
-                        <span class="badge-delivery"><?= htmlspecialchars($order['delivery_method']) ?></span>
-                      </td>
-                      <td>
-                        <span class="badge-status status-completed">Completed</span>
-                      </td>
-                      <td>₱<?= number_format($order['total_price'], 2) ?></td>
-                      <td>₱<?= number_format($order['discount'], 2) ?></td>
-                      <td>₱<?= number_format($order['total_price'] - $order['discount'], 2) ?></td>
-                    </tr>
-                  <?php endforeach; ?>
-                  <?php if (empty($archivedOrders)): ?>
-                    <tr>
-                      <td colspan="8" class="text-center">No completed orders found for the selected period</td>
-                    </tr>
-                  <?php endif; ?>
-                </tbody>
-                <?php if (!empty($archivedOrders)): ?>
-                  <tfoot>
-                    <tr>
-                      <th colspan="5">Totals</th>
-                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')), 2) ?></th>
-                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
-                      <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')) - array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
-                    </tr>
-                  </tfoot>
-                <?php endif; ?>
-              </table>
+        <!-- Top Products Chart -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="card-title">Top Selling Products</h5>
             </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="topProductsChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Details -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title">Completed Order Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped" id="orderTable">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Delivery Method</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Discount</th>
+                  <th>Net Total</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($archivedOrders as $order): ?>
+                  <tr>
+                    <td>#<?= $order['order_id'] ?></td>
+                    <td><?= date('M d, Y h:i A', strtotime($order['order_date'])) ?></td>
+                    <td><?= htmlspecialchars($order['customer_name']) ?></td>
+                    <td><span class="badge-delivery"><?= htmlspecialchars($order['delivery_method']) ?></span></td>
+                    <td><span class="badge-status <?= strtolower($order['order_status']) === 'completed' ? 'status-completed' : (strtolower($order['order_status']) === 'returned' ? 'status-returned' : 'status-rejected') ?>">
+                        <?= htmlspecialchars($order['order_status']) ?>
+                      </span></td>
+                    <td>₱<?= number_format($order['total_price'], 2) ?></td>
+                    <td>₱<?= number_format($order['discount'], 2) ?></td>
+                    <td>₱<?= number_format($order['total_price'] - $order['discount'], 2) ?></td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetails(<?= $order['order_id'] ?>)">
+                        <i class="fas fa-eye"></i> View
+                      </button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+              <?php if (!empty($archivedOrders)): ?>
+                <tfoot>
+                  <tr>
+                    <th colspan="5">Totals</th>
+                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')), 2) ?></th>
+                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
+                    <th>₱<?= number_format(array_sum(array_column($archivedOrders, 'total_price')) - array_sum(array_column($archivedOrders, 'discount')), 2) ?></th>
+                  </tr>
+                </tfoot>
+              <?php endif; ?>
+            </table>
           </div>
         </div>
       </div>
     </div>
   </div>
+  </div>
+
+  <!-- Order Details Modal -->
+  <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Order Details #<span id="modalOrderId"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modalContent">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="printOrderDetails()">
+            <i class="fas fa-print me-1"></i> Print
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
@@ -477,6 +504,77 @@ $top_products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
         }
       });
     });
+  </script>
+
+  <script>
+    function viewOrderDetails(orderId) {
+      // Show loading spinner
+      document.getElementById('modalContent').innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  `;
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+      modal.show();
+
+      // Fetch order details as HTML
+      fetch(`../pages/ajax/get_order_details.php?order_id=${orderId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
+        })
+        .then(html => {
+          document.getElementById('modalContent').innerHTML = html;
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          document.getElementById('modalContent').innerHTML = `
+        <div class="alert alert-danger">Error loading order details: ${error.message}</div>
+      `;
+        });
+    }
+
+    // Helper function for status badges
+    function getStatusClass(status) {
+      switch (status.toLowerCase()) {
+        case 'completed':
+          return 'bg-success';
+        case 'returned':
+          return 'bg-warning';
+        case 'rejected':
+          return 'bg-danger';
+        default:
+          return 'bg-secondary';
+      }
+    }
+
+    // Print order details
+    function printOrderDetails() {
+      const printContent = document.getElementById('modalContent').innerHTML;
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html>
+        <head>
+            <title>Print Order Details</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        </head>
+        <body>
+            <div class="container mt-4">
+                <h3 class="text-center mb-4">Order #${document.getElementById('modalOrderId').textContent}</h3>
+                ${printContent}
+            </div>
+        </body>
+        </html>
+    `);
+      printWindow.document.close();
+      printWindow.print();
+    }
   </script>
 </body>
 

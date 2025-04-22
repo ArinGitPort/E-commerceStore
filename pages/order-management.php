@@ -137,6 +137,9 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
     <div class="container-fluid mt-4">
         <div class="row">
             <!-- Sidebar / Filters -->
+            <h1 class="h4 text-primary">
+            <i class="fas fa-users-cog me-2"></i>Order Management
+          </h1>
             <div class="col-md-3">
                 <div class="card mb-4">
                     <div class="card-body">
@@ -161,12 +164,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                     </div>
                 </div>
 
-                <div class="card" style="margin-top: 20px;">
-                    <div class="card-body">
-                        <h5 class="card-title">Recent Returns</h5>
-                        <div id="liveReturnAlerts" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
-                    </div>
-                </div>
+
             </div>
 
 
@@ -213,9 +211,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                                 <span class="current-status" id="status-<?= $order['order_id'] ?>">
                                                     <?= ucfirst($order['order_status']) ?>
                                                 </span>
-                                                <button class="btn btn-sm btn-primary btn-update-status" data-order-id="<?= $order['order_id'] ?>">
-                                                    Update Status
-                                                </button>
+
                                             </td>
                                             <td>
                                                 <?php if ($order['estimated_delivery']): ?>

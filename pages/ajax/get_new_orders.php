@@ -10,13 +10,13 @@ try {
         SELECT 
             o.order_id, 
             u.name AS customer, 
-            UNIX_TIMESTAMP(o.created_at) AS timestamp,
+            UNIX_TIMESTAMP(o.order_date) AS timestamp,
             o.order_status,
             o.total_price
         FROM orders o
         JOIN users u ON o.customer_id = u.user_id
-        WHERE UNIX_TIMESTAMP(o.created_at) > ?
-        ORDER BY o.created_at ASC
+        WHERE UNIX_TIMESTAMP(o.order_date) > ?
+        ORDER BY o.order_date ASC
         LIMIT 50
     ");
     $stmt->execute([$lastCheck]);
