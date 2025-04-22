@@ -200,15 +200,6 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                         </table>
                     </div>
                 <?php endif; ?>
-                <?php if (empty($activeOrders)): ?>
-                    <div class="alert alert-info">No active orders at the moment.</div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <!-- … -->
-                        </table>
-                    </div>
-                <?php endif; ?>
             </div>
 
             <div class="tab-pane fade" id="completed-orders" role="tabpanel" aria-labelledby="completed-tab">
@@ -262,18 +253,6 @@ $completedOrders = $compStmt->fetchAll(PDO::FETCH_ASSOC);
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-
-
-
-                <?php if (empty($completedOrders)): ?>
-                    <div class="alert alert-info">No completed orders yet.</div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <!-- … -->
                         </table>
                     </div>
                 <?php endif; ?>
