@@ -27,7 +27,7 @@ $items = $data['items'];
 $userId = $_SESSION['user_id'];
 
 if (!$orderId || strlen($reason) < 20) {
-    echo json_encode(['success' => false, 'error' => 'Invalid order ID or reason too short']);
+    echo json_encode(['success' => false, 'error' => 'Reason too short']);
     exit();
 }
 
@@ -53,7 +53,7 @@ try {
     $checkStmt->execute([$orderId]);
     
     if ($checkStmt->rowCount() > 0) {
-        throw new Exception("A return request already exists for this order");
+        throw new Exception("Return requested for this order");
     }
     
     // Insert return

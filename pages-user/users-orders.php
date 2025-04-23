@@ -226,6 +226,12 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="tab-pane fade show active" id="active-orders" role="tabpanel" aria-labelledby="active-tab">
                 <!-- Active Orders -->
                 <h2 class="mb-4">Active Orders</h2>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" data-filter="all">All Active</button>
+                    <button type="button" class="btn btn-outline-warning" data-filter="Pending">Pending</button>
+                    <button type="button" class="btn btn-outline-info" data-filter="Shipped">Shipped</button>
+                    <button type="button" class="btn btn-outline-danger" data-filter="Cancelled">Cancelled</button>
+                </div>
                 <?php if (empty($activeOrders)): ?>
                     <div class="alert alert-info">No active orders at the moment.</div>
                 <?php else: ?>
@@ -233,7 +239,6 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Order #</th>
                                     <th>Date</th>
                                     <th>Items</th>
                                     <th>Total</th>
@@ -251,12 +256,11 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                                     $countStmt->execute([$order['order_id']]);
                                     $itemCount = $countStmt->fetchColumn();
                                 ?>
-                                    <tr class="order-card <?= htmlspecialchars($order['order_status']) ?>">
-                                        <td>#<?= htmlspecialchars($order['order_id']) ?></td>
-                                        <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
-                                        <td><?= $itemCount ?></td>
-                                        <td>₱<?= number_format($order['total_price'], 2) ?></td>
-                                        <td>
+                                    <tr class="order-card <?= htmlspecialchars(string: $order['order_status']) ?>">
+                                        <td data-label="Date"><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
+                                        <td data-label="Items"><?= $itemCount ?></td>
+                                        <td data-label="Total">₱<?= number_format($order['total_price'], 2) ?></td>
+                                        <td data-label="Status">
                                             <span class="badge status-badge bg-<?= match ($order['order_status']) {
                                                                                     'Pending'   => 'warning',  // Pending orders get a yellow (warning) badge
                                                                                     'Shipped'   => 'info',     // Shipped orders get a blue (info) badge
@@ -270,10 +274,10 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                                             </span>
                                         </td>
 
-                                        <td><?= htmlspecialchars($order['method_name']) ?></td>
-                                        <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
-                                        <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
-                                        <td>
+                                        <td data-label="Delivery"><?= htmlspecialchars($order['method_name']) ?></td>
+                                        <td data-label="Address"><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
+                                        <td data-label="Phone"><?= htmlspecialchars($order['shipping_phone']) ?></td>
+                                        <td data-label="Actions" class="action-buttons">
                                             <button class="btn btn-sm btn-outline-primary view-order-details"
                                                 data-order-id="<?= $order['order_id'] ?>">
                                                 View Details
@@ -285,6 +289,60 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                                                     Mark Received
                                                 </button>
                                             <?php endif; ?>
+                                            <!-- Add this Cancel button for Pending orders only -->
+                                            <?php if ($order['order_status'] === 'Pending'): ?>
+                                                <button class="btn btn-sm btn-outline-danger order-action"
+                                                    data-action="cancel"
+                                                    data-order-id="<?= $order['order_id'] ?>">
+                                                    Cancel Order
+                                                </button>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <!-- Add this Cancel Order Confirmation Modal -->
+                                        <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="cancelOrderModalLabel">Confirm Order Cancellation</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>Are you sure you want to cancel this order? This action cannot be undone.</p>
+                                                        <div class="mb-3">
+                                                            <label for="cancelReason" class="form-label">Reason for cancellation (optional):</label>
+                                                            <textarea id="cancelReason" class="form-control" rows="2" placeholder="e.g. Found a better option..."></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Order</button>
+                                                        <button type="button" id="confirmCancelOrderBtn" class="btn btn-danger">Yes, Cancel Order</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Add this for Cancel Success Modal -->
+                                        <div class="modal fade" id="cancelSuccessModal" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-success text-white">
+                                                        <h5 class="modal-title">Success!</h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="bi bi-check-circle-fill fs-3 text-success me-3"></i>
+                                                            <span>Order has been cancelled successfully!</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Close</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         </td>
                                     </tr>
 
@@ -301,11 +359,15 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php if (empty($completedOrders)): ?>
                     <div class="alert alert-info">No completed orders yet.</div>
                 <?php else: ?>
+                    <div class="btn-group mb-3" role="group">
+                        <button type="button" class="btn btn-outline-secondary active" data-completed-filter="all">All Completed</button>
+                        <button type="button" class="btn btn-outline-success" data-completed-filter="Completed">Completed</button>
+                        <button type="button" class="btn btn-outline-secondary" data-completed-filter="Returned">Returned</button>
+                    </div>
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Order #</th>
                                     <th>Date</th>
                                     <th>Items</th>
                                     <th>Total</th>
@@ -322,12 +384,11 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                                     $countStmt->execute([$order['order_id']]);
                                     $itemCount = $countStmt->fetchColumn();
                                 ?>
-                                    <tr class="order-card Returned">
-                                        <td>#<?= htmlspecialchars($order['order_id']) ?></td>
+                                    <tr class="order-card <?= htmlspecialchars($order['order_status']) ?>">
                                         <td><?= date('M d, Y', strtotime($order['order_date'])) ?></td>
                                         <td><?= $itemCount ?></td>
                                         <td>₱<?= number_format($order['total_price'], 2) ?></td>
-                                        <td><span class="badge status-badge bg-secondary">Completed</span></td>
+                                        <td><span class="badge status-badge bg-<?= $order['order_status'] === 'Completed' ? 'success' : 'secondary' ?>"><?= htmlspecialchars($order['order_status']) ?></span></td>
                                         <td><?= htmlspecialchars($order['method_name'] ?? '') ?></td>
                                         <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
                                         <td><?= htmlspecialchars($order['shipping_phone'] ?? '') ?></td>
@@ -362,8 +423,6 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Return #</th>
-                                    <th>Order #</th>
                                     <th>Date Requested</th>
                                     <th>Items</th>
                                     <th>Status</th>
@@ -375,8 +434,8 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                             <tbody>
                                 <?php foreach ($returns as $return): ?>
                                     <tr class="return-status <?= htmlspecialchars($return['return_status']) ?>">
-                                        <td>#<?= $return['return_id'] ?></td>
-                                        <td>#<?= $return['order_id'] ?></td>
+                                        <td><?= date('M d, Y', strtotime($return['return_date'])) ?></td>
+                                        <td><?= $return['item_count'] ?></td>
                                         <td><?= date('M d, Y', strtotime($return['return_date'])) ?></td>
                                         <td><?= $return['item_count'] ?></td>
                                         <td>
@@ -434,7 +493,7 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Return Order #<span id="returnOrderIdLabel"></span></h5>
+                    <h5 class="modal-title">Return Order<span id="returnOrderIdLabel"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -792,34 +851,39 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
             new bootstrap.Modal('#returnStatusModal').show();
         }
 
-        // Mark order as received
-        $(document).on('click', '.order-action[data-action="received"]', function() {
-            const orderId = $(this).data('order-id');
-            if (!confirm(`Confirm you've received order #${orderId}?`)) return;
 
-            fetch('/pages/ajax/update_order_status.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        order_id: orderId,
-                        new_status: 'Received'
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Reload the page to show updated status
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error updating order status:', err);
-                    alert('An error occurred while updating the order status. Please try again.');
-                });
+
+        $(document).ready(function() {
+            // Count completed orders by status
+            const completedCounts = {
+                'all': $('#completed-orders tbody tr').length,
+                'Completed': $('#completed-orders tbody tr.order-card.Completed').length,
+                'Returned': $('#completed-orders tbody tr.order-card.Returned').length
+            };
+
+            // Add counts to completed filter buttons
+            $('.btn-group button[data-completed-filter]').each(function() {
+                const filter = $(this).data('completed-filter');
+                const count = completedCounts[filter] || 0;
+                $(this).append(`<span class="ms-1 badge bg-secondary">${count}</span>`);
+            });
+
+            // Completed orders filtering
+            $('.btn-group button[data-completed-filter]').on('click', function() {
+                // Update active button
+                $(this).siblings().removeClass('active');
+                $(this).addClass('active');
+
+                const filter = $(this).data('completed-filter');
+
+                // Show appropriate rows based on filter
+                if (filter === 'all') {
+                    $('#completed-orders tbody tr').show();
+                } else {
+                    $('#completed-orders tbody tr').hide();
+                    $('#completed-orders tbody tr.order-card.' + filter).show();
+                }
+            });
         });
     </script>
 
@@ -950,7 +1014,6 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Return Details & Cancel Functionality
         $(document).ready(function() {
-            // Return Details Handler
             // Return Details Handler
             $(document).on('click', '.view-return-details', async function() {
                 const returnId = $(this).data('return-id');
@@ -1162,6 +1225,107 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                             showCancelReturnStatus('error', 'An error occurred. Please try again.');
                             $btn.prop('disabled', false).html(originalText);
                         });
+                }
+            });
+        });
+
+        $(document).ready(function() {
+            // Count orders by status
+            const orderCounts = {
+                'all': $('#active-orders tbody tr').length,
+                'Pending': $('#active-orders tbody tr.order-card.Pending').length,
+                'Shipped': $('#active-orders tbody tr.order-card.Shipped').length,
+                'Cancelled': $('#active-orders tbody tr.order-card.Cancelled').length
+            };
+
+            // Add counts to filter buttons
+            $('.btn-group button[data-filter]').each(function() {
+                const filter = $(this).data('filter');
+                const count = orderCounts[filter] || 0;
+                $(this).append(`<span class="ms-1 badge bg-secondary">${count}</span>`);
+            });
+
+            // Hide cancelled orders by default
+            $('#active-orders tbody tr.order-card.Cancelled').hide();
+
+            // Update "All" button to show active count (pending + shipped)
+            const activeCount = orderCounts['Pending'] + orderCounts['Shipped'];
+            $('button[data-filter="all"] .badge').text(activeCount);
+
+            // Order filtering
+            $('.btn-group button[data-filter]').on('click', function() {
+                // Update active button
+                $(this).siblings().removeClass('active');
+                $(this).addClass('active');
+
+                const filter = $(this).data('filter');
+
+                // Show appropriate rows based on filter
+                if (filter === 'all') {
+                    // For "All", show pending and shipped but not cancelled
+                    $('#active-orders tbody tr').hide();
+                    $('#active-orders tbody tr.order-card.Pending, #active-orders tbody tr.order-card.Shipped').show();
+                } else {
+                    // For specific status, show only that status
+                    $('#active-orders tbody tr').hide();
+                    $('#active-orders tbody tr.order-card.' + filter).show();
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // Cancel Order functionality
+        $(document).on('click', '.order-action[data-action="cancel"]', function() {
+            const orderId = $(this).data('order-id');
+            $('#cancelOrderModalLabel').text('Cancel Order #' + orderId);
+            $('#cancelReason').val(''); // Clear any previous reason
+
+            // Store the order ID for the cancel confirmation handler
+            const cancelModal = new bootstrap.Modal('#cancelOrderModal');
+            cancelModal.show();
+
+            // Handle confirmation
+            $('#confirmCancelOrderBtn').off().on('click', async function() {
+                const $btn = $(this);
+                const reason = $('#cancelReason').val().trim();
+
+                // Show loading state
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span> Processing...');
+
+                try {
+                    const response = await fetch('/pages/ajax/update_order_status.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            order_id: orderId,
+                            new_status: 'Cancelled',
+                            cancel_reason: reason
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Close the cancel modal
+                        const bsCancelModal = bootstrap.Modal.getInstance('#cancelOrderModal');
+                        bsCancelModal.hide();
+
+                        // Show success modal or notification
+                        alert('Order cancelled successfully!');
+
+                        // Refresh the page
+                        location.reload();
+                    } else {
+                        alert(result.error || 'Failed to cancel order');
+                    }
+                } catch (error) {
+                    console.error('Error cancelling order:', error);
+                    alert('An error occurred while cancelling the order. Please try again.');
+                } finally {
+                    $btn.prop('disabled', false).html('Yes, Cancel Order');
                 }
             });
         });

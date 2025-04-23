@@ -1,4 +1,5 @@
 <?php
+//sales report.php
 require_once __DIR__ . '/../config/db_connection.php';
 require_once __DIR__ . '/../includes/session-init.php';
 
@@ -127,16 +128,15 @@ $top_products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body>
+
+
   <div class="pageWrapper">
     <!-- Sidebar -->
+     
     <?php include '../includes/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="contentWrapper">
-
-      <!-- Main Content -->
-
-
 
       <!-- Filter Form -->
       <div class="report-filter mb-4">

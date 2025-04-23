@@ -52,85 +52,211 @@
 
       <!-- Navigation List -->
       <ul class="listDashboard">
+        <?php
+        // Get user role from session
+        $userRole = $_SESSION['role_name'] ?? '';
+
+        // Define access permissions for each menu item by role
+        $menuAccess = [
+          'Dashboard' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+          'Order Management' => ['Super Admin', 'Admin', 'Staff'],
+          'Return Process' => ['Super Admin', 'Admin', 'Staff'],
+          'Inventory Management' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+          'Account Management' => ['Super Admin', 'Admin', 'Staff'],
+          'Membership Management' => ['Super Admin', 'Admin'],
+          'Reports' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+          'Audit Logs' => ['Super Admin', 'Admin'],
+          'Logout' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners']
+        ];
+
+        // Define specific report access by role
+        $reportAccess = [
+          'Sales Report' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+          'Returns Report' => ['Super Admin', 'Admin'],
+          'Inventory Report' => ['Super Admin', 'Admin'],
+          'Membership Report' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+        ];
+
+        // Helper function to check access
+        function hasAccess($item, $role, $accessArray)
+        {
+          return in_array($role, $accessArray[$item] ?? []);
+        }
+        ?>
         <li>
           <div class="listDiv">
             <i class="fas fa-home imgIcon"></i>
             <a href="../pages/dashboard.php" class="menuDashboard">Dashboard</a>
           </div>
         </li>
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-shopping-cart imgIcon"></i>
-            <a href="../pages/order-management.php" class="menuDashboard">Order Management</a>
-          </div>
-        </li>
 
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-undo imgIcon"></i>
-            <a href="../pages/process_returns.php" class="menuDashboard">Return Process</a>
-          </div>
-        </li>
+        <!-- Order Management -->
+        <?php if (hasAccess('Order Management', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-shopping-cart imgIcon"></i>
+              <a href="../pages/order-management.php" class="menuDashboard">Order Management</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-shopping-cart imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Order Management</span>
+            </div>
+          </li>
+        <?php endif; ?>
 
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-warehouse imgIcon"></i>
-            <a href="/pages/inventory.php" class="menuDashboard">Inventory Management</a>
-          </div>
-        </li>
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-user-circle imgIcon"></i>
-            <a href="/pages/account-management.php" class="menuDashboard">Account Management</a>
-          </div>
-        </li>
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-id-card imgIcon"></i>
-            <a href="/pages/subscription-management.php" class="menuDashboard">Membership Management</a>
-          </div>
-        </li>
-        <!-- Dropdown for Audit Logs -->
-        <li>
-          <div class="listDiv dropdown-toggle" id="auditLogsToggle">
-            <i class="fas fa-chart-bar imgIcon"></i> <!-- Changed to chart icon -->
-            <span class="menuDashboard">Reports</span>
-          </div>
-          <ul class="dropdown-content-vertical" id="dropdownContent">
-            <!-- Sales Reports -->
-            <li><a href="../pages/sales_report.php" class="dropdown-item">
-                <i class="fas fa-shopping-cart"></i> Sales Report
-              </a></li>
+        <!-- Return Process -->
+        <?php if (hasAccess('Return Process', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-undo imgIcon"></i>
+              <a href="../pages/process_returns.php" class="menuDashboard">Return Process</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-undo imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Return Process</span>
+            </div>
+          </li>
+        <?php endif; ?>
 
-            <!-- Product Reports -->
-            <li><a href="/pages/reports/added-products.php" class="dropdown-item">
-                <i class="fas fa-plus-circle"></i> Added Products
-              </a></li>
-            <li><a href="/pages/reports/removed-products.php" class="dropdown-item">
-                <i class="fas fa-minus-circle"></i> Removed Products
-              </a></li>
+        <!-- Inventory Management -->
+        <?php if (hasAccess('Inventory Management', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-warehouse imgIcon"></i>
+              <a href="/pages/inventory.php" class="menuDashboard">Inventory Management</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-warehouse imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Inventory Management</span>
+            </div>
+          </li>
+        <?php endif; ?>
 
-            <!-- Inventory Reports -->
-            <li><a href="/pages/reports/low-stock.php" class="dropdown-item">
-                <i class="fas fa-box-open"></i> Low Stock Alert
-              </a></li>
+        <!-- Account Management -->
+        <?php if (hasAccess('Account Management', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-user-circle imgIcon"></i>
+              <a href="/pages/account-management.php" class="menuDashboard">Account Management</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-user-circle imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Account Management</span>
+            </div>
+          </li>
+        <?php endif; ?>
 
-            <!-- Customer Reports -->
-            <li><a href="/pages/reports/top-customers.php" class="dropdown-item">
-                <i class="fas fa-users"></i> Top Customers
-              </a></li>
-          </ul>
-        </li>
+        <!-- Membership Management -->
+        <?php if (hasAccess('Membership Management', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-id-card imgIcon"></i>
+              <a href="/pages/subscription-management.php" class="menuDashboard">Membership Management</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-id-card imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Membership Management</span>
+            </div>
+          </li>
+        <?php endif; ?>
 
-        <li>
-          <div class="listDiv">
-            <i class="fas fa-history imgIcon"></i>
-            <a href="/pages/audit_logs.php" class="menuDashboard">Audit Logs</a>
-          </div>
-        </li>
+        <!-- Reports Dropdown -->
+        <?php if (hasAccess('Reports', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv dropdown-toggle" id="auditLogsToggle">
+              <i class="fas fa-chart-bar imgIcon"></i>
+              <span class="menuDashboard">Reports</span>
+            </div>
+            <ul class="dropdown-content-vertical" id="dropdownContent">
+              <!-- Sales Reports -->
+              <?php if (hasAccess('Sales Report', $userRole, $reportAccess)): ?>
+                <li><a href="../pages/sales_report.php" class="dropdown-item">
+                    <i class="fas fa-chart-line"></i> Sales Report
+                  </a></li>
+              <?php else: ?>
+                <li><span class="dropdown-item text-muted">
+                    <i class="fas fa-chart-line"></i> Sales Report
+                  </span></li>
+              <?php endif; ?>
 
+              <!-- Returned Products -->
+              <?php if (hasAccess('Returns Report', $userRole, $reportAccess)): ?>
+                <li><a href="/pages/return-analysis-report.php" class="dropdown-item">
+                    <i class="fas fa-undo"></i> Returns Report
+                  </a></li>
+              <?php else: ?>
+                <li><span class="dropdown-item text-muted">
+                    <i class="fas fa-undo"></i> Returns Report
+                  </span></li>
+              <?php endif; ?>
 
-        <!-- Logout -->
+              <!-- Inventory Status -->
+              <?php if (hasAccess('Inventory Report', $userRole, $reportAccess)): ?>
+                <li><a href="/pages/Inventory-status-report.php" class="dropdown-item">
+                    <i class="fas fa-boxes"></i> Inventory Report
+                  </a></li>
+              <?php else: ?>
+                <li><span class="dropdown-item text-muted">
+                    <i class="fas fa-boxes"></i> Inventory Report
+                  </span></li>
+              <?php endif; ?>
+
+              <!-- Membership Report -->
+              <?php if (hasAccess('Membership Report', $userRole, $reportAccess)): ?>
+                <li><a href="/pages/membership-report.php" class="dropdown-item">
+                    <i class="fas fa-users"></i> Membership Report
+                  </a></li>
+              <?php else: ?>
+                <li><span class="dropdown-item text-muted">
+                    <i class="fas fa-users"></i> Membership Report
+                  </span></li>
+              <?php endif; ?>
+
+  
+            </ul>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-chart-bar imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Reports</span>
+            </div>
+          </li>
+        <?php endif; ?>
+
+        <!-- Audit Logs -->
+        <?php if (hasAccess('Audit Logs', $userRole, $menuAccess)): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-history imgIcon"></i>
+              <a href="/pages/audit_logs.php" class="menuDashboard">Audit Logs</a>
+            </div>
+          </li>
+        <?php else: ?>
+          <li>
+            <div class="listDiv disabled">
+              <i class="fas fa-history imgIcon text-muted"></i>
+              <span class="menuDashboard text-muted">Audit Logs</span>
+            </div>
+          </li>
+        <?php endif; ?>
+
+        <!-- Logout - always accessible -->
         <li>
           <div class="listDiv">
             <i class="fas fa-sign-out-alt imgIcon"></i>

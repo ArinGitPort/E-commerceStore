@@ -1,8 +1,12 @@
 <?php
 // pages-user/profile.php
 declare(strict_types=1);
+require_once __DIR__ . '/../vendor/autoload.php'; // For PHPMailer
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: ../pages/login.php?redirect=profile");
@@ -22,6 +26,9 @@ SQL
 );
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch() ?: [];
+
+// Check if the user is authenticated via OAuth
+$isOAuthUser = !empty($user['oauth_provider']);
 
 // Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -51,52 +58,134 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Password Change
     if (isset($_POST['change_password'])) {
-        $cur = $_POST['current_password'] ?? '';
-        $new = $_POST['new_password'] ?? '';
-        $conf = $_POST['confirm_password'] ?? '';
-
-        $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
-        $h->execute([$_SESSION['user_id']]);
-        $dbpw = $h->fetchColumn();
-
-        if (!password_verify($cur, $dbpw)) {
-            $_SESSION['password_error'] = "Current password incorrect.";
-        } elseif (strlen($new) < 8) {
-            $_SESSION['password_error'] = "New password must be at least 8 characters.";
-        } elseif ($new !== $conf) {
-            $_SESSION['password_error'] = "New passwords don't match.";
+        // Block OAuth users from changing password
+        if ($isOAuthUser) {
+            $_SESSION['password_error'] = "Password change is not available for accounts connected via " . htmlspecialchars($user['oauth_provider']) . ".";
         } else {
-            $hp = password_hash($new, PASSWORD_DEFAULT);
-            $upd = $pdo->prepare("UPDATE users SET password=? WHERE user_id=?");
-            $upd->execute([$hp, $_SESSION['user_id']]);
-            $_SESSION['password_success'] = "Password changed.";
+            $cur = $_POST['current_password'] ?? '';
+            $new = $_POST['new_password'] ?? '';
+            $conf = $_POST['confirm_password'] ?? '';
+
+            $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
+            $h->execute([$_SESSION['user_id']]);
+            $dbpw = $h->fetchColumn();
+
+            if (!password_verify($cur, $dbpw)) {
+                $_SESSION['password_error'] = "Current password incorrect.";
+            } elseif (strlen($new) < 8) {
+                $_SESSION['password_error'] = "New password must be at least 8 characters.";
+            } elseif ($new !== $conf) {
+                $_SESSION['password_error'] = "New passwords don't match.";
+            } else {
+                $hp = password_hash($new, PASSWORD_DEFAULT);
+                $upd = $pdo->prepare("UPDATE users SET password=? WHERE user_id=?");
+                $upd->execute([$hp, $_SESSION['user_id']]);
+                $_SESSION['password_success'] = "Password changed.";
+            }
         }
         $redirectHash = '#password';
     }
 
     // Email Change
     if (isset($_POST['change_email'])) {
-        $newEmail = filter_var($_POST['new_email'] ?? '', FILTER_VALIDATE_EMAIL);
-        $pw = $_POST['password'] ?? '';
-
-        if (!$newEmail) {
-            $_SESSION['email_error'] = "Enter a valid email.";
+        // Block OAuth users from changing email
+        if ($isOAuthUser) {
+            $_SESSION['email_error'] = "Email change is not available for accounts connected via " . htmlspecialchars($user['oauth_provider']) . ".";
         } else {
-            $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
-            $h->execute([$_SESSION['user_id']]);
-            $dbpw = $h->fetchColumn();
+            $newEmail = filter_var($_POST['new_email'] ?? '', FILTER_VALIDATE_EMAIL);
+            $pw = $_POST['password'] ?? '';
 
-            if (!password_verify($pw, $dbpw)) {
-                $_SESSION['email_error'] = "Password incorrect.";
+            if (!$newEmail) {
+                $_SESSION['email_error'] = "Enter a valid email.";
             } else {
-                $chk = $pdo->prepare("SELECT 1 FROM users WHERE email=? AND user_id<>?");
-                $chk->execute([$newEmail, $_SESSION['user_id']]);
-                if ($chk->fetch()) {
-                    $_SESSION['email_error'] = "Email already in use.";
+                $h = $pdo->prepare("SELECT password FROM users WHERE user_id=?");
+                $h->execute([$_SESSION['user_id']]);
+                $dbpw = $h->fetchColumn();
+
+                if (!password_verify($pw, $dbpw)) {
+                    $_SESSION['email_error'] = "Password incorrect.";
                 } else {
-                    $upd = $pdo->prepare("UPDATE users SET email=? WHERE user_id=?");
-                    $upd->execute([$newEmail, $_SESSION['user_id']]);
-                    $_SESSION['email_success'] = "Email changed.";
+                    $chk = $pdo->prepare("SELECT 1 FROM users WHERE email=? AND user_id<>?");
+                    $chk->execute([$newEmail, $_SESSION['user_id']]);
+                    if ($chk->fetch()) {
+                        $_SESSION['email_error'] = "Email already in use.";
+                    } else {
+                        // Generate verification token
+                        $token = bin2hex(random_bytes(16));
+
+                        // Store the token and requested email temporarily
+                        // NOTE: FIX HERE - Changed 'token' to 'verification_token' to match the database schema
+                        $stmt = $pdo->prepare("
+                            INSERT INTO email_change_requests 
+                            (user_id, new_email, verification_token, expires_at) 
+                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))
+                            ON DUPLICATE KEY UPDATE 
+                            new_email = VALUES(new_email), 
+                            verification_token = VALUES(verification_token), 
+                            expires_at = VALUES(expires_at)
+                        ");
+
+                        if ($stmt->execute([$_SESSION['user_id'], $newEmail, $token])) {
+                            // Send verification email
+                            $mail = new PHPMailer(true);
+                            try {
+                                // Server settings
+                                $mail->isSMTP();
+                                $mail->Host       = 'smtp.gmail.com';
+                                $mail->SMTPAuth   = true;
+                                $mail->Username   = 'monochromecell@gmail.com';
+                                $mail->Password   = 'eknj ybgw kmqc krga';
+                                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                                $mail->Port       = 587;
+
+                                // Recipients
+                                $mail->setFrom('monochromecell@gmail.com', 'BunniShop');
+                                $mail->addAddress($newEmail, $user['name']);
+
+                                // Content
+                                $mail->isHTML(true);
+                                $mail->Subject = 'Confirm your email change - BunniShop';
+
+                                $verificationLink = "http://{$_SERVER['HTTP_HOST']}/pages-user/email-change.php?token={$token}&email=" . urlencode($newEmail);
+
+                                $mail->Body = "
+                                    <h2>Email Change Confirmation</h2>
+                                    <p>Hello {$user['name']},</p>
+                                    <p>We received a request to change your email address from {$user['email']} to {$newEmail}.</p>
+                                    <p>Please click the link below to confirm this change:</p>
+                                    <p><a href='{$verificationLink}'>{$verificationLink}</a></p>
+                                    <p>This link will expire in 24 hours.</p>
+                                    <p>If you didn't request this change, please ignore this email or contact support.</p>
+                                    <p>Thanks,<br>The BunniShop Team</p>
+                                ";
+
+                                $mail->AltBody = "
+                                    Email Change Confirmation
+                                    
+                                    Hello {$user['name']},
+                                    
+                                    We received a request to change your email address from {$user['email']} to {$newEmail}.
+                                    
+                                    Please visit the following link to confirm this change:
+                                    {$verificationLink}
+                                    
+                                    This link will expire in 24 hours.
+                                    
+                                    If you didn't request this change, please ignore this email or contact support.
+                                    
+                                    Thanks,
+                                    The BunniShop Team
+                                ";
+
+                                $mail->send();
+                                $_SESSION['email_success'] = "Verification email sent to $newEmail. Please check your inbox and click the verification link.";
+                            } catch (Exception $e) {
+                                $_SESSION['email_error'] = "Could not send verification email. Error: " . $mail->ErrorInfo;
+                            }
+                        } else {
+                            $_SESSION['email_error'] = "Failed to process your request. Please try again.";
+                        }
+                    }
                 }
             }
         }
@@ -144,6 +233,14 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
                 <h2><?= htmlspecialchars($user['name'] ?? 'User') ?></h2>
                 <p class="mb-0"><?= htmlspecialchars($user['email'] ?? '') ?></p>
                 <small class="text-white-50">Member since <?= date('F Y', strtotime($user['created_at'])) ?></small>
+                <?php if ($isOAuthUser): ?>
+                    <div class="mt-2">
+                        <span class="badge bg-primary">
+                            <i class="fab fa-<?= strtolower($user['oauth_provider']) ?>"></i>
+                            Connected with <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <ul class="nav nav-tabs" id="profileTabs" role="tablist">
@@ -167,6 +264,9 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
             <div class="tab-content" id="profileTabsContent">
                 <!-- Profile Tab -->
                 <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                    <?php if ($profile_error): ?><div class="alert alert-danger"><?= $profile_error ?></div><?php endif; ?>
+                    <?php if ($profile_success): ?><div class="alert alert-success"><?= $profile_success ?></div><?php endif; ?>
+
                     <form method="POST" action="profile.php">
                         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                         <div class="row mb-3">
@@ -222,32 +322,72 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
                     <?php if ($password_error): ?><div class="alert alert-danger"><?= $password_error ?></div><?php endif; ?>
                     <?php if ($password_success): ?><div class="alert alert-success"><?= $password_success ?></div><?php endif; ?>
 
-                    <!-- Password tab banner -->
-                    <div class="alert alert-info d-flex align-items-center mb-4">
-                        <i class="fas fa-shield-alt me-2"></i>
-                        <div>
-                            <strong>Password security reminder:</strong>
-                            For your safety, never share your password with anyone.
+                    <?php if ($isOAuthUser): ?>
+                        <!-- OAuth users can't change password -->
+                        <div class="alert alert-info d-flex align-items-center mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                <strong>Connected account notice:</strong>
+                                Password management is handled by <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?> for connected accounts.
+                            </div>
                         </div>
-                    </div>
+                        <div class="text-center py-4">
+                            <i class="fab fa-<?= strtolower($user['oauth_provider']) ?> fa-4x mb-3 text-muted"></i>
+                            <p>Your account is connected with <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?>.
+                                Password changes must be made through your <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?> account settings.</p>
+                        </div>
+                    <?php else: ?>
+                        <!-- Password tab banner -->
+                        <div class="alert alert-info d-flex align-items-center mb-4">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            <div>
+                                <strong>Password security reminder:</strong>
+                                For your safety, never share your password with anyone.
+                            </div>
+                        </div>
 
-                    <form method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
-                        <div class="mb-3">
-                            <label for="current_password" class="form-label">Current Password</label>
-                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        <form method="POST">
+                            <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+                            <div class="mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="current_password" name="current_password" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">At least 8 characters</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
+                        </form>
+
+                        <!-- Password strength checker -->
+                        <div class="password-strength mt-4">
+                            <h5>Password Strength</h5>
+                            <div class="progress mb-2">
+                                <div class="progress-bar" id="password-strength-meter" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="password-feedback" class="small text-muted"></div>
                         </div>
-                        <div class="mb-3">
-                            <label for="new_password" class="form-label">New Password</label>
-                            <input type="password" class="form-control" id="new_password" name="new_password" required>
-                            <div class="form-text">At least 8 characters</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="confirm_password" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                        </div>
-                        <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
-                    </form>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Email Tab -->
@@ -255,32 +395,63 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
                     <?php if ($email_error): ?><div class="alert alert-danger"><?= $email_error ?></div><?php endif; ?>
                     <?php if ($email_success): ?><div class="alert alert-success"><?= $email_success ?></div><?php endif; ?>
 
-                    <!-- Email tab banner -->
-                    <div class="alert alert-warning d-flex align-items-center mb-4">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <div>
-                            <strong>Email change warning:</strong>
-                            Changing your email will affect your login credentials.
+                    <?php if ($isOAuthUser): ?>
+                        <!-- OAuth users can't change email -->
+                        <div class="alert alert-info d-flex align-items-center mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                <strong>Connected account notice:</strong>
+                                Email management is handled by <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?> for connected accounts.
+                            </div>
                         </div>
-                    </div>
+                        <div class="text-center py-4">
+                            <i class="fab fa-<?= strtolower($user['oauth_provider']) ?> fa-4x mb-3 text-muted"></i>
+                            <p>Your account is connected with <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?>.
+                                Email changes must be made through your <?= htmlspecialchars(ucfirst($user['oauth_provider'])) ?> account settings.</p>
+                        </div>
+                    <?php else: ?>
+                        <!-- Email tab banner -->
+                        <div class="alert alert-warning d-flex align-items-center mb-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <div>
+                                <strong>Email change warning:</strong>
+                                Changing your email will affect your login credentials.
+                            </div>
+                        </div>
 
-                    <form method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
-                        <div class="mb-3">
-                            <label class="form-label">Current Email</label>
-                            <input type="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
+                        <form method="POST">
+                            <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+                            <div class="mb-3">
+                                <label class="form-label">Current Email</label>
+                                <input type="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_email" class="form-label">New Email</label>
+                                <input type="email" class="form-control" id="new_email" name="new_email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Verify your identity</div>
+                            </div>
+                            <button type="submit" name="change_email" class="btn btn-primary">Request Email Change</button>
+                        </form>
+
+                        <div class="email-info mt-4">
+                            <h5>Email Change Process</h5>
+                            <ol class="small text-muted">
+                                <li>Enter your new email address and current password.</li>
+                                <li>We'll send a verification link to your new email address.</li>
+                                <li>Click the link in the email to confirm the change.</li>
+                                <li>Your email will be updated after verification.</li>
+                            </ol>
                         </div>
-                        <div class="mb-3">
-                            <label for="new_email" class="form-label">New Email</label>
-                            <input type="email" class="form-control" id="new_email" name="new_email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                            <div class="form-text">Verify your identity</div>
-                        </div>
-                        <button type="submit" name="change_email" class="btn btn-primary">Change Email</button>
-                    </form>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -310,6 +481,25 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Toggle password visibility
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', function() {
+                    const input = this.previousElementSibling;
+                    const icon = this.querySelector('i');
+
+                    // Toggle input type
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+
             // Logout handling
             const logoutConfirm = document.getElementById('logoutConfirm');
             const confirmBtn = document.getElementById('logoutConfirmBtn');
@@ -348,20 +538,92 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
                     window.location.hash = tab.getAttribute('data-bs-target');
                 });
             });
-        });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // find all [data-bs-toggle="tooltip"] elements
-            var triggers = [].slice.call(
-                document.querySelectorAll('[data-bs-toggle="tooltip"]')
-            );
-            triggers.forEach(function(el) {
-                new bootstrap.Tooltip(el);
-            });
+            // Password strength meter
+            const newPasswordInput = document.getElementById('new_password');
+            const strengthMeter = document.getElementById('password-strength-meter');
+            const feedback = document.getElementById('password-feedback');
+
+            if (newPasswordInput && strengthMeter) {
+                newPasswordInput.addEventListener('input', function() {
+                    const password = this.value;
+                    const strength = calculatePasswordStrength(password);
+
+                    // Update the strength meter
+                    strengthMeter.style.width = strength.score * 25 + '%';
+
+                    // Set the color based on strength
+                    if (strength.score === 0) {
+                        strengthMeter.className = 'progress-bar bg-danger';
+                    } else if (strength.score < 2) {
+                        strengthMeter.className = 'progress-bar bg-warning';
+                    } else if (strength.score < 4) {
+                        strengthMeter.className = 'progress-bar bg-info';
+                    } else {
+                        strengthMeter.className = 'progress-bar bg-success';
+                    }
+
+                    // Update feedback text
+                    feedback.textContent = strength.message;
+                });
+            }
+
+            // Simple password strength calculator
+            function calculatePasswordStrength(password) {
+                let score = 0;
+                let message = '';
+
+                if (password.length < 1) {
+                    return {
+                        score: 0,
+                        message: ''
+                    };
+                }
+
+                // Length check
+                if (password.length < 8) {
+                    return {
+                        score: 0,
+                        message: 'Password is too short'
+                    };
+                } else {
+                    score += 1;
+                }
+
+                // Check for mixed case
+                if (password.match(/[a-z]/) && password.match(/[A-Z]/)) {
+                    score += 1;
+                }
+
+                // Check for numbers
+                if (password.match(/\d/)) {
+                    score += 1;
+                }
+
+                // Check for special characters
+                if (password.match(/[^a-zA-Z\d]/)) {
+                    score += 1;
+                }
+
+                // Set feedback message based on score
+                if (score === 1) {
+                    message = 'Password is weak';
+                } else if (score === 2) {
+                    message = 'Password is fair';
+                } else if (score === 3) {
+                    message = 'Password is good';
+                } else if (score === 4) {
+                    message = 'Password is strong';
+                }
+
+                return {
+                    score,
+                    message
+                };
+            }
         });
     </script>
 
-    </script>
 </body>
 
 </html>

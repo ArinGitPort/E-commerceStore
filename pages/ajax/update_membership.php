@@ -13,7 +13,7 @@ try {
     }
 
     // 2) Required fields
-    foreach (['user_id','membership_type_id'] as $f) {
+    foreach (['user_id', 'membership_type_id'] as $f) {
         if (!isset($_POST[$f])) {
             http_response_code(400);
             throw new Exception("Missing required field: $f");
@@ -25,14 +25,22 @@ try {
     $typeId   = filter_var($_POST['membership_type_id'], FILTER_VALIDATE_INT);
     $startRaw = $_POST['start_date']  ?? null;
     $endRaw   = $_POST['expiry_date'] ?? null;
+    
+    // Check if we should preserve the existing role
+    $preserveRole = isset($_POST['preserve_role']) && $_POST['preserve_role'] == 1;
 
-    // 4) Verify user
-    $stmt = $pdo->prepare("SELECT 1 FROM users WHERE user_id = ?");
+    // Get current role
+    $stmt = $pdo->prepare("SELECT u.role_id, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
     $stmt->execute([$userId]);
-    if (!$stmt->fetch()) {
+    $userRole = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$userRole) {
         http_response_code(404);
         throw new Exception('User not found');
     }
+    
+    $currentRole = (int)$userRole['role_id'];
+    $isStaffOrHigher = $currentRole >= 3; // Staff, Admin, Super Admin
 
     // 5) Get membership type name
     $stmt = $pdo->prepare("SELECT type_name FROM membership_types WHERE membership_type_id = ?");
@@ -52,18 +60,20 @@ try {
         $pdo->prepare("DELETE FROM memberships WHERE user_id = ?")
             ->execute([$userId]);
 
-        // Downgrade role to Customer
-        $pdo->prepare("
-            UPDATE users
-               SET role_id = (
-                   SELECT role_id FROM roles WHERE role_name = 'Customer'
-               )
-             WHERE user_id = ?
-        ")->execute([$userId]);
+        // Only downgrade to Customer if not staff or higher
+        if (!$isStaffOrHigher) {
+            $pdo->prepare("
+                UPDATE users
+                   SET role_id = (
+                       SELECT role_id FROM roles WHERE role_name = 'Customer'
+                   )
+                 WHERE user_id = ?
+            ")->execute([$userId]);
+        }
 
         echo json_encode([
             'success' => true,
-            'message' => 'Membership reset to Free and role set to Customer'
+            'message' => 'Membership reset to Free' . (!$isStaffOrHigher ? ' and role set to Customer' : ', role preserved')
         ]);
         exit;
     }
@@ -97,19 +107,24 @@ try {
         ':e' => $end->format('Y-m-d'),
     ]);
 
-    // 9) Promote role to Member
-    $pdo->prepare("
-        UPDATE users
-           SET role_id = (
-               SELECT role_id FROM roles WHERE role_name = 'Member'
-           )
-         WHERE user_id = ?
-    ")->execute([$userId]);
+    // 9) Promote role to Member if not staff or higher
+    if (!$isStaffOrHigher) {
+        $pdo->prepare("
+            UPDATE users
+               SET role_id = (
+                   SELECT role_id FROM roles WHERE role_name = 'Member'
+               )
+             WHERE user_id = ?
+        ")->execute([$userId]);
+        $roleMsg = '; role set to Member';
+    } else {
+        $roleMsg = '; existing role preserved';
+    }
 
     // 10) Success
     echo json_encode([
         'success' => true,
-        'message' => 'Membership updated; role set to Member',
+        'message' => 'Membership updated' . $roleMsg,
         'details' => [
             'start_date'    => $start->format('Y-m-d'),
             'expiry_date'   => $end->format('Y-m-d'),

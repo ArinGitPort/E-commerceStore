@@ -23,21 +23,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $category_id     = $_POST['category_id']     ?? 'all';
 }
 
-// CTE combining live + archived orders
-$cte = <<<SQL
-WITH all_orders AS (
-  SELECT order_id, customer_id, order_date, total_price, order_status, discount, delivery_method_id
-    FROM orders
-  UNION ALL
-  SELECT order_id, customer_id, order_date, total_price, order_status, discount, delivery_method_id
-    FROM archived_orders
-)
-SQL;
-
+// Build base parameters
 $params = [
   ':start_date' => $start_date . ' 00:00:00',
   ':end_date'   => $end_date   . ' 23:59:59'
 ];
+
+// Prepare the CTE part - careful with the order_status filter
+$cte = "WITH all_orders AS (
+  SELECT order_id, customer_id, order_date, total_price, order_status, discount, delivery_method_id
+    FROM orders
+  UNION ALL
+  SELECT order_id, customer_id, order_date, total_price, order_status, discount, delivery_method_id
+    FROM archived_orders";
+
+// Add filtering conditions to the CTE
+$cte .= " WHERE order_date BETWEEN :start_date AND :end_date";
+
+// Add status filter if specified
+if ($order_status !== 'all') {
+  $cte .= " AND order_status = :order_status";
+  $params[':order_status'] = $order_status;
+}
+
+// Close the CTE
+$cte .= ")";
 
 // --- 1) Main orders listing ---
 $mainQuery = $cte . "
@@ -58,7 +68,6 @@ JOIN membership_types mt   ON m.membership_type_id = mt.membership_type_id
 JOIN delivery_methods dm   ON o.delivery_method_id = dm.delivery_method_id
 LEFT JOIN payments p       ON o.order_id = p.order_id
 LEFT JOIN payment_methods pm ON p.payment_method_id = pm.payment_method_id
-WHERE o.order_date BETWEEN :start_date AND :end_date
 ";
 
 // membership filter
@@ -66,11 +75,7 @@ if ($membership_type !== 'all') {
   $mainQuery .= " AND m.membership_type_id = :membership_type";
   $params[':membership_type'] = $membership_type;
 }
-// status filter
-if ($order_status !== 'all') {
-  $mainQuery .= " AND o.order_status = :order_status";
-  $params[':order_status'] = $order_status;
-}
+
 // **category** filter
 if ($category_id !== 'all') {
   $mainQuery .= "
@@ -98,9 +103,8 @@ SELECT
     AVG(total_price)           AS avg_order_value,
     COUNT(DISTINCT customer_id) AS unique_customers
 FROM all_orders
-WHERE order_date BETWEEN :start_date AND :end_date
 ";
-// NOTE: usually you don’t filter summary by category, but you could copy the same EXISTS() clause if desired
+
 $summaryStmt = $pdo->prepare($summaryQuery);
 $summaryStmt->execute($params);
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
@@ -117,7 +121,6 @@ FROM order_details od
 JOIN products p           ON od.product_id = p.product_id
 JOIN categories c         ON p.category_id = c.category_id
 JOIN all_orders o         ON od.order_id = o.order_id
-WHERE o.order_date BETWEEN :start_date AND :end_date
 GROUP BY p.product_id
 ORDER BY total_quantity DESC
 LIMIT 5
@@ -126,7 +129,7 @@ $productsStmt = $pdo->prepare($productsQuery);
 $productsStmt->execute($params);
 $top_products = $productsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Top products from ARCHIVED ORDERS only
+// Top products from ARCHIVED ORDERS only - modify this to respect the status filter too
 $archivedProductsQuery = "
   SELECT 
     p.product_id,
@@ -139,17 +142,22 @@ $archivedProductsQuery = "
   JOIN products p           ON aod.product_id = p.product_id
   JOIN categories c         ON p.category_id  = c.category_id
   WHERE ao.order_date BETWEEN :start_date AND :end_date
+";
+
+// Add status filter if specified
+if ($order_status !== 'all') {
+  $archivedProductsQuery .= " AND ao.order_status = :order_status";
+}
+
+$archivedProductsQuery .= "
   GROUP BY p.product_id
   ORDER BY total_quantity DESC
   LIMIT 5
 ";
-$archivedStmt = $pdo->prepare($archivedProductsQuery);
-$archivedStmt->execute([
-  ':start_date' => $start_date . ' 00:00:00',
-  ':end_date'   => $end_date   . ' 23:59:59',
-]);
-$archived_top_products = $archivedStmt->fetchAll(PDO::FETCH_ASSOC);
 
+$archivedStmt = $pdo->prepare($archivedProductsQuery);
+$archivedStmt->execute($params);
+$archived_top_products = $archivedStmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 // --- 4) Sales by category ---
@@ -161,7 +169,6 @@ FROM order_details od
 JOIN products p           ON od.product_id = p.product_id
 JOIN categories c         ON p.category_id = c.category_id
 JOIN all_orders o         ON od.order_id = o.order_id
-WHERE o.order_date BETWEEN :start_date AND :end_date
 GROUP BY c.category_id
 ORDER BY total_revenue DESC
 ";
@@ -179,7 +186,6 @@ FROM all_orders o
 JOIN users u            ON o.customer_id = u.user_id
 JOIN memberships m      ON u.user_id     = m.user_id
 JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
-WHERE o.order_date BETWEEN :start_date AND :end_date
 GROUP BY mt.type_name
 ORDER BY total_revenue DESC
 ";
@@ -192,6 +198,8 @@ $pendingParams = [
   ':start_date' => $start_date . ' 00:00:00',
   ':end_date'   => $end_date   . ' 23:59:59'
 ];
+
+// If we're already filtering by status, only show pending orders if the filter matches
 $pendingQuery = "
 SELECT 
     o.order_id,
@@ -209,9 +217,16 @@ JOIN membership_types mt ON m.membership_type_id = mt.membership_type_id
 JOIN delivery_methods dm ON o.delivery_method_id = dm.delivery_method_id
 LEFT JOIN payments p     ON o.order_id = p.order_id
 LEFT JOIN payment_methods pm ON p.payment_method_id = pm.payment_method_id
-WHERE o.order_status = 'Pending'
-  AND o.order_date BETWEEN :start_date AND :end_date
+WHERE o.order_date BETWEEN :start_date AND :end_date
 ";
+
+if ($order_status === 'all' || $order_status === 'Pending') {
+  $pendingQuery .= " AND o.order_status = 'Pending'";
+} else {
+  // If filtering by non-pending status, show no pending orders
+  $pendingQuery .= " AND 1=0"; 
+}
+
 // apply category filter to pending as well
 if ($category_id !== 'all') {
   $pendingQuery .= "
@@ -226,12 +241,18 @@ if ($category_id !== 'all') {
   $pendingParams[':category_id'] = $category_id;
 }
 
+// Modify the archived summary query to respect the status filter
 $archivedSummaryQuery = "
 SELECT
+    COUNT(*) AS total_orders,
     SUM(ao.total_price) AS total_revenue
 FROM archived_orders ao
 WHERE ao.order_date BETWEEN :start_date AND :end_date
 ";
+
+if ($order_status !== 'all') {
+  $archivedSummaryQuery .= " AND ao.order_status = :order_status";
+}
 
 $archivedSummaryStmt = $pdo->prepare($archivedSummaryQuery);
 $archivedSummaryStmt->execute($params);
@@ -240,12 +261,10 @@ $archivedSummary = $archivedSummaryStmt->fetch(PDO::FETCH_ASSOC);
 // Now, use $archivedSummary['total_revenue'] for the archived orders total revenue
 $total_revenue = $archivedSummary['total_revenue'] ?: 0;
 
-
 $pendingQuery .= " ORDER BY o.order_date DESC";
 $pendingStmt = $pdo->prepare($pendingQuery);
 $pendingStmt->execute($pendingParams);
 $pendingOrders = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
-
 
 ?>
 
@@ -274,9 +293,7 @@ $pendingOrders = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
       <!-- Main Content -->
       <div class="container-fluid px-4">
         <div class="mt-3 mb-4">
-          <h1 class="h4 text-primary">
-            <i class="fas fa-users-cog me-2"></i>Dashboard
-          </h1>
+   
           <!-- Filter Form -->
           <div class="report-filter mb-4">
             <form method="POST">

@@ -724,19 +724,57 @@ function getMembershipStats($pdo)
             $('#membershipForm').submit(function(e) {
                 e.preventDefault();
                 const form = $(this);
+                const userId = $('#membershipUserId').val();
+                const membershipTypeId = $('select[name="membership_type_id"]').val();
+
+                // Get the user's current role before making changes
+                $.ajax({
+                        url: 'ajax/get_user.php',
+                        method: 'GET',
+                        data: {
+                            user_id: userId
+                        },
+                        dataType: 'json',
+                        async: false // Make this synchronous to get role before proceeding
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            const userRoleId = parseInt(response.data.role_id);
+
+                            // If membership is not free (id != 1) and user has a role higher than Member (2)
+                            // then we need to preserve their role instead of auto-changing to Member
+                            if (membershipTypeId != 1 && userRoleId > 2) {
+                                // Add a hidden field to the form to indicate we should preserve the role
+                                form.append('<input type="hidden" name="preserve_role" value="1">');
+                            }
+
+                            // Now proceed with the regular form submission
+                            submitMembershipForm(form);
+                        } else {
+                            showAlert('Error: ' + (response.error || 'Unknown error'), 'danger');
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        showAlert('Failed to load user data', 'danger');
+                    });
+            });
+
+            // Extract the existing submission logic to a separate function
+            function submitMembershipForm(form) {
                 const submitBtn = form.find('button[type="submit"]');
                 const originalHtml = submitBtn.html();
 
                 submitBtn.prop('disabled', true).html(`
-                <span class="spinner-border spinner-border-sm" role="status"></span> Saving...
-            `);
+        <span class="spinner-border spinner-border-sm" role="status"></span> Saving...
+    `);
 
                 $.post('ajax/update_membership.php', form.serialize())
                     .done(function(response) {
                         if (response.success) {
                             submitBtn.html(`
-                            <i class="bi bi-check-circle"></i> Saved!
-                        `).removeClass('btn-primary').addClass('btn-success');
+                    <i class="bi bi-check-circle"></i> Saved!
+                `).removeClass('btn-primary').addClass('btn-success');
 
                             setTimeout(() => {
                                 membershipModal.hide();
@@ -752,7 +790,7 @@ function getMembershipStats($pdo)
                         submitBtn.html(originalHtml).prop('disabled', false);
                         showAlert('Error saving membership', 'danger');
                     });
-            });
+            }
 
             // Toggle User Status
             $('.toggle-status').click(function() {
@@ -863,6 +901,107 @@ function getMembershipStats($pdo)
             const showing = $input.attr('type') === 'password';
             $input.attr('type', showing ? 'text' : 'password');
             $btn.find('i').toggleClass('bi-eye bi-eye-slash');
+        });
+
+        const currentUserRole = <?= json_encode($_SESSION['role_id'] ?? 0) ?>;
+
+        // Only show Add Staff button for Admin and Super Admin (role_id 4 and 5)
+        if (currentUserRole < 4) {
+            $('#btnAddStaff').hide();
+        }
+
+
+
+        // Restrict role selection in edit form
+        $('select[name="role_id"]').on('change', function() {
+            const selectedRole = parseInt($(this).val());
+
+            // If current user is Admin (role_id 4), they can't set roles equal or higher than Admin
+            if (currentUserRole === 4 && selectedRole >= 4) {
+                alert("You cannot assign Admin or higher roles.");
+                // Reset to Staff role (role_id 3)
+                $(this).val(3);
+            }
+        });
+
+        // Apply same restriction when populating the edit modal
+        $(document).on('show.bs.modal', '#editUserModal', function() {
+            if (currentUserRole === 4) {
+                // Admin can only assign roles up to Staff (role_id 3)
+                $('select[name="role_id"] option').each(function() {
+                    if (parseInt($(this).val()) >= 4) {
+                        $(this).prop('disabled', true);
+                    }
+                });
+            }
+        });
+
+        $('.table tbody tr').each(function() {
+            const row = $(this);
+            const editButton = row.find('.edit-user');
+            const toggleStatusButton = row.find('.toggle-status');
+
+            // Get user's role from the badge text in this row
+            const userRoleBadge = row.find('td:nth-child(6) .badge');
+            const userRole = userRoleBadge.text().trim();
+
+            // Role hierarchy check
+            if (currentUserRole === 4) { // Admin
+                // Admin can't edit or deactivate Super Admin accounts
+                if (userRole === 'Super Admin') {
+                    editButton.prop('disabled', true).addClass('btn-secondary').removeClass('btn-primary');
+                    toggleStatusButton.prop('disabled', true).addClass('btn-secondary').removeClass('btn-danger btn-success');
+                }
+
+                // Admin can't deactivate other Admin accounts (but can edit)
+                if (userRole === 'Admin' && toggleStatusButton.text().trim() === 'Deactivate') {
+                    toggleStatusButton.prop('disabled', true).addClass('btn-secondary').removeClass('btn-danger');
+                }
+            } else if (currentUserRole === 3) { // Staff
+                // Staff can only edit/deactivate customers and members
+                if (!['Customer', 'Member'].includes(userRole)) {
+                    editButton.prop('disabled', true).addClass('btn-secondary').removeClass('btn-primary');
+                    toggleStatusButton.prop('disabled', true).addClass('btn-secondary').removeClass('btn-danger btn-success');
+                }
+            }
+        });
+
+        // Restrict role selection in edit form
+        $('select[name="role_id"]').on('change', function() {
+            const selectedRole = parseInt($(this).val());
+
+            // If current user is Admin (role_id 4), they can't set roles equal or higher than Admin
+            if (currentUserRole === 4 && selectedRole >= 4) {
+                alert("You cannot assign Admin or higher roles.");
+                // Reset to Staff role (role_id 3)
+                $(this).val(3);
+            }
+
+            // If current user is Staff (role_id 3), they can't set roles higher than Member (role_id 2)
+            if (currentUserRole === 3 && selectedRole > 2) {
+                alert("Staff cannot assign Staff or higher roles.");
+                // Reset to Member role (role_id 2)
+                $(this).val(2);
+            }
+        });
+
+        // Apply same restriction when opening the edit modal
+        $(document).on('show.bs.modal', '#editUserModal', function() {
+            if (currentUserRole === 4) {
+                // Admin can only assign roles up to Staff (role_id 3)
+                $('select[name="role_id"] option').each(function() {
+                    if (parseInt($(this).val()) >= 4) {
+                        $(this).prop('disabled', true);
+                    }
+                });
+            } else if (currentUserRole === 3) {
+                // Staff can only assign roles up to Member (role_id 2)
+                $('select[name="role_id"] option').each(function() {
+                    if (parseInt($(this).val()) > 2) {
+                        $(this).prop('disabled', true);
+                    }
+                });
+            }
         });
     </script>
 </body>

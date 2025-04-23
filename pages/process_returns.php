@@ -75,9 +75,7 @@ try {
     <?php include '../includes/sidebar.php'; ?>
 
     <div class="container-fluid px-4 mt-4">
-        <h1 class="h4 text-primary">
-            <i class="fas fa-users-cog me-2"></i>Process Returns
-        </h1>
+
         <!-- Pending Returns -->
         <div class="card mb-5 shadow">
             <div class="card-header bg-warning text-dark d-flex align-items-center">
@@ -167,8 +165,8 @@ try {
                         <table class="table table-hover mb-0 processed-returns">
                             <thead class="table-light">
                                 <tr>
-                                    <th>#Return ID</th>
-                                    <th>Order #</th>
+                                    <th>Return ID</th>
+                                    <th>Order</th>
                                     <th>Customer</th>
                                     <th>Date Requested</th>
                                     <th>Reason</th>

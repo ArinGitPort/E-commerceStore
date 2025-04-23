@@ -64,7 +64,7 @@ try {
     $pdo->beginTransaction();
     
     // Get current status and return details
-    $returnSql = "SELECT r.return_status, r.order_id, r.is_archived 
+    $returnSql = "SELECT r.return_status, r.order_id, r.is_archived, r.archived_order_id 
                  FROM returns r 
                  WHERE r.return_id = ?";
     $returnStmt = $pdo->prepare($returnSql);
@@ -86,7 +86,7 @@ try {
     $updateStmt = $pdo->prepare($updateSql);
     $updateStmt->execute([$newStatus, $processedBy, $returnId]);
     
-    // Add status history entry - fixed column name from updated_by to changed_by to match the table structure
+    // Add status history entry
     $historySql = "INSERT INTO return_status_history (return_id, old_status, new_status, changed_by, notes) 
                   VALUES (?, 'Pending', ?, ?, ?)";
     $historyStmt = $pdo->prepare($historySql);
@@ -97,8 +97,34 @@ try {
         $newStatus === 'Approved' ? 'Return request approved' : 'Return request rejected'
     ]);
     
-    // If approved, update inventory
+    // If approved, update inventory and change archived_order status to "Returned"
     if ($newStatus === 'Approved') {
+        // Update the archived_order status to "Returned"
+        if ($return['is_archived'] && $return['archived_order_id']) {
+            $updateArchivedOrderSql = "UPDATE archived_orders 
+                                      SET order_status = 'Returned', modified_at = NOW() 
+                                      WHERE order_id = ?";
+            $archivedOrderStmt = $pdo->prepare($updateArchivedOrderSql);
+            $archivedOrderStmt->execute([$return['archived_order_id']]);
+            
+            // Log this change
+            try {
+                $auditSql = "INSERT INTO audit_logs (user_id, action, table_name, record_id, ip_address, action_type, affected_data) 
+                            VALUES (?, ?, 'archived_orders', ?, ?, 'UPDATE', ?)";
+                $auditStmt = $pdo->prepare($auditSql);
+                $auditStmt->execute([
+                    $processedBy,
+                    "Updated archived order status to Returned",
+                    $return['archived_order_id'],
+                    $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    json_encode(['old_status' => 'Completed', 'new_status' => 'Returned'])
+                ]);
+            } catch (PDOException $e) {
+                logError("Could not create audit log for archived_orders update: " . $e->getMessage());
+                // Continue processing since this is not critical
+            }
+        }
+        
         // Get return items
         $itemsSql = "SELECT product_id, quantity FROM return_items WHERE return_id = ?";
         $itemsStmt = $pdo->prepare($itemsSql);
@@ -154,12 +180,12 @@ try {
     $customerSql = "SELECT u.name as customer_name, r.return_date, r.reason, r.order_id, r.return_status
                    FROM returns r
                    JOIN users u ON u.user_id = (
-                       SELECT customer_id FROM " . ($return['is_archived'] ? "archived_orders" : "orders") . "
+                       SELECT customer_id FROM archived_orders
                        WHERE order_id = ?
                    )
                    WHERE r.return_id = ?";
     $customerStmt = $pdo->prepare($customerSql);
-    $customerStmt->execute([$return['order_id'], $returnId]);
+    $customerStmt->execute([$return['archived_order_id'], $returnId]);
     $returnInfo = $customerStmt->fetch(PDO::FETCH_ASSOC);
     
     // If we couldn't get the customer info, still return basic info

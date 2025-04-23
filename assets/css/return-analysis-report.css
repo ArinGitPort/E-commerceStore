@@ -1,0 +1,301 @@
+/* Enhanced admin styling for the returns analysis report - Full width version */
+
+/* General styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fb;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.admin-container {
+    min-height: 100vh;
+    width: 100%;
+}
+
+
+/* Main content area */
+.content {
+    flex: 1;
+    padding: 2rem;
+    width: calc(100% - 250px); /* Subtract sidebar width */
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e6e9f0;
+    padding-bottom: 0.75rem;
+    width: 100%;
+}
+
+h2 {
+    color: #444;
+    margin: 1.5rem 0 1rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+/* Filter section */
+.filter-section {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    width: 100%;
+}
+
+.filter-section form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 200px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input[type="date"] {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: #4e73df;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #3a5fc5;
+}
+
+/* Summary cards */
+.summary-section {
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.card {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    color: #555;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.card .number {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.green {
+    color: #1cc88a;
+}
+
+.red {
+    color: #e74a3b;
+}
+
+.yellow {
+    color: #f6c23e;
+}
+
+/* Charts section */
+.charts-section {
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+.chart-container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chart-row {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.chart-container.half {
+    flex: 1;
+    min-width: 300px;
+}
+
+canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 350px;
+}
+
+/* Table styling */
+.table-section {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    overflow-x: auto; /* Handle table overflow */
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.data-table th, 
+.data-table td {
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #e6e9f0;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.data-table th {
+    background-color: #f8f9fc;
+    color: #4e73df;
+    font-weight: 500;
+    position: sticky; /* Keep headers visible on scroll */
+    top: 0;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover {
+    background-color: #f8f9fc;
+}
+
+.no-data {
+    text-align: center;
+    color: #777;
+    padding: 2rem 0;
+    font-style: italic;
+}
+
+/* Custom chart tooltip styling */
+.chartjs-tooltip {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 4px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 0.8rem;
+    max-width: 200px;
+    color: #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .chart-row {
+        flex-direction: column;
+    }
+    
+    .chart-container.half {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .content {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .form-group {
+        flex: 1 0 100%;
+    }
+    
+    .filter-section form {
+        flex-direction: column;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Handle fixed sidebar when content scrolls */
+@media (min-width: 769px) {
+    .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+}

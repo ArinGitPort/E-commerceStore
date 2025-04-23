@@ -13,10 +13,11 @@ if (!$token || !$email) {
 
 $valid = false;
 $user_id = null;
+$current_password_hash = null;
 
-// Check token
+// Check token and get current password hash
 $stmt = $pdo->prepare("
-    SELECT pr.user_id 
+    SELECT pr.user_id, u.password 
     FROM password_resets pr
     JOIN users u ON pr.user_id = u.user_id
     WHERE u.email = ? AND pr.token = ?
@@ -27,6 +28,7 @@ $row = $stmt->fetch();
 if ($row) {
     $valid = true;
     $user_id = $row['user_id'];
+    $current_password_hash = $row['password'];
 } else {
     $_SESSION['error'] = "Token is invalid.";
     header("Location: forgot-password.php");
@@ -40,11 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirmPassword'] ?? '';
 
+    // Regex pattern for password validation
+    // Requires at least 8 characters, 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character
+    $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
+
     // ✅ Backend validations
-    if (strlen($password) < 8) {
-        $error = "Password must be at least 8 characters.";
+    if (!preg_match($passwordPattern, $password)) {
+        $error = "Password must be at least 8 characters and include at least one uppercase letter, one lowercase letter, one number, and one special character.";
     } elseif ($password !== $confirmPassword) {
         $error = "Passwords do not match.";
+    } elseif (password_verify($password, $current_password_hash)) {
+        $error = "New password cannot be the same as your current password.";
     } else {
         // Save password
         $hashed = password_hash($password, PASSWORD_DEFAULT);
@@ -103,7 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
                     <?php endif; ?>
 
                     <label for="password">New Password</label>
-                    <input type="password" name="password" id="password" placeholder="New password" class="form-control mb-3" required minlength="8">
+                    <input type="password" name="password" id="password" placeholder="New password" class="form-control mb-2" required>
+
+                    <div class="password-requirements small text-muted mb-3">
+                        Password must contain at least 8 characters, including uppercase and lowercase letters, numbers, and special characters (@$!%*?&).
+                    </div>
 
                     <label for="confirmPassword">Confirm Password</label>
                     <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirm password" class="form-control mb-2" required>
@@ -134,10 +146,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
         }
 
         <?php if ($success): ?>
-        setTimeout(() => {
-            window.location.href = "../pages/login.php";
-        }, 3000);
+            setTimeout(() => {
+                window.location.href = "../pages/login.php";
+            }, 3000);
         <?php endif; ?>
     </script>
 </body>
+
 </html>

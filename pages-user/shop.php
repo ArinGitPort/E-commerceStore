@@ -84,23 +84,14 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
         <div class="shop-header text-center ">
             <h1>Our Products</h1>
 
-            <?php
-            /* ALERT
-            if ($showExclusive): ?>
-                   <div class="alert alert-info">You have access to exclusive products!</div>
-            <?php endif;
-            */
-            ?>
-
             <!-- Search & Filter Form -->
             <form method="GET" class="search-filter d-flex justify-content-center align-items-center gap-3 mt-3">
                 <div class="search-box">
-                    <input type="text" name="search" class="form-control" placeholder="Search products..."
-                        value="<?= htmlspecialchars($search) ?>">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    <input type="text" name="search" id="searchInput" class="form-control"
+                        placeholder="Search products..." value="<?= htmlspecialchars($search) ?>">
                 </div>
                 <div class="filter-dropdown">
-                    <select name="category_id" class="form-select">
+                    <select name="category_id" id="categoryFilter" class="form-select">
                         <option value="">All Categories</option>
                         <?php foreach ($categories as $cat): ?>
                             <option value="<?= $cat['category_id'] ?>"
@@ -116,7 +107,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
             </form>
         </div>
 
-        <div class="product-grid row g-4">
+        <div class="product-grid row g-4" id="productGrid">
             <?php if (empty($products)): ?>
                 <!-- No results -->
                 <div class="col-12 text-center py-5">
@@ -293,6 +284,52 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
             }
         });
     </script>
+    <script>
+        // Replace the existing JS with this updated version
+        $(document).ready(function() {
+            let searchTimeout;
+            const $productGrid = $('#productGrid');
+
+            // Function to load products
+            function loadProducts(search = '', categoryId = '') {
+                $.ajax({
+                    url: 'search_products.php',
+                    method: 'GET',
+                    data: {
+                        search: search,
+                        category_id: categoryId
+                    },
+                    success: function(response) {
+                        $productGrid.html(response);
+                        // Update URL without reload
+                        const params = new URLSearchParams();
+                        if (search) params.set('search', search);
+                        if (categoryId) params.set('category_id', categoryId);
+                        history.replaceState(null, '', 'shop.php?' + params.toString());
+                    }
+                });
+            }
+
+            // Instant search with debounce
+            $('#searchInput').on('input', function() {
+                clearTimeout(searchTimeout);
+                const search = $(this).val();
+                const categoryId = $('#categoryFilter').val();
+                searchTimeout = setTimeout(() => loadProducts(search, categoryId), 300);
+            });
+
+            // Instant category filter
+            $('#categoryFilter').on('change', function() {
+                const categoryId = $(this).val();
+                const search = $('#searchInput').val();
+                loadProducts(search, categoryId);
+            });
+
+            // Initial load
+            loadProducts('<?= $search ?>', '<?= $category_id ?>');
+        });
+    </script>
+
 </body>
 
 </html>

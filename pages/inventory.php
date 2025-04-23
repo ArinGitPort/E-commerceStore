@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
           <button class="md-btn md-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
             <i class="fas fa-plus"></i> ADD PRODUCT
           </button>
-          <div class="btn-group" >
+          <div class="btn-group">
             <button class="md-btn" data-bs-toggle="modal" data-bs-target="#importModal" style="margin-left: 5px; margin-right: 5px;">
               <i class="fas fa-file-import"></i> IMPORT
             </button>
@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
               </select>
               <select name="stock" class="md-select" onchange="this.form.submit()">
                 <option value="">All Items</option>
-                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)</option>
+                <option value="low_stock" <?= $stockFilter === 'low_stock' ? 'selected' : '' ?>>Low Stock (<10)< /option>
                 <option value="out_of_stock" <?= $stockFilter === 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
               </select>
               <div class="search-box" style="margin-top: 10px;">
@@ -182,8 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                   <td class="product-image-cell">
                     <?php if (!empty($product['primary_image'])): ?>
                       <img src="<?= filter_var($product['primary_image'], FILTER_VALIDATE_URL) ? $product['primary_image'] : '/assets/images/products/' . htmlspecialchars($product['primary_image']) ?>"
-                           alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
-                           class="product-thumbnail">
+                        alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>"
+                        class="product-thumbnail">
                     <?php else: ?>
                       <div class="no-image">No Image</div>
                     <?php endif; ?>
@@ -207,15 +207,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
                   </td>
                   <td class="actions">
                     <button type="button" class="md-icon-btn edit-btn"
-                            data-id="<?= $product['product_id'] ?>"
-                            data-bs-toggle="modal"
-                            data-bs-target="#editProductModal">
+                      data-id="<?= $product['product_id'] ?>"
+                      data-bs-toggle="modal"
+                      data-bs-target="#editProductModal">
                       <i class="fas fa-edit"></i>
                     </button>
                     <button type="button" class="md-icon-btn view-btn"
-                            data-id="<?= $product['product_id'] ?>"
-                            data-bs-toggle="modal"
-                            data-bs-target="#viewProductModal">
+                      data-id="<?= $product['product_id'] ?>"
+                      data-bs-toggle="modal"
+                      data-bs-target="#viewProductModal">
                       <i class="fas fa-eye"></i>
                     </button>
                   </td>
@@ -239,12 +239,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
               <option value="50" <?= $rowsPerPage == 50 ? 'selected' : '' ?>>50</option>
             </select>
             <button class="md-icon-btn" <?= $currentPage == 1 ? 'disabled' : '' ?>
-                    onclick="goToPage(<?= $currentPage - 1 ?>)">
+              onclick="goToPage(<?= $currentPage - 1 ?>)">
               &lt;
             </button>
             <span>Page <?= $currentPage ?> of <?= $totalPages ?></span>
             <button class="md-icon-btn" <?= $currentPage >= $totalPages ? 'disabled' : '' ?>
-                    onclick="goToPage(<?= $currentPage + 1 ?>)">
+              onclick="goToPage(<?= $currentPage + 1 ?>)">
               &gt;
             </button>
           </div>
@@ -253,7 +253,127 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
     </div>
   </div>
 
+  <!-- Add Product Modal -->
+  <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form action="inventory_actions.php" method="post" enctype="multipart/form-data">
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6">
+                <!-- Product details form fields -->
+                <div class="mb-3">
+                  <label class="form-label">Product Name*</label>
+                  <input type="text" name="product_name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">SKU*</label>
+                  <input type="text" name="sku" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Category*</label>
+                  <select name="category_id" class="form-select" required>
+                    <option value="">Select Category</option>
+                    <?php foreach ($categories as $cat): ?>
+                      <option value="<?= $cat['category_id'] ?>">
+                        <?= htmlspecialchars($cat['category_name']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Price*</label>
+                    <input type="number" step="0.01" name="price" class="form-control" required>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Stock*</label>
+                    <input type="number" name="stock" class="form-control" value="0" required>
+                  </div>
+                </div>
+                <div class="mb-3 form-check">
+                  <input type="checkbox" name="is_exclusive" class="form-check-input" id="addIsExclusive">
+                  <label class="form-check-label" for="addIsExclusive">Exclusive Product</label>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Minimum Membership Access</label>
+                  <select name="min_membership_level" class="form-select" id="addMinMembershipSelect" disabled>
+                    <option value="">All Users</option>
+                    <?php
+                    $membershipTypes = $pdo->query("SELECT * FROM membership_types")->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($membershipTypes as $type):
+                    ?>
+                      <option value="<?= $type['membership_type_id'] ?>">
+                        <?= htmlspecialchars($type['type_name']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea name="description" class="form-control" rows="4"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Product Images</label>
+                  <input type="file" name="product_images[]" class="form-control" multiple accept="image/*">
+                  <div class="form-text">First uploaded image will be set as primary.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" name="add_product" class="btn btn-primary">Add Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
+  <!-- Confirmation Modal for Delete -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete the selected product(s)?</p>
+          <p id="deleteCountMessage"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteImageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Image Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this image?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteImageBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Edit Product Modal (loaded via AJAX) -->
   <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
@@ -363,31 +483,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
       const imageId = $(this).data('image-id');
       const productId = $('#editProductModal').data('product-id');
       const $btn = $(this);
-      
+
       // Show loading state
       $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing');
-      
+
       $.post('inventory_actions.php', {
-          action: 'set_primary_image',
-          product_id: productId,
-          image_id: imageId
+        action: 'set_primary_image',
+        product_id: productId,
+        image_id: imageId
       }, function(response) {
-          if (response.success) {
-              // Update UI
-              $('.set-primary-btn').removeClass('active');
-              $btn.addClass('active');
-              
-              // Update the primary image in the main table if needed
-              const imageUrl = response.image_url;
-              $('tr[data-product-id="' + productId + '"] .product-thumbnail')
-                  .attr('src', '/assets/images/products/' + imageUrl);
-          } else {
-              alert(response.message || 'Error updating primary image');
-          }
+        if (response.success) {
+          // Update UI
+          $('.set-primary-btn').removeClass('active');
+          $btn.addClass('active');
+
+          // Update the primary image in the main table if needed
+          const imageUrl = response.image_url;
+          $('tr[data-product-id="' + productId + '"] .product-thumbnail')
+            .attr('src', '/assets/images/products/' + imageUrl);
+        } else {
+          alert(response.message || 'Error updating primary image');
+        }
       }).fail(function() {
-          alert('Server error occurred');
+        alert('Server error occurred');
       }).always(function() {
-          $btn.prop('disabled', false).html('<i class="fas fa-star"></i> Primary');
+        $btn.prop('disabled', false).html('<i class="fas fa-star"></i> Primary');
       });
     });
   </script>

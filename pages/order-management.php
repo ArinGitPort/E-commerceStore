@@ -137,9 +137,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
     <div class="container-fluid mt-4">
         <div class="row">
             <!-- Sidebar / Filters -->
-            <h1 class="h4 text-primary">
-            <i class="fas fa-users-cog me-2"></i>Order Management
-          </h1>
+
             <div class="col-md-3">
                 <div class="card mb-4">
                     <div class="card-body">

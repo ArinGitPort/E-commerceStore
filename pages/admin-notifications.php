@@ -194,7 +194,6 @@ if (isset($_SESSION['error'])) {
     <div class="row mb-4">
       <div class="col">
         <div class="d-flex justify-content-between align-items-center">
-          <h2><i class="bi bi-megaphone"></i> Notifications Management</h2>
           <!-- Button triggers the New Notification modal -->
           <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newNotificationModal">
             <i class="bi bi-plus-lg"></i> New Notification
