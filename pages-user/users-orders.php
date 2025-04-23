@@ -328,9 +328,9 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td><?= $itemCount ?></td>
                                         <td>₱<?= number_format($order['total_price'], 2) ?></td>
                                         <td><span class="badge status-badge bg-secondary">Completed</span></td>
-                                        <td><?= htmlspecialchars($order['method_name']) ?></td>
+                                        <td><?= htmlspecialchars($order['method_name'] ?? '') ?></td>
                                         <td><?= nl2br(htmlspecialchars($order['shipping_address'])) ?></td>
-                                        <td><?= htmlspecialchars($order['shipping_phone']) ?></td>
+                                        <td><?= htmlspecialchars($order['shipping_phone'] ?? '') ?></td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary view-order-details"
                                                 data-order-id="<?= htmlspecialchars($order['order_id']) ?>">
@@ -479,7 +479,7 @@ $returns = $returnsStmt->fetchAll(PDO::FETCH_ASSOC);
                     <!-- AJAX content will be loaded here -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="bautton" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
