@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid) {
 
 <head>
     <meta charset="UTF-8">
-    <title>Reset Password - Bunniwinkle</title>
+    <title>Bunniwinkle - Reset Password</title>
     <link rel="stylesheet" href="../assets/css/login.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>

@@ -70,7 +70,7 @@ $categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC
 
 <head>
     <meta charset="UTF-8">
-    <title>Shop - BunniShop</title>
+    <title>Bunniwinkle - Shop</title>
     <link rel="stylesheet" href="../assets/css/shop.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

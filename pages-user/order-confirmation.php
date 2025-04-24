@@ -43,7 +43,7 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 
 <head>
     <meta charset="UTF-8">
-    <title>Order Confirmation - BunniShop</title>
+    <title>Bunniwinkle - Order Confirmation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" href="../assets/images/iconlogo/bunniwinkleIcon.ico">
     <style>

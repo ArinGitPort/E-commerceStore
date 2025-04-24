@@ -46,7 +46,7 @@ $totalPages   = (int)ceil($totalResults / $perPage);
 
 <head>
     <meta charset="UTF-8">
-    <title>Subscription Management – Bunniwinkle</title>
+    <title>Bunniwinkle - Subscription Management</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap CSS -->
@@ -126,9 +126,7 @@ $totalPages   = (int)ceil($totalResults / $perPage);
     <div class="main-content">
         <!-- Main header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h3 text-primary">
-                <i class="fas fa-users-cog me-2"></i>Subscription Management
-            </h1>
+
             <div class="dropdown">
                 <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
                     Quick Actions

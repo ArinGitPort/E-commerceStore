@@ -10,6 +10,13 @@ try {
         throw new Exception('Invalid request method');
     }
 
+    // Check if user is logged in
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['role_id'])) {
+        throw new Exception('Unauthorized access');
+    }
+
+    $currentUserRoleId = $_SESSION['role_id'];
+
     // Get and validate input
     $input = filter_input_array(INPUT_POST, [
         'user_id' => FILTER_VALIDATE_INT,
@@ -32,6 +39,27 @@ try {
 
     if (!$input['role_id'] || $input['role_id'] < 1) {
         throw new Exception('Valid role is required');
+    }
+
+    // Get target user's current role
+    $stmt = $pdo->prepare("SELECT role_id FROM users WHERE user_id = ?");
+    $stmt->execute([$input['user_id']]);
+    $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$userData) {
+        throw new Exception('User not found');
+    }
+
+    $targetUserRoleId = $userData['role_id'];
+
+    // Prevent modifying users with equal or higher role level
+    if ($targetUserRoleId >= $currentUserRoleId) {
+        throw new Exception('You cannot modify users with equal or higher role level');
+    }
+
+    // Prevent assigning equal or higher roles
+    if ($input['role_id'] >= $currentUserRoleId) {
+        throw new Exception('You cannot assign equal or higher role levels');
     }
 
     // Update user in database
@@ -60,7 +88,7 @@ try {
         'success' => true,
         'message' => 'User updated successfully'
     ]);
-
+    
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([

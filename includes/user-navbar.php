@@ -67,12 +67,28 @@ if ($user_id) {
     </div>
   </div>
 
-  <!-- Redirecting Modal (Bootstrap) -->
+  <!-- Improved Redirect Modal -->
   <div class="modal fade" id="redirectModal" tabindex="-1" aria-labelledby="redirectModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-body text-center">
-          <p id="redirectMessage">Redirecting...</p>
+      <div class="modal-content border-0" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border-radius: 16px; box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);">
+        <div class="modal-body text-center p-5">
+          <!-- Loading Circle Animation -->
+          <div class="position-relative mb-4">
+            <div class="spinner-grow text-primary" role="status" style="width: 4rem; height: 4rem; --bs-primary: #a3c4f3; opacity: 0.8;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="spinner-grow text-danger position-absolute top-0 start-50 translate-middle-x" role="status" style="width: 4rem; height: 4rem; --bs-danger: #ffb7c5; opacity: 0.6; animation-delay: 0.2s;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <p id="redirectMessage" style="font-family: 'Montserrat', sans-serif; color: #6a7a8b; font-size: 1.2rem; font-weight: 300;">Redirecting...</p>
+
+          <!-- Minimal Progress Bar -->
+          <div class="progress mt-4 bg-white bg-opacity-50" style="height: 6px; border-radius: 10px; overflow: hidden;">
+            <div id="redirectProgress" class="progress-bar" role="progressbar" style="width: 0%; background: linear-gradient(90deg, #a3c4f3, #ffb7c5); border-radius: 10px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -115,7 +131,6 @@ if ($user_id) {
 
       <!-- Icon Section -->
       <div class="nav-icons">
-        <a href="../pages-user/search.php" class="icon" title="Search"><i class="fas fa-search"></i></a>
 
         <?php if (isset($_SESSION['user_id'])): ?>
           <a href="../pages-user/users-orders.php" class="icon" title="My Orders">
@@ -429,7 +444,93 @@ if ($user_id) {
       fetchNotifications();
       setInterval(fetchNotifications, 30000);
     });
+
+    // Logout confirm button handler
+    document.getElementById('logoutConfirmBtn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (logoutConfirm) logoutConfirm.style.display = 'none';
+      performRedirect('Logging out...', '../pages/logout.php');
+    });
+
+    // Login confirm button handler
+    document.getElementById('loginConfirmBtn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (loginConfirm) loginConfirm.style.display = 'none';
+      performRedirect('Logging in...', '../pages/login.php');
+    });
+
+    // Close modal when clicking outside
+    redirectModal?.addEventListener('click', function(e) {
+      if (e.target === this) {
+        const modalInstance = bootstrap.Modal.getInstance(this);
+        if (modalInstance) modalInstance.hide();
+      }
+    });
   </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginConfirm = document.getElementById('loginConfirm');
+      const logoutConfirm = document.getElementById('logoutConfirm');
+      const redirectModal = document.getElementById('redirectModal');
+      const redirectProgress = document.getElementById('redirectProgress');
+
+      // Handle click outside the login confirmation modal
+      if (loginConfirm) {
+        loginConfirm.addEventListener('click', function(e) {
+          if (e.target === this) {
+            loginConfirm.style.display = 'none';
+          }
+        });
+      }
+
+      // Logout confirm button handler
+      document.getElementById('logoutConfirmBtn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (logoutConfirm) logoutConfirm.style.display = 'none';
+        performRedirect('See you soon...', '../pages/logout.php');
+      });
+
+      // Login confirm button handler
+      document.getElementById('loginConfirmBtn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (loginConfirm) loginConfirm.style.display = 'none';
+        performRedirect('Welcome back...', '../pages/login.php');
+      });
+
+      // Function to handle redirection with animation
+      function performRedirect(message, destination) {
+        document.getElementById('redirectMessage').innerText = message;
+        const modal = new bootstrap.Modal(document.getElementById('redirectModal'));
+        modal.show();
+
+        // Add a subtle pulse animation to the modal
+        const modalContent = document.querySelector('.modal-content');
+        modalContent.style.animation = 'pulse 1.5s infinite alternate';
+        document.head.insertAdjacentHTML('beforeend', `
+      <style>
+        @keyframes pulse {
+          0% { box-shadow: 0 8px 32px rgba(163, 196, 243, 0.2); }
+          100% { box-shadow: 0 8px 32px rgba(255, 183, 197, 0.3); }
+        }
+      </style>
+    `);
+
+        // Animate progress bar
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += 1.5;
+          redirectProgress.style.width = `${progress}%`;
+
+          if (progress >= 100) {
+            clearInterval(interval);
+            window.location.href = destination;
+          }
+        }, 30); // Completes in approximately 2 seconds
+      }
+    });
+  </script>
+
 
 
 </body>

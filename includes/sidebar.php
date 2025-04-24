@@ -72,9 +72,9 @@
         // Define specific report access by role
         $reportAccess = [
           'Sales Report' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
-          'Returns Report' => ['Super Admin', 'Admin'],
-          'Inventory Report' => ['Super Admin', 'Admin'],
-          'Membership Report' => ['Super Admin', 'Admin', 'Staff', 'Brand Partners'],
+          'Returns Report' => ['Super Admin', 'Admin', 'Brand Partners'],
+          'Inventory Report' => ['Super Admin', 'Admin', 'Brand Partners'],
+          'Membership Report' => ['Super Admin', 'Admin', 'Staff'],
         ];
 
         // Helper function to check access

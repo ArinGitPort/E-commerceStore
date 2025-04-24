@@ -98,7 +98,7 @@ function getMembershipStats($pdo)
 
 <head>
     <meta charset="UTF-8">
-    <title>User Management - BunniShop</title>
+    <title>Bunniwinkle - User Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/css/account-management.css">
@@ -402,7 +402,7 @@ function getMembershipStats($pdo)
                                             <!-- Role -->
                                             <div class="mb-3">
                                                 <label class="form-label">Role<span class="text-danger">*</span></label>
-                                                <select name="role_id" class="form-select" required>
+                                                <select name="role_id" class="form-select" required id="staffRoleSelect">
                                                     <?php foreach ($roles as $r): ?>
                                                         <?php if (in_array($r['role_name'], ['Staff', 'Admin', 'Super Admin'])): ?>
                                                             <option value="<?= $r['role_id'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
@@ -414,7 +414,7 @@ function getMembershipStats($pdo)
                                             <!-- Optional: Phone -->
                                             <div class="mb-3">
                                                 <label class="form-label">Contact Number</label>
-                                                <input name="phone" type="text" class="form-control" placeholder="e.g. +63 912 345 6789">
+                                                <input name="phone" type="number" class="form-control" placeholder="e.g. +63 912 345 6789">
                                             </div>
 
                                             <!-- Optional: Address -->
@@ -1002,6 +1002,34 @@ function getMembershipStats($pdo)
                     }
                 });
             }
+        });
+
+        // Add this to your existing JavaScript section
+        $('#btnAddStaff').click(function() {
+            // Reset form and populate role dropdown based on current user's permissions
+            $('#addStaffForm')[0].reset();
+
+            // Clear and repopulate role dropdown based on current user's permissions
+            const roleSelect = $('#staffRoleSelect');
+            roleSelect.empty();
+
+            // Populate dropdown based on user's role
+            <?php foreach ($roles as $r): ?>
+                <?php if (in_array($r['role_name'], ['Staff', 'Admin', 'Super Admin', 'Member', 'Customer'])): ?>
+                    if (
+                        (currentUserRole === 5) || // Super Admin can add any role
+                        (currentUserRole === 4 && <?= $r['role_id'] ?> < 4) || // Admin can add Staff and below
+                        (currentUserRole === 3 && <?= $r['role_id'] ?> <= 2) // Staff can add Member and Customer
+                    ) {
+                        roleSelect.append($('<option>', {
+                            value: <?= $r['role_id'] ?>,
+                            text: "<?= htmlspecialchars($r['role_name']) ?>"
+                        }));
+                    }
+                <?php endif; ?>
+            <?php endforeach; ?>
+
+            addStaffModal.show();
         });
     </script>
 </body>

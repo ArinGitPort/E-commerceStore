@@ -151,7 +151,7 @@ $paymentMethods = $pdo->query("SELECT * FROM payment_methods")->fetchAll(PDO::FE
             <div class="col-md-6 mb-3">
               <label for="shippingPhone" class="form-label">Phone Number</label>
               <input
-                type="text"
+                type="number"
                 class="form-control"
                 id="shippingPhone"
                 name="shipping_phone"

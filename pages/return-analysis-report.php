@@ -234,7 +234,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Returns Analysis Report - BunniShop Admin</title>
+    <title>Bunniwinkle - Returned Report</title>
     <link rel="stylesheet" href="../assets/css/admin-styles.css">
     <link rel="stylesheet" href="../assets/css/return-analysis-report.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -18,7 +18,7 @@ $query = "SELECT
             p.is_exclusive,
             c.category_name,
             mt.type_name as membership_level,
-            (SELECT SUM(od.quantity) FROM order_details od 
+            (SELECT COALESCE(SUM(od.quantity), 0) FROM order_details od 
              JOIN orders o ON od.order_id = o.order_id 
              WHERE od.product_id = p.product_id 
              AND o.order_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
@@ -32,39 +32,39 @@ $params = [];
 
 // Apply filters
 if ($category_id != 'all') {
-    $query .= " AND p.category_id = :category_id";
-    $params[':category_id'] = $category_id;
+  $query .= " AND p.category_id = :category_id";
+  $params[':category_id'] = $category_id;
 }
 
 if ($stock_status == 'low') {
-    $query .= " AND p.stock <= 10";
+  $query .= " AND p.stock <= 10";
 } elseif ($stock_status == 'out') {
-    $query .= " AND p.stock = 0";
+  $query .= " AND p.stock = 0";
 } elseif ($stock_status == 'healthy') {
-    $query .= " AND p.stock > 10";
+  $query .= " AND p.stock > 10";
 }
 
 if ($is_exclusive != 'all') {
-    $query .= " AND p.is_exclusive = :is_exclusive";
-    $params[':is_exclusive'] = ($is_exclusive === 'yes') ? 1 : 0;
+  $query .= " AND p.is_exclusive = :is_exclusive";
+  $params[':is_exclusive'] = ($is_exclusive === 'yes') ? 1 : 0;
 }
 
 // Apply sorting
 switch ($sort_by) {
-    case 'stock_asc':
-        $query .= " ORDER BY p.stock ASC";
-        break;
-    case 'stock_desc':
-        $query .= " ORDER BY p.stock DESC";
-        break;
-    case 'sales_desc':
-        $query .= " ORDER BY monthly_sales DESC NULLS LAST";
-        break;
-    case 'name_asc':
-        $query .= " ORDER BY p.product_name ASC";
-        break;
-    default:
-        $query .= " ORDER BY p.stock ASC";
+  case 'stock_asc':
+    $query .= " ORDER BY p.stock ASC";
+    break;
+  case 'stock_desc':
+    $query .= " ORDER BY p.stock DESC";
+    break;
+  case 'sales_desc':
+    $query .= " ORDER BY monthly_sales DESC";
+    break;
+  case 'name_asc':
+    $query .= " ORDER BY p.product_name ASC";
+    break;
+  default:
+    $query .= " ORDER BY p.stock ASC";
 }
 
 // Execute query
@@ -82,68 +82,152 @@ $low_stock = 0;
 $total_value = 0;
 
 foreach ($products as $product) {
-    if ($product['stock'] == 0) {
-        $out_of_stock++;
-    } elseif ($product['stock'] <= 10) {
-        $low_stock++;
-    }
-    $total_value += $product['price'] * $product['stock'];
+  if ($product['stock'] == 0) {
+    $out_of_stock++;
+  } elseif ($product['stock'] <= 10) {
+    $low_stock++;
+  }
+  $total_value += $product['price'] * $product['stock'];
+}
+
+// Report generation functionality
+function generateCSV($products)
+{
+  $filename = 'inventory_report_' . date('Y-m-d_H-i-s') . '.csv';
+  header('Content-Type: text/csv');
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+  $output = fopen('php://output', 'w');
+
+  // Add CSV headers
+  fputcsv($output, ['Product ID', 'Product Name', 'SKU', 'Category', 'Membership Required', 'Price', 'Stock', 'Monthly Sales', 'Is Exclusive']);
+
+  // Add product data
+  foreach ($products as $product) {
+    fputcsv($output, [
+      $product['product_id'],
+      $product['product_name'],
+      $product['sku'],
+      $product['category_name'],
+      $product['membership_level'] ?? 'N/A',
+      $product['price'],
+      $product['stock'],
+      $product['monthly_sales'] ?? 0,
+      $product['is_exclusive'] ? 'Yes' : 'No'
+    ]);
+  }
+
+  fclose($output);
+  exit;
+}
+
+// Generate report if requested
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+  generateCSV($products);
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventory Status</title>
+  <title>Bunniwinkle - Inventory Status Report</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <style>
+    @media print {
+      .no-print {
+        display: none;
+      }
+
+      body {
+        padding: 20px;
+      }
+    }
+
+    .stock-status-out {
+      color: #dc3545;
+      font-weight: bold;
+    }
+
+    .stock-status-low {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .stock-status-ok {
+      color: #198754;
+    }
+
+    .table th {
+      position: sticky;
+      top: 0;
+      background-color: #f8f9fa;
+    }
+
+    .card-header {
+      font-weight: bold;
+    }
+
+    .report-timestamp {
+      text-align: right;
+      font-style: italic;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 
 <?php include '../includes/sidebar.php'; ?>
 
 <body class="bg-light">
   <div class="container-fluid p-4">
-    
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="report-timestamp">
+        Generated: <?= date('F j, Y, g:i a') ?>
+      </div>
+    </div>
+
     <!-- Summary Cards -->
     <div class="row mb-4">
       <div class="col-md-3">
         <div class="card bg-primary text-white">
+          <div class="card-header">Total Products</div>
           <div class="card-body">
-            <h5 class="card-title">Total Products</h5>
             <h2><?= $total_products ?></h2>
           </div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="card bg-danger text-white">
+          <div class="card-header">Out of Stock</div>
           <div class="card-body">
-            <h5 class="card-title">Out of Stock</h5>
             <h2><?= $out_of_stock ?></h2>
           </div>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card bg-warning text-dark">
+        <div class="card bg-warning text-white">
+          <div class="card-header">Low Stock</div>
           <div class="card-body">
-            <h5 class="card-title">Low Stock</h5>
             <h2><?= $low_stock ?></h2>
           </div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="card bg-success text-white">
+          <div class="card-header">Inventory Value</div>
           <div class="card-body">
-            <h5 class="card-title">Inventory Value</h5>
             <h2>₱<?= number_format($total_value, 2) ?></h2>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Filters -->
-    <div class="card mb-4">
+    <div class="card mb-4 no-print">
       <div class="card-body">
         <form method="GET" class="row g-3">
           <div class="col-md-3">
@@ -183,16 +267,85 @@ foreach ($products as $product) {
               <option value="name_asc" <?= $sort_by == 'name_asc' ? 'selected' : '' ?>>Name (A-Z)</option>
             </select>
           </div>
+
           <div class="col-md-2 d-flex align-items-end">
             <button type="submit" class="btn btn-primary me-2"><i class="fas fa-filter"></i> Apply</button>
+            <a href="<?= $_SERVER['PHP_SELF'] ?>" class="btn btn-outline-secondary me-2">
+              <i class="fas fa-undo"></i> Reset
+            </a>
             <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-              <i class="fas fa-print"></i> Export
+              <i class="fas fa-print"></i> Print
             </button>
           </div>
         </form>
       </div>
     </div>
-    
+
     <!-- Inventory Table -->
     <div class="card">
       <div class="card-body">
+        <h5 class="card-title mb-3">Inventory Items</h5>
+
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product Name</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Membership Required</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Monthly Sales</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if (empty($products)): ?>
+                <tr>
+                  <td colspan="8" class="text-center">No products found matching your criteria</td>
+                </tr>
+              <?php else: ?>
+                <?php foreach ($products as $index => $product): ?>
+                  <?php
+                  $stockClass = 'stock-status-ok';
+                  if ($product['stock'] == 0) {
+                    $stockClass = 'stock-status-out';
+                  } elseif ($product['stock'] <= 10) {
+                    $stockClass = 'stock-status-low';
+                  }
+                  ?>
+                  <tr>
+                    <td><?= $index + 1 ?></td>
+                    <td>
+                      <?= htmlspecialchars($product['product_name']) ?>
+                      <?php if ($product['is_exclusive']): ?>
+                        <span class="badge bg-info ms-1">Exclusive</span>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars($product['sku']) ?></td>
+                    <td><?= htmlspecialchars($product['category_name']) ?></td>
+                    <td><?= $product['membership_level'] ? htmlspecialchars($product['membership_level']) : 'N/A' ?></td>
+                    <td>₱<?= number_format($product['price'], 2) ?></td>
+                    <td class="<?= $stockClass ?>"><?= $product['stock'] ?></td>
+                    <td><?= $product['monthly_sales'] ?: 0 ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-end mt-3 no-print">
+      <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="btn btn-secondary">
+        <i class="fas fa-file-export"></i> Generate Full Report
+      </a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

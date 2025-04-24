@@ -110,7 +110,7 @@ unset($_SESSION['login_error']);
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>Login - Bunniwinkle</title>
+  <title>Bunniwinkle - Login</title>
   <link rel="stylesheet" href="../assets/css/login.css" />
   <link rel="icon" href="../assets/images/icon/logo_bunniwinkleIcon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />

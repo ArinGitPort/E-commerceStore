@@ -98,7 +98,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
 
 <head>
     <meta charset="UTF-8">
-    <title>Order Management - BunniShop</title>
+    <title>Bunniwinkle - Order Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
 </head>
@@ -189,6 +189,7 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                             <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
+                                        <th>ID</th>
                                         <th><?= sort_link('order_id', 'Order ID', $sortBy, $sortDir, $filterStatus, $search) ?></th>
                                         <th><?= sort_link('customer_name', 'Customer', $sortBy, $sortDir, $filterStatus, $search) ?></th>
                                         <th><?= sort_link('order_date', 'Order Date', $sortBy, $sortDir, $filterStatus, $search) ?></th>
@@ -199,8 +200,13 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                     </tr>
                                 </thead>
                                 <tbody id="ordersTableBody">
-                                    <?php foreach ($orders as $order): ?>
+                                    <?php
+                                    // Initialize counter for sequential ordering
+                                    $orderCounter = ($currentPage - 1) * $ordersPerPage + 1;
+                                    foreach ($orders as $order):
+                                    ?>
                                         <tr class="<?= !$order['viewed'] ? 'table-warning' : '' ?>">
+                                            <td><?= $orderCounter++ ?></td>
                                             <td>#<?= $order['order_id'] ?></td>
                                             <td><?= htmlspecialchars($order['customer_name']) ?></td>
                                             <td><?= date('M d, Y H:i', strtotime($order['order_date'])) ?></td>
@@ -209,7 +215,6 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                                 <span class="current-status" id="status-<?= $order['order_id'] ?>">
                                                     <?= ucfirst($order['order_status']) ?>
                                                 </span>
-
                                             </td>
                                             <td>
                                                 <?php if ($order['estimated_delivery']): ?>
@@ -244,29 +249,28 @@ function sort_link($column, $label, $sortBy, $sortDir, $filterStatus, $search)
                                                     </button>
                                                 </div>
                                             </td>
-
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
-                        </div>
-
-
-                        <!-- Pagination -->
-                        <nav>
-                            <ul class="pagination justify-content-center">
-                                <?php for ($i = 1; $i <= ceil($totalOrders / $ordersPerPage); $i++): ?>
-                                    <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $i ?>&filter=<?= $filterStatus ?>&search=<?= $search ?>&sort=<?= $sortBy ?>&dir=<?= $sortDir ?>"><?= $i ?></a>
-                                    </li>
-                                <?php endfor; ?>
-                            </ul>
-                        </nav>
-
                     </div>
+
+
+                    <!-- Pagination -->
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            <?php for ($i = 1; $i <= ceil($totalOrders / $ordersPerPage); $i++): ?>
+                                <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $i ?>&filter=<?= $filterStatus ?>&search=<?= $search ?>&sort=<?= $sortBy ?>&dir=<?= $sortDir ?>"><?= $i ?></a>
+                                </li>
+                            <?php endfor; ?>
+                        </ul>
+                    </nav>
+
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Set Delivery Date Modal -->

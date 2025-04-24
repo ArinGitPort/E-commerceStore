@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
 
 <head>
   <meta charset="UTF-8">
-  <title>Inventory Management - BunniShop</title>
+  <title>Bunniwinkle - Inventory Management</title>
   <link rel="stylesheet" href="/assets/css/inventory.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -457,10 +457,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_products'])) {
         alert('Please select at least one product to delete');
         return;
       }
-      if (confirm(`Are you sure you want to delete ${selectedCount} selected product(s)?`)) {
-        document.getElementById('inventoryForm').submit();
-      }
+
+      // Update the modal message with count information
+      document.getElementById('deleteCountMessage').textContent = `This will delete ${selectedCount} selected product(s).`;
+
+      // Show the confirmation modal
+      const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+      deleteModal.show();
     });
+
+    // Add event listener for the confirm delete button in the modal
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+      // Submit the form to delete selected products
+      document.getElementById('inventoryForm').submit();
+    });
+
+
     // Trigger export by setting the 'export' parameter in the URL
     document.getElementById('exportBtn').addEventListener('click', function() {
       window.location.href = 'inventory_actions.php?export=1';
