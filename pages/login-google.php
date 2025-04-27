@@ -5,7 +5,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 $client = new Google\Client();
 $client->setClientId('132279815834-hc8gb34u5igiisrtggp0rrd1aliih3qm.apps.googleusercontent.com');
-$client->setClientSecret('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');
+$client->setClientSecret('');
 $client->setRedirectUri('http://localhost:3000/pages/login-google.php');
 $client->addScope('email');
 $client->addScope('profile');

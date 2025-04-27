@@ -64,18 +64,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'monochromecell@gmail.com';
-            $mail->Password   = 'eknj ybgw kmqc krga';
+            $mail->Username   = '';
+            $mail->Password   = '';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
 
             // Recipients
-            $mail->setFrom('monochromecell@gmail.com', 'Bunniwinkle');
+            $mail->setFrom('', 'Bunniwinkle');
             $mail->addAddress($email, $firstName);
 
             // Content
             $mail->isHTML(true);
-            $mail->Subject = 'Account Activation - Bunn winkle';
+            $mail->Subject = 'Account Activation - Bunniwinkle';
             // Update the domain name below to your own and include email if desired
             $activationLink = "http://localhost:3000/pages-user/email-validation.php?token=" . $activation_token . "&email=" . urlencode($email);
             $mail->Body    = "Hi " . $firstName . ",<br><br>Please click the following link to activate your account:<br><a href='" . $activationLink . "'>" . $activationLink . "</a><br><br>Thank you!";
