@@ -190,6 +190,24 @@ unset($_SESSION['login_error']);
     .is-invalid:focus {
       box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
     }
+    
+    /* Disabled Google button styles */
+    .btn-premium-google.disabled {
+      background-color: #e0e0e0 !important;
+      color: #a0a0a0 !important;
+      cursor: not-allowed;
+      pointer-events: none;
+      opacity: 0.65;
+      border: 1px solid #cccccc;
+    }
+    
+    .btn-premium-google.disabled i {
+      color: #a0a0a0 !important;
+    }
+    
+    .btn-premium-google.disabled .google-text-span {
+      color: #888888 !important;
+    }
   </style>
 </head>
 
@@ -259,7 +277,8 @@ unset($_SESSION['login_error']);
         <hr class="flex-grow-1" />
       </div>
       <div class="goole-btn-wrapper">
-        <a href="login-google.php" class="btn-premium-google w-100">
+        <!-- Added "disabled" class to the Google sign-in button -->
+        <a href="#" class="btn-premium-google w-100 disabled">
           <i class="fab fa-google"></i>
           <span class="google-text-span">Continue with Google</span>
         </a>
@@ -267,7 +286,7 @@ unset($_SESSION['login_error']);
     </form>
   </div>
   <footer class="text-center mt-5 text-muted" style="font-size: 18px;">
-    Don’t have an account?
+    Don't have an account?
     <a href="register.php" style="color: #354359; font-weight: 600; padding: 0 8px;">Register here</a>
   </footer>
 

@@ -16,6 +16,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+sync_cart($pdo);
+
+
 // Handle form submissions (fallback for update/remove via full page submission)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_update'])) {
     // Validate CSRF token

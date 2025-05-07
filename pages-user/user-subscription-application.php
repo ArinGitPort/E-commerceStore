@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/session-init.php';
 // Fetch available membership tiers
 $tiers = $pdo->query("
     SELECT * FROM membership_types
+    WHERE type_name != 'Free' -- Exclude the Free tier
     ORDER BY price ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -84,6 +85,39 @@ if (isset($_SESSION['user_id'])) {
         .benefits-list li:last-child {
             border-bottom: none;
         }
+
+        /* Styling for disabled cards */
+        .tier-card.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Ribbon for current plan */
+        .ribbon {
+            position: absolute;
+            top: 15px;
+            right: -5px;
+            padding: 5px 12px;
+            background: #6C4AB6;
+            color: white;
+            font-weight: bold;
+            z-index: 1;
+            border-radius: 4px 0 0 4px;
+            box-shadow: -2px 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .ribbon:after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -10px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 13px 10px 13px 0;
+            border-color: transparent #6C4AB6 transparent transparent;
+            transform: rotate(180deg);
+        }
     </style>
 </head>
 
@@ -106,10 +140,30 @@ if (isset($_SESSION['user_id'])) {
             </div>
 
             <div class="row g-4 justify-content-center">
-                <?php foreach ($tiers as $tier): ?>
+                <?php foreach ($tiers as $tier): 
+                    // Determine if this is a downgrade from current plan
+                    $isDowngrade = $currentMembership && $currentMembership['price'] > $tier['price'];
+                    
+                    // Determine if this is the current plan
+                    $isCurrentPlan = $currentMembership && $currentMembership['membership_type_id'] == $tier['membership_type_id'];
+                    
+                    // Set disabled class if needed
+                    $cardClass = 'tier-card card h-100';
+                    if ($isCurrentPlan) {
+                        $cardClass .= ' active';
+                    }
+                    if ($isDowngrade) {
+                        $cardClass .= ' disabled';
+                    }
+                ?>
                     <div class="col-lg-4 col-md-6">
-                        <div class="tier-card card h-100 <?= $currentMembership && $currentMembership['membership_type_id'] == $tier['membership_type_id'] ? 'active' : '' ?>"
-                            style="border-top: 5px solid <?= $tier['can_access_exclusive'] ? '#6C4AB6' : '#8D72E1' ?>">
+                        <div class="<?= $cardClass ?>" 
+                            style="border-top: 5px solid <?= $tier['can_access_exclusive'] ? '#6C4AB6' : '#8D72E1' ?>; position: relative;">
+                            
+                            <?php if ($isCurrentPlan): ?>
+                                <div class="ribbon">Current Plan</div>
+                            <?php endif; ?>
+                            
                             <div class="price-badge text-center">
                                 ₱<?= number_format($tier['price'], 2) ?>
                                 <div class="fs-6">per month</div>
@@ -123,27 +177,51 @@ if (isset($_SESSION['user_id'])) {
                                 </h3>
 
                                 <ul class="benefits-list">
-                                    <?php $benefits = explode("\n", $tier['description']); ?>
+                                    <?php 
+                                    // Fix for the null description - ensure we have a string before exploding
+                                    $description = isset($tier['description']) && $tier['description'] !== null ? $tier['description'] : ''; 
+                                    $benefits = explode("\n", $description); 
+                                    ?>
                                     <?php foreach ($benefits as $benefit): ?>
+                                        <?php if (trim($benefit) !== ''): ?>
                                         <li>
                                             <i class="bi bi-check2-circle me-2 text-success"></i>
                                             <?= strip_tags(trim($benefit), '<strong><em><span><b><i>') ?>
                                         </li>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </ul>
 
                                 <button class="btn btn-lg btn-primary w-100 mt-4 subscribe-btn"
                                     data-tier-id="<?= $tier['membership_type_id'] ?>"
                                     data-tier-name="<?= htmlspecialchars($tier['type_name']) ?>"
-                                    data-tier-price="<?= $tier['price'] ?>">
-                                    <?= $currentMembership && $currentMembership['membership_type_id'] == $tier['membership_type_id'] ?
-                                        'Current Plan' : 'Choose Plan' ?>
+                                    data-tier-price="<?= $tier['price'] ?>"
+                                    <?php if ($isCurrentPlan): ?>disabled<?php endif; ?>
+                                    <?php if ($isDowngrade): ?>disabled<?php endif; ?>>
+                                    <?php
+                                    if ($isCurrentPlan) {
+                                        echo 'Current Plan';
+                                    } elseif ($isDowngrade) {
+                                        echo 'Cannot Downgrade';
+                                    } else {
+                                        echo 'Choose Plan';
+                                    }
+                                    ?>
                                 </button>
                             </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
+            
+            <?php if ($isDowngrade ?? false): ?>
+            <div class="text-center mt-4">
+                <div class="alert alert-warning d-inline-block">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Downgrades are not allowed. You can only upgrade to higher-tier plans.
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -192,56 +270,6 @@ if (isset($_SESSION['user_id'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('.subscribe-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (btn.textContent === 'Current Plan') return;
-
-                const modal = new bootstrap.Modal('#paymentModal');
-                document.getElementById('selectedTierName').textContent = btn.dataset.tierName;
-                document.getElementById('selectedTierPrice').textContent = btn.dataset.tierPrice;
-                document.getElementById('selectedTierId').value = btn.dataset.tierId;
-                modal.show();
-            });
-        });
-
-        // Payment method dynamic form
-        document.querySelector('[name="payment_method"]').addEventListener('change', function() {
-            const paymentDetails = {
-                'gcash': `
-                    <div class="mb-3">
-                        <label class="form-label">GCash Number</label>
-                        <input type="tel" class="form-control" name="gcash_number" 
-                            pattern="09[0-9]{9}" placeholder="09123456789" required>
-                    </div>`,
-                'credit_card': `
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label">Card Number</label>
-                            <input type="text" class="form-control" name="card_number" 
-                                pattern="[0-9]{16}" placeholder="4242 4242 4242 4242" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Expiry Date</label>
-                            <input type="month" class="form-control" name="expiry" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">CVC</label>
-                            <input type="text" class="form-control" name="cvc" 
-                                pattern="[0-9]{3}" placeholder="123" required>
-                        </div>
-                    </div>`,
-                'paypal': `
-                    <div class="alert alert-info">
-                        You will be redirected to PayPal after confirmation
-                    </div>`
-            };
-
-            document.getElementById('paymentDetails').innerHTML =
-                paymentDetails[this.value] || '';
-        });
-    </script>
-
-    <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize modal
             const paymentModal = new bootstrap.Modal('#paymentModal');
@@ -249,7 +277,8 @@ if (isset($_SESSION['user_id'])) {
             // Handle subscription button clicks
             document.querySelectorAll('.subscribe-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    if (btn.textContent === 'Current Plan') return;
+                    // Skip if button is disabled or is already the current plan
+                    if (btn.disabled || btn.textContent === 'Current Plan' || btn.textContent === 'Cannot Downgrade') return;
 
                     document.getElementById('selectedTierName').textContent = btn.dataset.tierName;
                     document.getElementById('selectedTierPrice').textContent = btn.dataset.tierPrice;
@@ -265,23 +294,23 @@ if (isset($_SESSION['user_id'])) {
                 <div class="mb-3">
                     <label class="form-label">GCash Number</label>
                     <input type="tel" class="form-control" name="gcash_number" 
-                        placeholder="09123456789">
+                        placeholder="09123456789" required>
                 </div>`,
                     'credit_card': `
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label">Card Number</label>
                         <input type="text" class="form-control" name="card_number" 
-                            placeholder="4242 4242 4242 4242">
+                            placeholder="4242 4242 4242 4242" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Expiry Date</label>
-                        <input type="month" class="form-control" name="expiry">
+                        <input type="month" class="form-control" name="expiry" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">CVC</label>
                         <input type="text" class="form-control" name="cvc" 
-                            placeholder="123">
+                            placeholder="123" required>
                     </div>
                 </div>`,
                     'paypal': `
@@ -416,27 +445,8 @@ if (isset($_SESSION['user_id'])) {
 
                             // Refresh the current membership display if success
                             if (data.success) {
-                                const tierName = data.data.tier.name;
-                                const tierPrice = data.data.tier.price;
-
-                                const membershipAlert = document.querySelector('.alert-info');
-                                if (membershipAlert) {
-                                    membershipAlert.innerHTML = `
-                        <i class="bi bi-stars me-2"></i>
-                        Current Plan: ${tierName} 
-                        (₱${tierPrice}/month)
-                    `;
-                                }
-
-                                // Update the active class on membership cards
-                                document.querySelectorAll('.tier-card').forEach(card => {
-                                    card.classList.remove('active');
-                                    const cardTitle = card.querySelector('.card-title').textContent.trim();
-                                    if (cardTitle.includes(tierName)) {
-                                        card.classList.add('active');
-                                        card.querySelector('.subscribe-btn').textContent = 'Current Plan';
-                                    }
-                                });
+                                // Page reload is a simpler way to update all UI elements correctly
+                                window.location.reload();
                             }
                         }, 1500);
                     })
