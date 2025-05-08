@@ -16,7 +16,7 @@ $product_id = (int)$_GET['product_id'];
 $stmt = $pdo->prepare("
     SELECT p.*, c.category_name
     FROM products p
-    JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
     WHERE p.product_id = ?
 ");
 $stmt->execute([$product_id]);
@@ -33,7 +33,7 @@ $imageStmt->execute([$product_id]);
 $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <div class="modal-header">
-    <h5 class="modal-title"><?= htmlspecialchars($product['product_name']) ?></h5>
+    <h5 class="modal-title"><?= htmlspecialchars($product['product_name'] ?? '') ?></h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <div class="modal-body">
@@ -44,9 +44,9 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="carousel-inner">
                         <?php foreach ($images as $index => $image): ?>
                             <div class="carousel-item <?= $index === 0 ? 'active' : '' ?>">
-                                <img src="../assets/images/products/<?= htmlspecialchars($image['image_url']) ?>"
+                                <img src="../assets/images/products/<?= htmlspecialchars($image['image_url'] ?? '') ?>"
                                      class="d-block w-100"
-                                     alt="<?= htmlspecialchars($product['product_name']) ?>">
+                                     alt="<?= htmlspecialchars($product['product_name'] ?? '') ?>">
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -68,18 +68,22 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <div class="col-md-6">
-            <h3><?= htmlspecialchars($product['product_name']) ?></h3>
-            <div class="price fs-4 mb-3">₱<?= number_format($product['price'], 2) ?></div>
+            <h3><?= htmlspecialchars($product['product_name'] ?? '') ?></h3>
+            <div class="price fs-4 mb-3">₱<?= number_format($product['price'] ?? 0, 2) ?></div>
 
             <div class="d-flex justify-content-between mb-3">
                 <div>
-                    <span class="badge bg-info"><?= htmlspecialchars($product['category_name']) ?></span>
-                    <?php if ($product['is_exclusive']): ?>
+                    <?php if (!empty($product['category_name'])): ?>
+                        <span class="badge bg-info"><?= htmlspecialchars($product['category_name']) ?></span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary">Uncategorized</span>
+                    <?php endif; ?>
+                    <?php if (!empty($product['is_exclusive'])): ?>
                         <span class="badge bg-warning">Exclusive</span>
                     <?php endif; ?>
                 </div>
                 <div>
-                    <?php if ($product['stock'] > 0): ?>
+                    <?php if (!empty($product['stock']) && $product['stock'] > 0): ?>
                         <span class="badge bg-success">In Stock (<?= $product['stock'] ?>)</span>
                     <?php else: ?>
                         <span class="badge bg-danger">Out of Stock</span>
@@ -87,7 +91,7 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
+            <p><?= !empty($product['description']) ? nl2br(htmlspecialchars($product['description'])) : 'No description available.' ?></p>
 
             <!-- Add to Cart Form (handled via AJAX) -->
             <form method="POST" class="add-to-cart-form mt-4">
@@ -100,7 +104,7 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
                     <input type="number" name="quantity"
                            value="1"
                            min="1"
-                           max="<?= $product['stock'] ?>"
+                           max="<?= $product['stock'] ?? 0 ?>"
                            class="modal-quantity-input form-control mx-2"
                            style="width:80px;">
                     <button type="button" class="modal-quantity-btn modal-plus btn btn-outline-secondary">+</button>
@@ -108,9 +112,9 @@ $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <button type="submit"
                         class="btn btn-primary w-100 py-2"
-                        <?= $product['stock'] <= 0 ? 'disabled' : '' ?>>
+                        <?= empty($product['stock']) || $product['stock'] <= 0 ? 'disabled' : '' ?>>
                     <i class="fas fa-shopping-cart"></i>
-                    <?= $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' ?>
+                    <?= empty($product['stock']) || $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' ?>
                 </button>
             </form>
             <!--

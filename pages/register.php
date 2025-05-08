@@ -1,11 +1,6 @@
-<!-- PLEASE DONT FORGET TO ADD PHP MAILER -->
 <?php
 
 require_once '../config/db_connection.php'; // ensure this path is correct
-require '../vendor/autoload.php'; // PHPMailer autoloader
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 function clean_input($data)
 {
@@ -48,44 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Default role 'Customer' not found.";
       } else {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        // Generate activation token and mark the account as inactive
-        $activation_token = bin2hex(random_bytes(16));
-        $is_active = 0;
-        $insert = $pdo->prepare("INSERT INTO users (name, email, password, role_id, activation_token, is_active) VALUES (?, ?, ?, ?, ?, ?)");
-        $success = $insert->execute([$firstName, $email, $hashedPassword, $role_id, $activation_token, $is_active]);
+        // Set account as active by default (is_active = 1)
+        $is_active = 1;
+        $insert = $pdo->prepare("INSERT INTO users (name, email, password, role_id, is_active) VALUES (?, ?, ?, ?, ?)");
+        $success = $insert->execute([$firstName, $email, $hashedPassword, $role_id, $is_active]);
 
         if (!$success) {
           $error = "Something went wrong. Please try again.";
-        } else {
-          // Send activation email using PHPMailer
-          $mail = new PHPMailer(true);
-          try {
-            // Server settings – update these to match your configuration
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = '';
-            $mail->Password   = '';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-
-            // Recipients
-            $mail->setFrom('', 'Bunniwinkle');
-            $mail->addAddress($email, $firstName);
-
-            // Content
-            $mail->isHTML(true);
-            $mail->Subject = 'Account Activation - Bunniwinkle';
-            // Update the domain name below to your own and include email if desired
-            $activationLink = "http://localhost:3000/pages-user/email-validation.php?token=" . $activation_token . "&email=" . urlencode($email);
-            $mail->Body    = "Hi " . $firstName . ",<br><br>Please click the following link to activate your account:<br><a href='" . $activationLink . "'>" . $activationLink . "</a><br><br>Thank you!";
-            $mail->AltBody = "Hi " . $firstName . ", please visit the following link to activate your account: " . $activationLink;
-
-            $mail->send();
-            $success = true;
-          } catch (Exception $e) {
-            $error = "Message could not be sent. Mailer Error: " . $mail->ErrorInfo;
-          }
         }
       }
     }
@@ -117,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <!-- PHP Feedback -->
       <?php if ($success): ?>
         <div class="alert alert-success" role="alert" id="successAlert">
-          🎉 Registered successfully! Please check your email to activate your account.
+          🎉 Registration successful! <a href="../pages/login.php">Click here to login</a>
         </div>
       <?php elseif (!empty($error)): ?>
         <div class="alert alert-danger" role="alert"><?= $error ?></div>
