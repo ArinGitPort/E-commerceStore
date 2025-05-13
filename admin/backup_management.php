@@ -105,7 +105,7 @@ $sidebar_file = '../includes/sidebar.php';
     
     <div class="container-fluid p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="fas fa-database me-2"></i> Database Management</h2>
+            <h2> Database Backup & Restore</h2>
             <div>
                 <button id="createBackupBtn" class="btn btn-primary">
                     <i class="fas fa-plus-circle me-2"></i> Create Backup
