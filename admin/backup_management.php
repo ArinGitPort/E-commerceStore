@@ -37,17 +37,17 @@ $sidebar_file = '../includes/sidebar.php';
         
         .feature-icon {
             font-size: 2.5rem;
-            color: #8e44ad;
+            color: #0d6efd;
             margin-bottom: 1rem;
         }
         
         .backup-item {
-            border-left: 3px solid #8e44ad;
+            border-left: 3px solid #0d6efd;
             transition: all 0.2s ease;
         }
         
         .backup-item:hover {
-            background-color: rgba(142, 68, 173, 0.05);
+            background-color: rgba(13, 110, 253, 0.05);
         }
         
         .toast-container {
@@ -69,27 +69,27 @@ $sidebar_file = '../includes/sidebar.php';
         }
         
         .btn-primary {
-            background-color: #8e44ad;
-            border-color: #8e44ad;
+            background-color: #0d6efd;
+            border-color: #0d6efd;
         }
         
         .btn-primary:hover {
-            background-color: #7d3c98;
-            border-color: #7d3c98;
+            background-color: #0b5ed7;
+            border-color: #0b5ed7;
         }
         
         .btn-outline-primary {
-            color: #8e44ad;
-            border-color: #8e44ad;
+            color: #0d6efd;
+            border-color: #0d6efd;
         }
         
         .btn-outline-primary:hover {
-            background-color: #8e44ad;
-            border-color: #8e44ad;
+            background-color: #0d6efd;
+            border-color: #0d6efd;
         }
         
         .nav-pills .nav-link.active {
-            background-color: #8e44ad;
+            background-color: #0d6efd;
         }
         
         .spinner-border {
