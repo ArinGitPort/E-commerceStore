@@ -1,5 +1,5 @@
 -- Database Backup for bunnishop
--- Generated: 2025-05-13 13:28:08
+-- Generated: 2025-05-13 14:55:50
 
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -20,7 +20,10 @@ CREATE TABLE `archived_order_details` (
   KEY `product_id` (`product_id`),
   CONSTRAINT `archived_order_details_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `archived_orders` (`order_id`) ON DELETE CASCADE,
   CONSTRAINT `archived_order_details_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Dumping data for table `archived_order_details`
+INSERT INTO `archived_order_details` VALUES (1, 4, 4, 5, 900.00, '2025-05-06 19:57:28', '2025-05-06 19:57:28');
 
 -- Table structure for table `archived_orders`
 
@@ -47,6 +50,9 @@ CREATE TABLE `archived_orders` (
   CONSTRAINT `archived_orders_ibfk_2` FOREIGN KEY (`delivery_method_id`) REFERENCES `delivery_methods` (`delivery_method_id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Dumping data for table `archived_orders`
+INSERT INTO `archived_orders` VALUES (4, 6, '2025-05-06 19:57:28', 'Completed', 1058.00, 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', NULL, 1, 0.00, '2025-05-06 19:57:28', '2025-05-13 20:53:39', 1, NULL);
+
 -- Table structure for table `audit_logs`
 
 DROP TABLE IF EXISTS `audit_logs`;
@@ -68,24 +74,24 @@ CREATE TABLE `audit_logs` (
   KEY `idx_action_type` (`action_type`),
   KEY `idx_table_name` (`table_name`),
   CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Dumping data for table `audit_logs`
-INSERT INTO `audit_logs` VALUES (1, NULL, 'Product created: AMC Keychain', 'products', 4, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"AMC Keychain\", \"price\": 180.00, \"stock\": 5}', 'CREATE'),
-(2, NULL, 'Product created: AAC Art Print', 'products', 5, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"AAC Art Print\", \"price\": 69.00, \"stock\": 45}', 'CREATE'),
-(3, NULL, 'Product created: ALI Button Pin', 'products', 6, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"ALI Button Pin\", \"price\": 160.00, \"stock\": 15}', 'CREATE'),
-(4, NULL, 'Product created: Box 6 Sticker Pack', 'products', 7, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Box 6 Sticker Pack\", \"price\": 120.00, \"stock\": 82}', 'CREATE'),
-(5, NULL, 'Product created: CCC Bag', 'products', 8, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"CCC Bag\", \"price\": 250.00, \"stock\": 12}', 'CREATE'),
-(6, NULL, 'Product created: CH Sticker', 'products', 9, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"CH Sticker\", \"price\": 50.00, \"stock\": 44}', 'CREATE'),
-(7, NULL, 'Product created: DCS Journal', 'products', 10, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DCS Journal\", \"price\": 189.00, \"stock\": 20}', 'CREATE'),
-(8, NULL, 'Product created: DNG Earrings Pair', 'products', 11, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DNG Earrings Pair\", \"price\": 120.00, \"stock\": 18}', 'CREATE'),
-(9, NULL, 'Product created: Dainty Wanderess Dreamcatcher', 'products', 12, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Dainty Wanderess Dreamcatcher\", \"price\": 300.00, \"stock\": 8}', 'CREATE'),
-(10, NULL, 'Product created: DWS Badge', 'products', 13, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DWS Badge\", \"price\": 35.00, \"stock\": 50}', 'CREATE'),
-(11, NULL, 'Product created: Elianne Art Card', 'products', 14, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Elianne Art Card\", \"price\": 80.00, \"stock\": 35}', 'CREATE'),
-(12, NULL, 'Product created: elles_jewelry Ring', 'products', 15, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"elles_jewelry Ring\", \"price\": 99.00, \"stock\": 23}', 'CREATE'),
-(13, NULL, 'Product created: EWEKNITSS Knit', 'products', 16, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"EWEKNITSS Knit\", \"price\": 150.00, \"stock\": 10}', 'CREATE'),
-(14, NULL, 'Product created: FLIMSY Pin', 'products', 17, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"FLIMSY Pin\", \"price\": 70.00, \"stock\": 29}', 'CREATE'),
-(15, NULL, 'Product created: Add-on Gift Wrap', 'products', 18, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Add-on Gift Wrap\", \"price\": 20.00, \"stock\": 100}', 'CREATE'),
+INSERT INTO `audit_logs` VALUES (1, NULL, 'Product created: AMC Keychain', 'products', 4, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"AMC Keychain\", \"price\": 180.0, \"stock\": 5}', 'CREATE'),
+(2, NULL, 'Product created: AAC Art Print', 'products', 5, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"AAC Art Print\", \"price\": 69.0, \"stock\": 45}', 'CREATE'),
+(3, NULL, 'Product created: ALI Button Pin', 'products', 6, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"ALI Button Pin\", \"price\": 160.0, \"stock\": 15}', 'CREATE'),
+(4, NULL, 'Product created: Box 6 Sticker Pack', 'products', 7, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Box 6 Sticker Pack\", \"price\": 120.0, \"stock\": 82}', 'CREATE'),
+(5, NULL, 'Product created: CCC Bag', 'products', 8, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"CCC Bag\", \"price\": 250.0, \"stock\": 12}', 'CREATE'),
+(6, NULL, 'Product created: CH Sticker', 'products', 9, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"CH Sticker\", \"price\": 50.0, \"stock\": 44}', 'CREATE'),
+(7, NULL, 'Product created: DCS Journal', 'products', 10, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DCS Journal\", \"price\": 189.0, \"stock\": 20}', 'CREATE'),
+(8, NULL, 'Product created: DNG Earrings Pair', 'products', 11, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DNG Earrings Pair\", \"price\": 120.0, \"stock\": 18}', 'CREATE'),
+(9, NULL, 'Product created: Dainty Wanderess Dreamcatcher', 'products', 12, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Dainty Wanderess Dreamcatcher\", \"price\": 300.0, \"stock\": 8}', 'CREATE'),
+(10, NULL, 'Product created: DWS Badge', 'products', 13, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"DWS Badge\", \"price\": 35.0, \"stock\": 50}', 'CREATE'),
+(11, NULL, 'Product created: Elianne Art Card', 'products', 14, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Elianne Art Card\", \"price\": 80.0, \"stock\": 35}', 'CREATE'),
+(12, NULL, 'Product created: elles_jewelry Ring', 'products', 15, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"elles_jewelry Ring\", \"price\": 99.0, \"stock\": 23}', 'CREATE'),
+(13, NULL, 'Product created: EWEKNITSS Knit', 'products', 16, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"EWEKNITSS Knit\", \"price\": 150.0, \"stock\": 10}', 'CREATE'),
+(14, NULL, 'Product created: FLIMSY Pin', 'products', 17, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"FLIMSY Pin\", \"price\": 70.0, \"stock\": 29}', 'CREATE'),
+(15, NULL, 'Product created: Add-on Gift Wrap', 'products', 18, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"Add-on Gift Wrap\", \"price\": 20.0, \"stock\": 100}', 'CREATE'),
 (16, 6, 'User login', 'users', 6, '2025-05-06 17:01:31', NULL, NULL, NULL, 'LOGIN'),
 (17, 6, 'User logged out', 'users', 6, '2025-05-06 17:07:15', 'localhost', '', NULL, 'LOGOUT'),
 (18, 6, 'User login', 'users', 6, '2025-05-06 17:07:19', NULL, NULL, NULL, 'LOGIN'),
@@ -142,7 +148,14 @@ INSERT INTO `audit_logs` VALUES (1, NULL, 'Product created: AMC Keychain', 'prod
 (69, 7, 'Backup file deleted', 'system', 0, '2025-05-13 19:27:51', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-backup-2025-05-13-13-24-10.sql\", \"time\": \"2025-05-13 13:27:51\"}', 'DELETE'),
 (70, 7, 'Backup file deleted', 'system', 0, '2025-05-13 19:27:52', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-13-24-11.sql\", \"time\": \"2025-05-13 13:27:52\"}', 'DELETE'),
 (71, 7, 'Backup file deleted', 'system', 0, '2025-05-13 19:27:54', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-backup-2025-05-13-13-13-47.sql\", \"time\": \"2025-05-13 13:27:54\"}', 'DELETE'),
-(72, 7, 'Backup file deleted', 'system', 0, '2025-05-13 19:27:55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-13-13-47.sql\", \"time\": \"2025-05-13 13:27:55\"}', 'DELETE');
+(72, 7, 'Backup file deleted', 'system', 0, '2025-05-13 19:27:55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-13-13-47.sql\", \"time\": \"2025-05-13 13:27:55\"}', 'DELETE'),
+(73, 7, 'Database PHP restored', 'system', 0, '2025-05-13 20:26:14', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-13-28-08.sql\", \"time\": \"2025-05-13 14:26:14\"}', 'SYSTEM'),
+(74, 7, 'Database PHP restored', 'system', 0, '2025-05-13 20:51:45', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-26-58.sql\", \"time\": \"2025-05-13 14:51:45\"}', 'SYSTEM'),
+(75, 7, 'Backup file deleted', 'system', 0, '2025-05-13 20:51:51', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-28-04.sql\", \"time\": \"2025-05-13 14:51:51\"}', 'DELETE'),
+(76, 7, 'Backup file deleted', 'system', 0, '2025-05-13 20:51:52', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-26-58.sql\", \"time\": \"2025-05-13 14:51:52\"}', 'DELETE'),
+(77, 7, 'Database PHP restored', 'system', 0, '2025-05-13 20:54:53', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-53-50.sql\", \"time\": \"2025-05-13 14:54:53\"}', 'SYSTEM'),
+(78, 7, 'Backup file deleted', 'system', 0, '2025-05-13 20:54:55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-53-50.sql\", \"time\": \"2025-05-13 14:54:55\"}', 'DELETE'),
+(79, 7, 'Updated product: AMC Keychain', 'products', 4, '2025-05-13 20:55:04', NULL, NULL, NULL, 'CREATE');
 
 -- Table structure for table `backup_schedules`
 
@@ -430,8 +443,7 @@ INSERT INTO `order_details` VALUES (1, 1, 5, 1, 69.00, '2025-05-06 19:24:08', '2
 (2, 2, 5, 2, 138.00, '2025-05-06 19:30:04', '2025-05-06 19:30:04'),
 (3, 2, 6, 1, 160.00, '2025-05-06 19:30:04', '2025-05-06 19:30:04'),
 (4, 3, 5, 1, 69.00, '2025-05-06 19:31:17', '2025-05-06 19:31:17'),
-(5, 3, 6, 1, 160.00, '2025-05-06 19:31:17', '2025-05-06 19:31:17'),
-(6, 4, 4, 5, 900.00, '2025-05-06 19:57:28', '2025-05-06 19:57:28');
+(5, 3, 6, 1, 160.00, '2025-05-06 19:31:17', '2025-05-06 19:31:17');
 
 -- Table structure for table `orders`
 
@@ -461,18 +473,9 @@ CREATE TABLE `orders` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Dumping data for table `orders`
-INSERT INTO `orders` VALUES (1, 6, '2025-05-06 19:24:08', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market
-0967 BENATIONAL RD. 9091 Villa Priscilla
-BULACAN', 09663787625, 'Pending', 127.28, 1, 0.00, '2025-05-06 19:24:08', '2025-05-06 19:24:08', 0, NULL, NULL),
-(2, 6, '2025-05-06 19:30:04', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market
-0967 BENATIONAL RD. 9091 Villa Priscilla
-BULACAN', 09663787625, 'Pending', 383.76, 1, 0.00, '2025-05-06 19:30:04', '2025-05-06 19:30:04', 0, NULL, NULL),
-(3, 6, '2025-05-06 19:31:17', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market
-0967 BENATIONAL RD. 9091 Villa Priscilla
-BULACAN', 09663787625, 'Pending', 306.48, 1, 0.00, '2025-05-06 19:31:17', '2025-05-06 19:31:17', 0, NULL, NULL),
-(4, 6, '2025-05-06 19:57:28', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market
-0967 BENATIONAL RD. 9091 Villa Priscilla
-BULACAN', 09663787625, 'Pending', 1058.00, 1, 0.00, '2025-05-06 19:57:28', '2025-05-06 19:57:28', 0, NULL, NULL);
+INSERT INTO `orders` VALUES (1, 6, '2025-05-06 19:24:08', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', 9663787625, 'Pending', 127.28, 1, 0.00, '2025-05-06 19:24:08', '2025-05-13 20:51:47', 1, NULL, NULL),
+(2, 6, '2025-05-06 19:30:04', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', 9663787625, 'Pending', 383.76, 1, 0.00, '2025-05-06 19:30:04', '2025-05-13 20:51:47', 1, NULL, NULL),
+(3, 6, '2025-05-06 19:31:17', 'monochrome', 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', 9663787625, 'Shipped', 306.48, 1, 0.00, '2025-05-06 19:31:17', '2025-05-13 20:55:42', 1, NULL, NULL);
 
 -- Table structure for table `password_resets`
 
@@ -529,8 +532,7 @@ CREATE TABLE `payments` (
 -- Dumping data for table `payments`
 INSERT INTO `payments` VALUES (1, 1, 4, 'Pending', '2025-05-06 19:24:08', '2025-05-06 19:24:08'),
 (2, 2, 4, 'Pending', '2025-05-06 19:30:04', '2025-05-06 19:30:04'),
-(3, 3, 4, 'Pending', '2025-05-06 19:31:17', '2025-05-06 19:31:17'),
-(4, 4, 4, 'Pending', '2025-05-06 19:57:28', '2025-05-06 19:57:28');
+(3, 3, 4, 'Pending', '2025-05-06 19:31:17', '2025-05-06 19:31:17');
 
 -- Table structure for table `product_images`
 
@@ -577,7 +579,7 @@ CREATE TABLE `products` (
 INSERT INTO `products` VALUES (1, 'Fluffy Bunny Plush', 'PLUSH001', 'Soft and cuddly bunny plush perfect for snuggles.', 14.99, 50, 1, 2, 1, '2025-05-06 15:36:48', '2025-05-06 15:36:48'),
 (2, 'Kawaii Bunny Notebook', 'NOTE001', 'Adorable bunny-themed notebook for journaling.', 6.49, 100, 0, NULL, 2, '2025-05-06 15:36:48', '2025-05-06 15:36:48'),
 (3, 'Bunny Enamel Pin', 'PIN001', 'A cute enamel pin to decorate your bag or jacket.', 3.99, 75, 0, NULL, 3, '2025-05-06 15:36:48', '2025-05-06 15:36:48'),
-(4, 'AMC Keychain', 'AMC-KCN', NULL, 180.00, 0, 0, NULL, 4, '2025-05-06 15:36:54', '2025-05-06 19:57:28'),
+(4, 'AMC Keychain', 'AMC-KCN', '', 180.00, 0, 0, NULL, 4, '2025-05-06 15:36:54', '2025-05-13 20:55:04'),
 (5, 'AAC Art Print', 'AAC-AP', NULL, 69.00, 44, 0, NULL, 2, '2025-05-06 15:36:54', '2025-05-06 19:31:17'),
 (6, 'ALI Button Pin', 'ALI-BPT', NULL, 160.00, 14, 0, NULL, 3, '2025-05-06 15:36:54', '2025-05-06 19:31:17'),
 (7, 'Box 6 Sticker Pack', 'BOX-6SP', NULL, 120.00, 82, 0, NULL, 5, '2025-05-06 15:36:54', '2025-05-06 15:36:54'),
@@ -747,9 +749,7 @@ INSERT INTO `users` VALUES (1, 'User Free', 'free@bunniwinkle.com', 'hashed_pw',
 (3, 'User VIP', 'vip@bunniwinkle.com', 'hashed_pw', NULL, NULL, 1, '2025-05-06 15:36:48', '2025-05-06 15:36:48', NULL, NULL, NULL, NULL, 1, NULL, NULL),
 (4, 'Admin User', 'admin@bunniwinkle.com', 'hashed_pw', NULL, NULL, 2, '2025-05-06 15:36:48', '2025-05-06 15:36:48', NULL, NULL, NULL, NULL, 1, NULL, NULL),
 (5, 'Super Admin', 'superadmin@bunniwinkle.com', 'hashed_pw', NULL, NULL, 4, '2025-05-06 15:36:48', '2025-05-06 15:36:48', NULL, NULL, NULL, NULL, 1, NULL, NULL),
-(6, 'monochrome', 'allen@gmail.com', '$2y$12$2bhTSxlmF7qm6Xoo/H68Uer1u5Q3j.67plxK2A6H3Plg1VeWvk1YG', 09663787625, 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market
-0967 BENATIONAL RD. 9091 Villa Priscilla
-BULACAN', 1, '2025-05-06 17:01:21', '2025-05-13 18:32:13', '2025-05-13 18:32:09', '2025-05-13 18:32:13', '2025-05-13 18:32:13', NULL, 1, NULL, NULL),
-(7, 'rimue', 'monochrome@gmail.com', '$2y$12$Zil0p3kpzCTsErTLjgP/ZeMBIwJ9TfU7Hruf4.FpDdx9SRMHjf3ua', 09663787625, 'BULACAN', 5, '2025-05-06 19:56:08', '2025-05-13 19:28:08', '2025-05-13 19:13:22', '2025-05-13 19:13:12', '2025-05-13 19:28:08', NULL, 1, NULL, NULL);
+(6, 'monochrome', 'allen@gmail.com', '$2y$12$2bhTSxlmF7qm6Xoo/H68Uer1u5Q3j.67plxK2A6H3Plg1VeWvk1YG', 9663787625, 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', 1, '2025-05-06 17:01:21', '2025-05-13 18:32:13', '2025-05-13 18:32:09', '2025-05-13 18:32:13', '2025-05-13 18:32:13', NULL, 1, NULL, NULL),
+(7, 'rimue', 'monochrome@gmail.com', '$2y$12$Zil0p3kpzCTsErTLjgP/ZeMBIwJ9TfU7Hruf4.FpDdx9SRMHjf3ua', 9663787625, 'BULACAN', 5, '2025-05-06 19:56:08', '2025-05-13 20:55:50', '2025-05-13 19:13:22', '2025-05-13 19:13:12', '2025-05-13 20:55:50', NULL, 1, NULL, NULL);
 
 SET FOREIGN_KEY_CHECKS=1;

@@ -34,12 +34,17 @@ function restore_database($backup_file) {
     // Set execution time limit
     set_time_limit(300); // 5 minutes should be enough for most databases
     
-    // Command for mysql restore
-    $command = "mysql --host={$DB_HOST} --user={$DB_USER} " . 
-              ($DB_PASS ? "--password={$DB_PASS} " : "") . 
-              "{$DB_NAME} < {$backup_file}";
+    // Command to drop and recreate the database
+    $drop_create_command = "mysql --host={$DB_HOST} --user={$DB_USER} " . 
+                         ($DB_PASS ? "--password={$DB_PASS} " : "") . 
+                         "-e \"DROP DATABASE IF EXISTS {$DB_NAME}; CREATE DATABASE {$DB_NAME};\"";
     
-    // Execute command
+    // Command for mysql restore
+    $restore_command = "mysql --host={$DB_HOST} --user={$DB_USER} " . 
+                     ($DB_PASS ? "--password={$DB_PASS} " : "") . 
+                     "{$DB_NAME} < {$backup_file}";
+    
+    // Execute commands
     try {
         // For Windows environments
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
@@ -54,8 +59,20 @@ function restore_database($backup_file) {
             $command_executed = false;
             foreach ($possible_paths as $path) {
                 if (file_exists($path . "mysql.exe")) {
-                    $full_command = $path . $command;
-                    exec($full_command, $output, $return_var);
+                    // First drop and create the database
+                    $full_drop_create = $path . $drop_create_command;
+                    exec($full_drop_create, $output1, $return_var1);
+                    
+                    if ($return_var1 !== 0) {
+                        return [
+                            'status' => 'error',
+                            'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
+                        ];
+                    }
+                    
+                    // Then restore from backup
+                    $full_restore = $path . $restore_command;
+                    exec($full_restore, $output2, $return_var2);
                     $command_executed = true;
                     break;
                 }
@@ -63,16 +80,38 @@ function restore_database($backup_file) {
             
             // If no path worked, try without a path (rely on system PATH)
             if (!$command_executed) {
-                exec($command, $output, $return_var);
+                // First drop and create the database
+                exec($drop_create_command, $output1, $return_var1);
+                
+                if ($return_var1 !== 0) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
+                    ];
+                }
+                
+                // Then restore from backup
+                exec($restore_command, $output2, $return_var2);
             }
         } 
         // For Linux/Unix/MacOS
         else {
-            exec($command, $output, $return_var);
+            // First drop and create the database
+            exec($drop_create_command, $output1, $return_var1);
+            
+            if ($return_var1 !== 0) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
+                ];
+            }
+            
+            // Then restore from backup
+            exec($restore_command, $output2, $return_var2);
         }
         
         // Check if restore was successful
-        if ($return_var === 0) {
+        if ($return_var2 === 0) {
             // Record restore operation in audit log
             try {
                 $stmt = $pdo->prepare("
@@ -100,7 +139,7 @@ function restore_database($backup_file) {
         } else {
             return [
                 'status' => 'error',
-                'message' => 'Failed to restore database: Command execution returned error code ' . $return_var
+                'message' => 'Failed to restore database: Command execution returned error code ' . $return_var2
             ];
         }
     } catch (Exception $e) {
@@ -133,13 +172,25 @@ function php_restore_database($backup_file) {
         // Split SQL file into statements
         $queries = parse_sql_file($sql);
         
-        // Start transaction using direct SQL (TCL)
+        // Start transaction
         $pdo->exec('START TRANSACTION');
         
         // Disable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
         
-        // Execute each statement
+        // First, get all existing tables
+        $tables = [];
+        $result = $pdo->query("SHOW TABLES");
+        while ($row = $result->fetch(PDO::FETCH_NUM)) {
+            $tables[] = $row[0];
+        }
+        
+        // Drop all existing tables to ensure clean restore
+        foreach ($tables as $table) {
+            $pdo->exec("DROP TABLE IF EXISTS `$table`");
+        }
+        
+        // Now execute each query from the backup file
         foreach ($queries as $query) {
             if (!empty(trim($query))) {
                 $pdo->exec($query);
@@ -149,7 +200,7 @@ function php_restore_database($backup_file) {
         // Re-enable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         
-        // Commit using direct SQL (TCL)
+        // Commit transaction
         $pdo->exec('COMMIT');
         
         // Record restore operation in audit log
@@ -174,14 +225,13 @@ function php_restore_database($backup_file) {
         
         return [
             'status' => 'success',
-            'message' => 'Database was restored successfully using PHP method!'
+            'message' => 'Database was restored successfully'
         ];
     } catch (Exception $e) {
-        // Rollback using direct SQL (TCL) if there's an error
+        // Rollback if there's an error
         try {
             $pdo->exec('ROLLBACK');
         } catch (Exception $rollbackEx) {
-            // If rollback fails, log it but continue with error reporting
             error_log("Failed to rollback transaction: " . $rollbackEx->getMessage());
         }
         
@@ -202,21 +252,52 @@ function parse_sql_file($sql) {
     $buffer = '';
     $queries = [];
     $in_string = false;
+    $in_comment = false;
+    $escaped = false;
     
-    for ($i = 0; $i < strlen($sql) - 1; $i++) {
-        if ($sql[$i] == "'" && $sql[$i+1] != "\\") {
-            $in_string = !$in_string;
+    // Process the SQL character by character
+    for ($i = 0; $i < strlen($sql); $i++) {
+        $current = $sql[$i];
+        $next = ($i < strlen($sql) - 1) ? $sql[$i+1] : '';
+        
+        // Handle comments
+        if (!$in_string && $current == '-' && $next == '-') {
+            $in_comment = true;
         }
         
-        if ($in_string || ($sql[$i] != ';')) {
-            $buffer .= $sql[$i];
+        if ($in_comment && $current == "\n") {
+            $in_comment = false;
+        }
+        
+        // Skip processing if we're in a comment
+        if ($in_comment) {
+            $buffer .= $current;
+            continue;
+        }
+        
+        // Handle string escaping
+        if ($in_string && $current == '\\') {
+            $escaped = !$escaped;
+        } else if ($in_string && $current == "'" && !$escaped) {
+            $in_string = false;
+        } else if (!$in_string && $current == "'") {
+            $in_string = true;
+            $escaped = false;
         } else {
+            $escaped = false;
+        }
+        
+        // If we're outside a string and see a semicolon, end the query
+        if (!$in_string && $current == ';') {
             $queries[] = $buffer . ';';
             $buffer = '';
+        } else {
+            $buffer .= $current;
         }
     }
     
-    if (!empty($buffer)) {
+    // Add the last query if there is one
+    if (!empty(trim($buffer))) {
         $queries[] = $buffer;
     }
     

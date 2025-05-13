@@ -172,7 +172,11 @@ function php_backup_database() {
                         } elseif (is_numeric($value)) {
                             $row_values[] = $value;
                         } else {
-                            $row_values[] = "'" . addslashes($value) . "'";
+                            // Replace simple addslashes with proper PDO escaping
+                            $escaped_value = $pdo->quote($value);
+                            // Remove the quotes added by PDO::quote as we add our own
+                            $escaped_value = substr($escaped_value, 1, -1);
+                            $row_values[] = "'" . $escaped_value . "'";
                         }
                     }
                     $values[] = "(" . implode(", ", $row_values) . ")";
