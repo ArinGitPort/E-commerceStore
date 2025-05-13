@@ -427,6 +427,20 @@ CREATE TABLE IF NOT EXISTS email_change_requests (
 );
 
 
+CREATE TABLE backup_schedules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    frequency ENUM('daily', 'weekly', 'monthly') NOT NULL,
+    day_of_week INT NULL, -- 0 (Sunday) to 6 (Saturday), NULL for daily
+    day_of_month INT NULL, -- 1 to 31, NULL for daily/weekly
+    hour INT NOT NULL DEFAULT 0,
+    minute INT NOT NULL DEFAULT 0,
+    retention_days INT NOT NULL DEFAULT 30,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_by INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_run DATETIME NULL
+);
+
 -- Optional: Add index for audit trail performance
 CREATE INDEX idx_return_status ON returns(return_status);
 
