@@ -1,13 +1,5 @@
 <?php
-/**
- * Cron job script for running scheduled database backups (Localhost Version)
- * 
- * For localhost development:
- * 1. You can run this script directly through the browser by visiting:
- *    http://localhost/your-path/admin/cron_schedule_backup.php
- * 
- * 2. No security key is required for localhost testing
- */
+
 
 // For local development, allow execution from browser without key
 $is_localhost = ($_SERVER['SERVER_NAME'] === 'localhost' || 
@@ -178,4 +170,16 @@ function cleanup_old_backups($retention_days = 30) {
         }
     }
 }
+
+
+/**
+ * Cron job script for running scheduled database backups (Localhost Version)
+ * 
+ * For localhost development:
+ * 1. You can run this script directly through the browser by visiting:
+ *    http://localhost/your-path/admin/cron_schedule_backup.php
+ * 
+ * 2. No security key is required for localhost testing
+ */
+
 ?> 

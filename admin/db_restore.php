@@ -133,8 +133,8 @@ function php_restore_database($backup_file) {
         // Split SQL file into statements
         $queries = parse_sql_file($sql);
         
-        // Start transaction
-        $pdo->beginTransaction();
+        // Start transaction using direct SQL (TCL)
+        $pdo->exec('START TRANSACTION');
         
         // Disable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
@@ -149,8 +149,8 @@ function php_restore_database($backup_file) {
         // Re-enable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         
-        // Commit
-        $pdo->commit();
+        // Commit using direct SQL (TCL)
+        $pdo->exec('COMMIT');
         
         // Record restore operation in audit log
         try {
@@ -177,9 +177,12 @@ function php_restore_database($backup_file) {
             'message' => 'Database was restored successfully using PHP method!'
         ];
     } catch (Exception $e) {
-        // Rollback if there's an error
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
+        // Rollback using direct SQL (TCL) if there's an error
+        try {
+            $pdo->exec('ROLLBACK');
+        } catch (Exception $rollbackEx) {
+            // If rollback fails, log it but continue with error reporting
+            error_log("Failed to rollback transaction: " . $rollbackEx->getMessage());
         }
         
         return [
