@@ -1,3 +1,1 @@
-# Stable Version
 
-## UPDATED DB
