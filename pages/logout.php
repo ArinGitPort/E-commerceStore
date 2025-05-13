@@ -9,12 +9,30 @@ if (!empty($_SESSION['user_id'])) {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
     try {
-        // 1. Record logout timestamp (trigger will log the audit)
-        $pdo->prepare("UPDATE users SET last_logout_at = NOW() WHERE user_id = ?")
-            ->execute([$user_id]);
-
+        // 1. Record logout timestamp (no longer relying on trigger)
+        $pdo->prepare("UPDATE users SET last_logout_at = NOW() WHERE user_id = :user_id")
+            ->execute(['user_id' => $user_id]);
+            
+        // 2. Add direct audit log entry for logout
+        $stmt = $pdo->prepare("
+            INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+            VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
+        ");
+        $stmt->execute([
+            'user_id'       => $user_id,
+            'action'        => 'User logged out',
+            'table_name'    => 'users',
+            'record_id'     => $user_id,
+            'action_type'   => 'LOGOUT',
+            'ip_address'    => $ip_address,
+            'user_agent'    => $user_agent,
+            'affected_data' => json_encode([])
+        ]);
+        
+        error_log("Logout action successfully logged for user ID: " . $user_id);
     } catch (Exception $e) {
-        error_log("Logout error: " . $e->getMessage());
+        error_log("Failed to log logout activity: " . $e->getMessage());
+        // Continue with logout process despite the logging error
     }
 }
 

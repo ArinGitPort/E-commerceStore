@@ -256,6 +256,16 @@
           </li>
         <?php endif; ?>
 
+        <!-- Database Backup - Only for Admins -->
+        <?php if ($userRole === 'Super Admin' || $userRole === 'Admin'): ?>
+          <li>
+            <div class="listDiv">
+              <i class="fas fa-database imgIcon"></i>
+              <a href="/admin/backup_management.php" class="menuDashboard">Database Backup</a>
+            </div>
+          </li>
+        <?php endif; ?>
+
         <!-- Logout - always accessible -->
         <li>
           <div class="listDiv">
