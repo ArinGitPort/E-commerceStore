@@ -3,7 +3,6 @@ require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 require_once '../includes/auth_check.php';
 
-
 authCheck(['Staff','Admin', 'Super Admin', 'Brand Partners']);
 
 // Default filter values

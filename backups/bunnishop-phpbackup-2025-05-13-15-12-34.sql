@@ -1,5 +1,5 @@
 -- Database Backup for bunnishop
--- Generated: 2025-05-13 14:55:50
+-- Generated: 2025-05-13 15:12:34
 
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -74,7 +74,7 @@ CREATE TABLE `audit_logs` (
   KEY `idx_action_type` (`action_type`),
   KEY `idx_table_name` (`table_name`),
   CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=84 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Dumping data for table `audit_logs`
 INSERT INTO `audit_logs` VALUES (1, NULL, 'Product created: AMC Keychain', 'products', 4, '2025-05-06 15:36:54', NULL, NULL, '{\"name\": \"AMC Keychain\", \"price\": 180.0, \"stock\": 5}', 'CREATE'),
@@ -155,7 +155,11 @@ INSERT INTO `audit_logs` VALUES (1, NULL, 'Product created: AMC Keychain', 'prod
 (76, 7, 'Backup file deleted', 'system', 0, '2025-05-13 20:51:52', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-26-58.sql\", \"time\": \"2025-05-13 14:51:52\"}', 'DELETE'),
 (77, 7, 'Database PHP restored', 'system', 0, '2025-05-13 20:54:53', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-53-50.sql\", \"time\": \"2025-05-13 14:54:53\"}', 'SYSTEM'),
 (78, 7, 'Backup file deleted', 'system', 0, '2025-05-13 20:54:55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-53-50.sql\", \"time\": \"2025-05-13 14:54:55\"}', 'DELETE'),
-(79, 7, 'Updated product: AMC Keychain', 'products', 4, '2025-05-13 20:55:04', NULL, NULL, NULL, 'CREATE');
+(79, 7, 'Updated product: AMC Keychain', 'products', 4, '2025-05-13 20:55:04', NULL, NULL, NULL, 'CREATE'),
+(80, 7, 'Database PHP restored', 'system', 0, '2025-05-13 20:56:57', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-55-50.sql\", \"time\": \"2025-05-13 14:56:57\"}', 'SYSTEM'),
+(81, 7, 'Database PHP backup created', 'system', 0, '2025-05-13 21:05:33', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"../backups/bunnishop-phpbackup-2025-05-13-15-05-33.sql\", \"time\": \"2025-05-13 15:05:33\"}', 'SYSTEM'),
+(82, 7, 'Backup file deleted', 'system', 0, '2025-05-13 21:05:48', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-15-05-33.sql\", \"time\": \"2025-05-13 15:05:48\"}', 'DELETE'),
+(83, 7, 'Backup file deleted', 'system', 0, '2025-05-13 21:11:38', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '{\"file\": \"bunnishop-phpbackup-2025-05-13-14-55-50.sql\", \"time\": \"2025-05-13 15:11:38\"}', 'DELETE');
 
 -- Table structure for table `backup_schedules`
 
@@ -750,6 +754,6 @@ INSERT INTO `users` VALUES (1, 'User Free', 'free@bunniwinkle.com', 'hashed_pw',
 (4, 'Admin User', 'admin@bunniwinkle.com', 'hashed_pw', NULL, NULL, 2, '2025-05-06 15:36:48', '2025-05-06 15:36:48', NULL, NULL, NULL, NULL, 1, NULL, NULL),
 (5, 'Super Admin', 'superadmin@bunniwinkle.com', 'hashed_pw', NULL, NULL, 4, '2025-05-06 15:36:48', '2025-05-06 15:36:48', NULL, NULL, NULL, NULL, 1, NULL, NULL),
 (6, 'monochrome', 'allen@gmail.com', '$2y$12$2bhTSxlmF7qm6Xoo/H68Uer1u5Q3j.67plxK2A6H3Plg1VeWvk1YG', 9663787625, 'Cut-cot Pulilan Bulacan, Ellen\'s Food House Pulilan Bulacan Public Market\n0967 BENATIONAL RD. 9091 Villa Priscilla\nBULACAN', 1, '2025-05-06 17:01:21', '2025-05-13 18:32:13', '2025-05-13 18:32:09', '2025-05-13 18:32:13', '2025-05-13 18:32:13', NULL, 1, NULL, NULL),
-(7, 'rimue', 'monochrome@gmail.com', '$2y$12$Zil0p3kpzCTsErTLjgP/ZeMBIwJ9TfU7Hruf4.FpDdx9SRMHjf3ua', 9663787625, 'BULACAN', 5, '2025-05-06 19:56:08', '2025-05-13 20:55:50', '2025-05-13 19:13:22', '2025-05-13 19:13:12', '2025-05-13 20:55:50', NULL, 1, NULL, NULL);
+(7, 'rimue', 'monochrome@gmail.com', '$2y$12$Zil0p3kpzCTsErTLjgP/ZeMBIwJ9TfU7Hruf4.FpDdx9SRMHjf3ua', 9663787625, 'BULACAN', 5, '2025-05-06 19:56:08', '2025-05-13 21:12:34', '2025-05-13 19:13:22', '2025-05-13 19:13:12', '2025-05-13 21:12:34', NULL, 1, NULL, NULL);
 
 SET FOREIGN_KEY_CHECKS=1;

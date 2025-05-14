@@ -8,12 +8,14 @@ if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['rol
     exit;
 }
 
-// Database credentials from your connection file
-// Note: These should be extracted from your db_connection.php in a real implementation
-$DB_HOST = 'localhost'; // Default for local development
-$DB_USER = 'root';      // Default MySQL username for localhost
-$DB_PASS = '1234';          // Empty password for localhost
-$DB_NAME = 'bunnishop'; // Your local database name
+// Use database credentials from db_connection.php
+$DB_HOST = $host;
+$DB_USER = $user;
+$DB_PASS = $pass;
+$DB_NAME = $db;
+
+// Check if running on InfinityFree hosting
+$is_infinity_free = (strpos($DB_HOST, 'infinityfree.com') !== false);
 
 /**
  * Create database backup
@@ -21,7 +23,13 @@ $DB_NAME = 'bunnishop'; // Your local database name
  * @return array Array containing status and message
  */
 function backup_database() {
-    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME;
+    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $is_infinity_free;
+    
+    // For InfinityFree hosting, immediately use PHP method instead of mysqldump
+    if ($is_infinity_free) {
+        error_log("InfinityFree detected - using PHP backup method directly");
+        return php_backup_database();
+    }
     
     // Set execution time limit
     set_time_limit(300); // 5 minutes should be enough for most databases
@@ -32,7 +40,13 @@ function backup_database() {
     
     // Create backups directory if it doesn't exist
     if (!file_exists("../backups")) {
-        mkdir("../backups", 0777, true);
+        if (!mkdir("../backups", 0777, true)) {
+            error_log("Failed to create backup directory");
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create backup directory'
+            ];
+        }
     }
     
     // Command for mysqldump
@@ -108,6 +122,7 @@ function backup_database() {
             ];
         }
     } catch (Exception $e) {
+        error_log("Exception during mysqldump backup: " . $e->getMessage());
         return [
             'status' => 'error',
             'message' => 'Exception during backup: ' . $e->getMessage()
@@ -125,19 +140,53 @@ function php_backup_database() {
     
     // Create backups directory if it doesn't exist
     if (!file_exists("../backups")) {
-        mkdir("../backups", 0777, true);
+        if (!mkdir("../backups", 0777, true)) {
+            error_log("Failed to create backup directory");
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create backup directory'
+            ];
+        }
     }
     
     try {
+        error_log("Starting PHP backup process for " . $DB_NAME);
+        
         // Get all tables
         $tables = [];
         $result = $pdo->query("SHOW TABLES");
+        if (!$result) {
+            error_log("Failed to get tables: " . json_encode($pdo->errorInfo()));
+            return [
+                'status' => 'error',
+                'message' => 'Failed to get database tables'
+            ];
+        }
+        
         while ($row = $result->fetch(PDO::FETCH_NUM)) {
             $tables[] = $row[0];
         }
         
+        // If no tables, there's a problem
+        if (empty($tables)) {
+            error_log("No tables found in database");
+            return [
+                'status' => 'error',
+                'message' => 'No tables found in database'
+            ];
+        }
+        
+        error_log("Found " . count($tables) . " tables to backup");
+        
         // Open backup file
         $handle = fopen($backup_file, 'w');
+        if (!$handle) {
+            error_log("Failed to open backup file for writing");
+            return [
+                'status' => 'error',
+                'message' => 'Failed to open backup file for writing'
+            ];
+        }
         
         // Add header/metadata
         fwrite($handle, "-- Database Backup for {$DB_NAME}\n");
@@ -146,51 +195,85 @@ function php_backup_database() {
         
         // Process each table
         foreach ($tables as $table) {
-            // Get create table syntax
-            $row = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_NUM);
-            $create_table_sql = $row[1] . ";";
-            fwrite($handle, "-- Table structure for table `$table`\n\n");
-            fwrite($handle, "DROP TABLE IF EXISTS `$table`;\n\n");
-            fwrite($handle, $create_table_sql . "\n\n");
+            error_log("Processing table: $table");
             
-            // Get table data
-            $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
-            if (count($rows) > 0) {
-                fwrite($handle, "-- Dumping data for table `$table`\n");
-                
-                // Start INSERT statement
-                $insert_sql = "INSERT INTO `$table` VALUES ";
-                $values = [];
-                
-                // Process each row
-                foreach ($rows as $row) {
-                    $row_values = [];
-                    foreach ($row as $value) {
-                        // Handle NULL values and escape strings
-                        if ($value === null) {
-                            $row_values[] = 'NULL';
-                        } elseif (is_numeric($value)) {
-                            $row_values[] = $value;
-                        } else {
-                            // Replace simple addslashes with proper PDO escaping
-                            $escaped_value = $pdo->quote($value);
-                            // Remove the quotes added by PDO::quote as we add our own
-                            $escaped_value = substr($escaped_value, 1, -1);
-                            $row_values[] = "'" . $escaped_value . "'";
-                        }
-                    }
-                    $values[] = "(" . implode(", ", $row_values) . ")";
+            // Get create table syntax
+            try {
+                $createResult = $pdo->query("SHOW CREATE TABLE `$table`");
+                if (!$createResult) {
+                    error_log("Failed to get create syntax for $table: " . json_encode($pdo->errorInfo()));
+                    continue;
                 }
                 
-                // Complete INSERT statement with all rows
-                $insert_sql .= implode(",\n", $values) . ";\n\n";
-                fwrite($handle, $insert_sql);
+                $row = $createResult->fetch(PDO::FETCH_NUM);
+                if (!$row || !isset($row[1])) {
+                    error_log("Invalid result for SHOW CREATE TABLE $table");
+                    continue;
+                }
+                
+                $create_table_sql = $row[1] . ";";
+                fwrite($handle, "-- Table structure for table `$table`\n\n");
+                fwrite($handle, "DROP TABLE IF EXISTS `$table`;\n\n");
+                fwrite($handle, $create_table_sql . "\n\n");
+            } catch (Exception $e) {
+                error_log("Error getting table structure for $table: " . $e->getMessage());
+                continue;
+            }
+            
+            // Get table data
+            try {
+                $dataResult = $pdo->query("SELECT * FROM `$table`");
+                if (!$dataResult) {
+                    error_log("Failed to get data for $table: " . json_encode($pdo->errorInfo()));
+                    continue;
+                }
+                
+                $rows = $dataResult->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($rows) > 0) {
+                    fwrite($handle, "-- Dumping data for table `$table`\n");
+                    
+                    // Start INSERT statement
+                    $insert_sql = "INSERT INTO `$table` VALUES ";
+                    $values = [];
+                    
+                    // Process each row
+                    foreach ($rows as $row) {
+                        $row_values = [];
+                        foreach ($row as $value) {
+                            // Handle NULL values and escape strings
+                            if ($value === null) {
+                                $row_values[] = 'NULL';
+                            } elseif (is_numeric($value)) {
+                                $row_values[] = $value;
+                            } else {
+                                // Replace simple addslashes with proper PDO escaping
+                                $escaped_value = $pdo->quote($value);
+                                // Remove the quotes added by PDO::quote as we add our own
+                                $escaped_value = substr($escaped_value, 1, -1);
+                                $row_values[] = "'" . $escaped_value . "'";
+                            }
+                        }
+                        $values[] = "(" . implode(", ", $row_values) . ")";
+                    }
+                    
+                    // Complete INSERT statement with all rows
+                    $insert_sql .= implode(",\n", $values) . ";\n\n";
+                    fwrite($handle, $insert_sql);
+                }
+            } catch (Exception $e) {
+                error_log("Error exporting data for $table: " . $e->getMessage());
+                continue;
             }
         }
         
         // Add footer
         fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+        
+        // Close the file
         fclose($handle);
+        
+        error_log("PHP backup completed successfully");
         
         // Record backup operation in audit log
         try {
@@ -199,7 +282,7 @@ function php_backup_database() {
                 VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
             ");
             $stmt->execute([
-                'user_id'       => $_SESSION['user_id'],
+                'user_id'       => $_SESSION['user_id'] ?? 0,
                 'action'        => 'Database PHP backup created',
                 'table_name'    => 'system',
                 'record_id'     => 0,
@@ -218,6 +301,7 @@ function php_backup_database() {
             'file' => basename($backup_file)
         ];
     } catch (Exception $e) {
+        error_log("Critical exception during PHP backup: " . $e->getMessage());
         return [
             'status' => 'error',
             'message' => 'Exception during PHP backup: ' . $e->getMessage()
@@ -231,18 +315,11 @@ if (isset($_GET['action'])) {
     
     switch ($_GET['action']) {
         case 'backup':
-            // For localhost development, prefer the PHP method directly
-            // This avoids the empty files from failed mysqldump commands
-            $is_localhost = ($_SERVER['SERVER_NAME'] === 'localhost' || 
-                           $_SERVER['SERVER_ADDR'] === '127.0.0.1' ||
-                           stripos($_SERVER['HTTP_HOST'], 'localhost') !== false);
-            
-            if ($is_localhost) {
-                // Skip the mysqldump attempt and go straight to PHP method
-                error_log("Using PHP backup method for localhost");
+            // For InfinityFree hosting, always use PHP method directly
+            if ($is_infinity_free) {
                 $response = php_backup_database();
             } else {
-                // On production, try mysqldump first
+                // On other hosts, try mysqldump first
                 $response = backup_database();
                 
                 // Check if the file was created but is empty (failed silently)
@@ -258,6 +335,7 @@ if (isset($_GET['action'])) {
                     }
                 } else {
                     // If failed explicitly, try PHP method
+                    error_log("mysqldump failed, trying PHP backup method");
                     $response = php_backup_database();
                 }
             }

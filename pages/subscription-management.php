@@ -1,12 +1,12 @@
 <?php
 // pages/subscription-management.php
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
+require_once '../includes/auth_check.php';
+
+authCheck(['Staff','Admin', 'Super Admin', 'Brand Partners']);
 
 // Pagination
 $page    = isset($_GET['page'])   ? (int)$_GET['page']   : 1;

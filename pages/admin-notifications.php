@@ -3,6 +3,9 @@
 
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
+require_once '../includes/auth_check.php';
+
+authCheck(['Staff','Admin', 'Super Admin', 'Brand Partners']);
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);

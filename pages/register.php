@@ -50,31 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$success) {
           $error = "Something went wrong. Please try again.";
-        } else {
-          // Get the new user ID
-          $userId = $pdo->lastInsertId();
-          
-          // Log the registration in audit_logs
-          try {
-            $stmt = $pdo->prepare("
-              INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-              VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
-            ");
-            $stmt->execute([
-              'user_id'      => $userId,
-              'action'       => 'User registered',
-              'table_name'   => 'users',
-              'record_id'    => $userId,
-              'action_type'  => 'CREATE',
-              'ip_address'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-              'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-              'affected_data' => json_encode(['email' => $email, 'name' => $firstName])
-            ]);
-            error_log("Registration successfully logged for user ID: " . $userId);
-          } catch (Exception $e) {
-            error_log("Failed to log registration: " . $e->getMessage());
-            // Don't show error to user - registration was still successful
-          }
         }
       }
     }

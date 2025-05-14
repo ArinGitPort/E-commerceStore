@@ -1,5 +1,8 @@
 <?php
-
+// Initialize session if not already started (for authentication)
+if(!isset($_SESSION)) {
+    session_start();
+}
 
 // For local development, allow execution from browser without key
 $is_localhost = ($_SERVER['SERVER_NAME'] === 'localhost' || 
@@ -23,14 +26,19 @@ if (!$running_from_cli && !$is_localhost) {
 // Set the absolute path to your website root - handle both CLI and web context
 $site_root = dirname(__DIR__);
 
-// Load the necessary files
+// Load the necessary files - ensure we include full paths
 require_once $site_root . '/config/db_connection.php';
+// Explicitly set variables for db_backup.php to use
+$DB_HOST = $host;
+$DB_USER = $user;
+$DB_PASS = $pass;
+$DB_NAME = $db;
 
 // Increase limits for backup process
 set_time_limit(300);
 ini_set('memory_limit', '256M');
 
-// Include the backup functionality
+// Include the backup functionality with full path
 require_once $site_root . '/admin/db_backup.php';
 
 // Schedule configuration table
@@ -48,6 +56,11 @@ try {
         WHERE is_active = 1
     ");
     $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // If no schedules found, this might be a database connection issue
+    if (empty($schedules) && !$stmt) {
+        throw new Exception("Database connection failed or no schedules found");
+    }
     
     $current_time = time();
     $current_day = date('N', $current_time) % 7; // 0 (Sunday) to 6 (Saturday)
@@ -180,6 +193,9 @@ function cleanup_old_backups($retention_days = 30) {
  *    http://localhost/your-path/admin/cron_schedule_backup.php
  * 
  * 2. No security key is required for localhost testing
+ *
+ * For InfinityFree hosting:
+ * 1. Access via: https://your-site.com/admin/cron_schedule_backup.php?cron_key=localdev
  */
 
 ?> 

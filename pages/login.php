@@ -58,26 +58,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt = $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE user_id = :user_id");
       $stmt->execute(['user_id' => $user['user_id']]);
 
-      // Log the login action in the audit logs directly (not relying on trigger)
+      // Log the login action in the audit logs
       $stmt = $pdo->prepare("
-          INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-          VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
-      ");
+                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+                VALUES (:user_id, 'User logged in', 'users', :user_id, 'LOGIN', :ip_address, :user_agent, :affected_data)
+            ");
       $stmt->execute([
         'user_id'      => $user['user_id'],
-        'action'       => 'User logged in',
-        'table_name'   => 'users',
-        'record_id'    => $user['user_id'],
-        'action_type'  => 'LOGIN',
         'ip_address'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
         'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
         'affected_data' => json_encode([])
       ]);
-
       error_log("Login action successfully logged for user ID: " . $user['user_id']);
-    } catch (Exception $e) {
-      error_log("Failed to log login activity: " . $e->getMessage());
-      // Continue with login process despite the logging error
+    } catch (PDOException $e) {
+      error_log("Failed to insert login audit log: " . $e->getMessage());
     }
 
     // Redirect based on role

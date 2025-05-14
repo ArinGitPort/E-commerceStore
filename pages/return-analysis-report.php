@@ -4,6 +4,9 @@
 // Include required files
 require_once __DIR__ . '/../config/db_connection.php';
 require_once __DIR__ . '/../includes/session-init.php';
+require_once '../includes/auth_check.php';
+
+authCheck(['Staff','Admin', 'Super Admin', 'Brand Partners']);
 
 // Date filters
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));

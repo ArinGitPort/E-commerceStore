@@ -1,12 +1,8 @@
 <?php
 // pages-user/profile.php
 declare(strict_types=1);
-require_once __DIR__ . '/../vendor/autoload.php'; // For PHPMailer
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: ../pages/login.php?redirect=profile");
@@ -110,80 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($chk->fetch()) {
                         $_SESSION['email_error'] = "Email already in use.";
                     } else {
-                        // Generate verification token
-                        $token = bin2hex(random_bytes(16));
-
-                        // Store the token and requested email temporarily
-                        // NOTE: FIX HERE - Changed 'token' to 'verification_token' to match the database schema
-                        $stmt = $pdo->prepare("
-                            INSERT INTO email_change_requests 
-                            (user_id, new_email, verification_token, expires_at) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))
-                            ON DUPLICATE KEY UPDATE 
-                            new_email = VALUES(new_email), 
-                            verification_token = VALUES(verification_token), 
-                            expires_at = VALUES(expires_at)
-                        ");
-
-                        if ($stmt->execute([$_SESSION['user_id'], $newEmail, $token])) {
-                            // Send verification email
-                            $mail = new PHPMailer(true);
-                            try {
-                                // Server settings
-                                $mail->isSMTP();
-                                $mail->Host       = 'smtp.gmail.com';
-                                $mail->SMTPAuth   = true;
-                                $mail->Username   = 'monochromecell@gmail.com';
-                                $mail->Password   = 'eknj ybgw kmqc krga';
-                                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                                $mail->Port       = 587;
-
-                                // Recipients
-                                $mail->setFrom('monochromecell@gmail.com', 'BunniShop');
-                                $mail->addAddress($newEmail, $user['name']);
-
-                                // Content
-                                $mail->isHTML(true);
-                                $mail->Subject = 'Confirm your email change - BunniShop';
-
-                                $verificationLink = "http://{$_SERVER['HTTP_HOST']}/pages-user/email-change.php?token={$token}&email=" . urlencode($newEmail);
-
-                                $mail->Body = "
-                                    <h2>Email Change Confirmation</h2>
-                                    <p>Hello {$user['name']},</p>
-                                    <p>We received a request to change your email address from {$user['email']} to {$newEmail}.</p>
-                                    <p>Please click the link below to confirm this change:</p>
-                                    <p><a href='{$verificationLink}'>{$verificationLink}</a></p>
-                                    <p>This link will expire in 24 hours.</p>
-                                    <p>If you didn't request this change, please ignore this email or contact support.</p>
-                                    <p>Thanks,<br>The BunniShop Team</p>
-                                ";
-
-                                $mail->AltBody = "
-                                    Email Change Confirmation
-                                    
-                                    Hello {$user['name']},
-                                    
-                                    We received a request to change your email address from {$user['email']} to {$newEmail}.
-                                    
-                                    Please visit the following link to confirm this change:
-                                    {$verificationLink}
-                                    
-                                    This link will expire in 24 hours.
-                                    
-                                    If you didn't request this change, please ignore this email or contact support.
-                                    
-                                    Thanks,
-                                    The BunniShop Team
-                                ";
-
-                                $mail->send();
-                                $_SESSION['email_success'] = "Verification email sent to $newEmail. Please check your inbox and click the verification link.";
-                            } catch (Exception $e) {
-                                $_SESSION['email_error'] = "Could not send verification email. Error: " . $mail->ErrorInfo;
-                            }
+                        // Update email immediately
+                        $updateEmail = $pdo->prepare("UPDATE users SET email=? WHERE user_id=?");
+                        if ($updateEmail->execute([$newEmail, $_SESSION['user_id']])) {
+                            $_SESSION['email_success'] = "Email changed successfully to $newEmail.";
                         } else {
-                            $_SESSION['email_error'] = "Failed to process your request. Please try again.";
+                            $_SESSION['email_error'] = "Failed to update your email. Please try again.";
                         }
                     }
                 }
@@ -439,18 +367,8 @@ unset($_SESSION['email_error'], $_SESSION['email_success']);
                                 </div>
                                 <div class="form-text">Verify your identity</div>
                             </div>
-                            <button type="submit" name="change_email" class="btn btn-primary">Request Email Change</button>
+                            <button type="submit" name="change_email" class="btn btn-primary">Change Email</button>
                         </form>
-
-                        <div class="email-info mt-4">
-                            <h5>Email Change Process</h5>
-                            <ol class="small text-muted">
-                                <li>Enter your new email address and current password.</li>
-                                <li>We'll send a verification link to your new email address.</li>
-                                <li>Click the link in the email to confirm the change.</li>
-                                <li>Your email will be updated after verification.</li>
-                            </ol>
-                        </div>
                     <?php endif; ?>
                 </div>
             </div>

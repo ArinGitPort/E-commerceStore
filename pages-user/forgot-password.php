@@ -40,28 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['reset_token'] = $token;
                 $_SESSION['reset_name'] = $user['name'];
                 
-                // Log the password reset request in audit_logs
-                try {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-                        VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
-                    ");
-                    $stmt->execute([
-                        'user_id'       => $user['user_id'],
-                        'action'        => 'Password reset requested',
-                        'table_name'    => 'password_resets',
-                        'record_id'     => $user['user_id'],
-                        'action_type'   => 'SYSTEM',
-                        'ip_address'    => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-                        'user_agent'    => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                        'affected_data' => json_encode(['email' => $email])
-                    ]);
-                    error_log("Password reset request logged for user ID: " . $user['user_id']);
-                } catch (Exception $e) {
-                    error_log("Failed to log password reset request: " . $e->getMessage());
-                    // Continue with the password reset process despite logging error
-                }
-                
                 // Show reset form
                 $_SESSION['show_reset_form'] = true;
                 header("Location: forgot-password.php");
@@ -128,28 +106,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
                 $stmt->execute([$hashed_password, $user['user_id']]);
-                
-                // Log the password reset completion in audit_logs
-                try {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-                        VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
-                    ");
-                    $stmt->execute([
-                        'user_id'       => $user['user_id'],
-                        'action'        => 'Password reset completed',
-                        'table_name'    => 'users',
-                        'record_id'     => $user['user_id'],
-                        'action_type'   => 'UPDATE',
-                        'ip_address'    => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-                        'user_agent'    => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                        'affected_data' => json_encode(['email' => $email])
-                    ]);
-                    error_log("Password reset completion logged for user ID: " . $user['user_id']);
-                } catch (Exception $e) {
-                    error_log("Failed to log password reset completion: " . $e->getMessage());
-                    // Continue with the password reset process despite logging error
-                }
                 
                 // Delete used token
                 $pdo->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$user['user_id']]);

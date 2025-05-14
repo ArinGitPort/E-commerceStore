@@ -8,11 +8,11 @@ if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['rol
     exit;
 }
 
-// Database credentials
-$DB_HOST = 'localhost'; // Default for local development
-$DB_USER = 'root';      // Default MySQL username for localhost
-$DB_PASS = '1234';      // MySQL password for localhost
-$DB_NAME = 'bunnishop'; // Your local database name
+// Use database credentials from db_connection.php
+$DB_HOST = $host;
+$DB_USER = $user;
+$DB_PASS = $pass;
+$DB_NAME = $db;
 
 // Schedule configuration table
 $schedule_table = 'backup_schedules';
@@ -431,8 +431,8 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
             break;
             
         case 'run_scheduled_backups':
-            // This action would normally be called by a cron job
-            require_once 'db_backup.php'; // Include the backup functionality
+            // Include the backup functionality and ensure we pass the database connection
+            require_once __DIR__ . '/db_backup.php';
             
             // Get active schedules
             $stmt = $pdo->query("
@@ -476,7 +476,16 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
                 
                 // If it's time to run, perform backup
                 if ($should_run) {
-                    $result = backup_database(); // Using function from db_backup.php
+                    error_log("Running backup based on schedule ID: " . $schedule['id']);
+                    
+                    // Try mysqldump method first
+                    $result = backup_database();
+                    
+                    // If failed, try PHP backup method
+                    if ($result['status'] === 'error') {
+                        error_log("MySQL dump failed: " . $result['message'] . ". Trying PHP backup method");
+                        $result = php_backup_database();
+                    }
                     
                     if ($result['status'] === 'success') {
                         // Update last_run timestamp
@@ -490,6 +499,8 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
                         cleanup_old_backups($schedule['retention_days']);
                         
                         $backups_run++;
+                    } else {
+                        error_log("Backup failed: " . $result['message']);
                     }
                 }
             }

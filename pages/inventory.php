@@ -3,7 +3,6 @@ require_once __DIR__ . '/../includes/session-init.php';
 require_once '../config/db_connection.php';
 require_once '../includes/auth_check.php';
 
-
 authCheck(['Staff','Admin', 'Super Admin', 'Brand Partners']);
 
 if (!isset($_SESSION['user_id'])) {

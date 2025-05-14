@@ -8,11 +8,14 @@ if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['rol
     exit;
 }
 
-// Database credentials (these should match your db_connection.php)
-$DB_HOST = 'localhost'; // Default for local development
-$DB_USER = 'root';      // Default MySQL username for localhost
-$DB_PASS = '1234';          // Empty password for localhost
-$DB_NAME = 'bunnishop'; // Your local database name
+// Use database credentials from db_connection.php
+$DB_HOST = $host;
+$DB_USER = $user;
+$DB_PASS = $pass;
+$DB_NAME = $db;
+
+// Check if running on InfinityFree hosting
+$is_infinity_free = (strpos($DB_HOST, 'infinityfree.com') !== false);
 
 /**
  * Restore database from a SQL backup file
@@ -21,7 +24,7 @@ $DB_NAME = 'bunnishop'; // Your local database name
  * @return array Array containing status and message
  */
 function restore_database($backup_file) {
-    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $pdo;
+    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $pdo, $is_infinity_free;
     
     // Check if file exists
     if (!file_exists($backup_file)) {
@@ -29,6 +32,12 @@ function restore_database($backup_file) {
             'status' => 'error',
             'message' => 'Backup file does not exist'
         ];
+    }
+    
+    // For InfinityFree hosting, immediately use PHP method instead of mysql commands
+    if ($is_infinity_free) {
+        error_log("InfinityFree detected - using PHP restore method directly");
+        return php_restore_database($backup_file);
     }
     
     // Set execution time limit
@@ -64,6 +73,7 @@ function restore_database($backup_file) {
                     exec($full_drop_create, $output1, $return_var1);
                     
                     if ($return_var1 !== 0) {
+                        error_log("Failed to reset database. Error code: " . $return_var1);
                         return [
                             'status' => 'error',
                             'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
@@ -84,6 +94,7 @@ function restore_database($backup_file) {
                 exec($drop_create_command, $output1, $return_var1);
                 
                 if ($return_var1 !== 0) {
+                    error_log("Failed to reset database. Error code: " . $return_var1);
                     return [
                         'status' => 'error',
                         'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
@@ -100,6 +111,7 @@ function restore_database($backup_file) {
             exec($drop_create_command, $output1, $return_var1);
             
             if ($return_var1 !== 0) {
+                error_log("Failed to reset database. Error code: " . $return_var1);
                 return [
                     'status' => 'error',
                     'message' => 'Failed to reset database: Command execution returned error code ' . $return_var1
@@ -119,7 +131,7 @@ function restore_database($backup_file) {
                     VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
                 ");
                 $stmt->execute([
-                    'user_id'       => $_SESSION['user_id'],
+                    'user_id'       => $_SESSION['user_id'] ?? 0,
                     'action'        => 'Database restored',
                     'table_name'    => 'system',
                     'record_id'     => 0,
@@ -137,12 +149,14 @@ function restore_database($backup_file) {
                 'message' => 'Database was restored successfully!'
             ];
         } else {
+            error_log("Failed to restore database. Error code: " . $return_var2);
             return [
                 'status' => 'error',
                 'message' => 'Failed to restore database: Command execution returned error code ' . $return_var2
             ];
         }
     } catch (Exception $e) {
+        error_log("Exception during command-line restore: " . $e->getMessage());
         return [
             'status' => 'error',
             'message' => 'Exception during restore: ' . $e->getMessage()
@@ -166,14 +180,27 @@ function php_restore_database($backup_file) {
     }
     
     try {
+        error_log("Starting PHP restore process from: " . basename($backup_file));
+        
         // Read SQL file
         $sql = file_get_contents($backup_file);
+        if ($sql === false) {
+            error_log("Failed to read backup file contents");
+            return [
+                'status' => 'error',
+                'message' => 'Failed to read backup file'
+            ];
+        }
+        
+        error_log("Backup file read successfully, size: " . strlen($sql) . " bytes");
         
         // Split SQL file into statements
         $queries = parse_sql_file($sql);
+        error_log("Parsed " . count($queries) . " SQL queries from backup file");
         
         // Start transaction
         $pdo->exec('START TRANSACTION');
+        error_log("Transaction started");
         
         // Disable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
@@ -185,23 +212,50 @@ function php_restore_database($backup_file) {
             $tables[] = $row[0];
         }
         
+        error_log("Found " . count($tables) . " existing tables to drop");
+        
         // Drop all existing tables to ensure clean restore
         foreach ($tables as $table) {
-            $pdo->exec("DROP TABLE IF EXISTS `$table`");
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS `$table`");
+                error_log("Dropped table: $table");
+            } catch (Exception $e) {
+                error_log("Error dropping table $table: " . $e->getMessage());
+                // Continue with other tables
+            }
         }
         
         // Now execute each query from the backup file
-        foreach ($queries as $query) {
+        $executed = 0;
+        $errors = 0;
+        
+        foreach ($queries as $i => $query) {
             if (!empty(trim($query))) {
-                $pdo->exec($query);
+                try {
+                    $pdo->exec($query);
+                    $executed++;
+                    
+                    // Log progress for larger restores
+                    if ($executed % 50 == 0) {
+                        error_log("Executed $executed queries...");
+                    }
+                } catch (Exception $e) {
+                    $errors++;
+                    error_log("Error executing query #$i: " . $e->getMessage());
+                    error_log("Problematic query: " . substr($query, 0, 100) . "...");
+                    // Continue with next query
+                }
             }
         }
+        
+        error_log("Executed $executed queries with $errors errors");
         
         // Re-enable foreign key checks
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         
         // Commit transaction
         $pdo->exec('COMMIT');
+        error_log("Transaction committed");
         
         // Record restore operation in audit log
         try {
@@ -210,7 +264,7 @@ function php_restore_database($backup_file) {
                 VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
             ");
             $stmt->execute([
-                'user_id'       => $_SESSION['user_id'],
+                'user_id'       => $_SESSION['user_id'] ?? 0,
                 'action'        => 'Database PHP restored',
                 'table_name'    => 'system',
                 'record_id'     => 0,
@@ -231,10 +285,12 @@ function php_restore_database($backup_file) {
         // Rollback if there's an error
         try {
             $pdo->exec('ROLLBACK');
+            error_log("Transaction rolled back due to error");
         } catch (Exception $rollbackEx) {
             error_log("Failed to rollback transaction: " . $rollbackEx->getMessage());
         }
         
+        error_log("Critical exception during PHP restore: " . $e->getMessage());
         return [
             'status' => 'error',
             'message' => 'Exception during PHP restore: ' . $e->getMessage()
@@ -313,12 +369,18 @@ if (isset($_GET['action'])) {
             if (isset($_GET['file'])) {
                 $backup_file = "../backups/" . basename($_GET['file']); // Prevent path traversal
                 
-                // Try mysql method first
-                $response = restore_database($backup_file);
-                
-                // If failed, try PHP method
-                if ($response['status'] === 'error') {
+                // On InfinityFree, use PHP method directly
+                if ($is_infinity_free) {
                     $response = php_restore_database($backup_file);
+                } else {
+                    // Try mysql method first on other hosts
+                    $response = restore_database($backup_file);
+                    
+                    // If failed, try PHP method
+                    if ($response['status'] === 'error') {
+                        error_log("MySQL restore failed: " . $response['message'] . ". Trying PHP method.");
+                        $response = php_restore_database($backup_file);
+                    }
                 }
             } else {
                 $response = array(
@@ -340,7 +402,7 @@ if (isset($_GET['action'])) {
                             VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
                         ");
                         $stmt->execute([
-                            'user_id'       => $_SESSION['user_id'],
+                            'user_id'       => $_SESSION['user_id'] ?? 0,
                             'action'        => 'Backup file deleted',
                             'table_name'    => 'system',
                             'record_id'     => 0,

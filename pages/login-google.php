@@ -49,26 +49,6 @@ if (isset($_GET['code'])) {
             $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
             $stmt->execute([$userId]);
             $user = $stmt->fetch();
-            
-            // Log registration in audit_logs since we can't use triggers
-            try {
-                $stmt = $pdo->prepare("
-                    INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $userId,
-                    'Google OAuth registration',
-                    'users',
-                    $userId,
-                    'CREATE',
-                    $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-                    $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                    json_encode(['email' => $userInfo->email, 'name' => $userInfo->name])
-                ]);
-            } catch (Exception $e) {
-                error_log('Failed to log Google registration: ' . $e->getMessage());
-            }
         } else {
             $userId = $user['user_id'];
         }
@@ -85,26 +65,6 @@ if (isset($_GET['code'])) {
         // 6. Update last_login_at (trigger logs audit)
         $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE user_id = ?")
             ->execute([$userId]);
-
-        // Log Google login in audit_logs since we can't use triggers
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $userId,
-                'Google OAuth login',
-                'users',
-                $userId,
-                'LOGIN',
-                $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-                $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                json_encode([])
-            ]);
-        } catch (Exception $e) {
-            error_log('Failed to log Google login: ' . $e->getMessage());
-        }
 
         // 7. Get current role information (works for both new and existing users)
         $stmt = $pdo->prepare("SELECT r.role_name FROM roles r JOIN users u ON r.role_id = u.role_id WHERE u.user_id = ?");
