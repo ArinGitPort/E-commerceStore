@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
+// Set timezone to Asia/Manila
+date_default_timezone_set('Asia/Manila');
+
 // Check if user is admin
 if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['role'] != 'Super Admin')) {
     header("Location: ../pages/login.php");
@@ -357,16 +360,28 @@ if (isset($_GET['action'])) {
                             continue;
                         }
                         
+                        // Determine backup type
+                        $type = 'manual';
+                        if (strpos($file, 'phpbackup') !== false) {
+                            $type = 'php';
+                        } else if (strpos($file, 'scheduled') !== false) {
+                            $type = 'scheduled';
+                        } else if (strpos($file, 'imported') !== false) {
+                            $type = 'imported';
+                        }
+                        
                         $backups[] = array(
                             'filename' => $file,
                             'size' => round(filesize($full_path) / 1024, 2), // Size in KB
-                            'date' => date("Y-m-d H:i:s", filemtime($full_path))
+                            'date' => date("Y-m-d H:i:s", filemtime($full_path)),
+                            'type' => $type,
+                            'timestamp' => filemtime($full_path) // Raw timestamp for filtering
                         );
                     }
                 }
                 // Sort by date (newest first)
                 usort($backups, function($a, $b) {
-                    return strtotime($b['date']) - strtotime($a['date']);
+                    return $b['timestamp'] - $a['timestamp'];
                 });
             }
             $response = array(

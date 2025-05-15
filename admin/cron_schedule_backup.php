@@ -4,6 +4,9 @@ if(!isset($_SESSION)) {
     session_start();
 }
 
+// Set timezone to Asia/Manila
+date_default_timezone_set('Asia/Manila');
+
 // For local development, allow execution from browser without key
 $is_localhost = ($_SERVER['SERVER_NAME'] === 'localhost' || 
                  $_SERVER['SERVER_ADDR'] === '127.0.0.1' ||

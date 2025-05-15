@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
+// Set timezone to Asia/Manila
+date_default_timezone_set('Asia/Manila');
+
 // Check if user is admin
 if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['role'] != 'Super Admin')) {
     header("Location: ../pages/login.php");
@@ -98,6 +101,22 @@ $sidebar_file = '../includes/sidebar.php';
             height: 1rem;
             margin-right: 0.5rem;
         }
+
+        .custom-file-upload {
+            position: relative;
+        }
+        
+        #fileNameDisplay {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            background-color: #fff;
+            color: #6c757d;
+        }
+        
+        #fileNameDisplay.has-file {
+            color: #212529;
+        }
     </style>
 </head>
 
@@ -106,7 +125,6 @@ $sidebar_file = '../includes/sidebar.php';
 
     <div class="container-fluid p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2> Database Backup & Restore</h2>
 
         </div>
 
@@ -143,11 +161,36 @@ $sidebar_file = '../includes/sidebar.php';
             <div class="tab-pane fade show active" id="backups" role="tabpanel" aria-labelledby="backups-tab">
                 <div class="card">
                     <div class="card-header bg-white">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h5 class="mb-0">Backup Files</h5>
                             <button id="refreshBackupsBtn" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-sync-alt me-1"></i> Refresh
                             </button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="backupSearch" placeholder="Search by filename or date (YYYY-MM-DD)...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <form id="uploadForm" enctype="multipart/form-data" class="d-flex">
+                                    <div class="custom-file-upload flex-grow-1">
+                                        <input type="file" class="form-control d-none" id="sql_file" name="sql_file" accept=".sql" required>
+                                        <div class="input-group">
+                                            <button type="button" class="btn btn-outline-secondary" id="fileSelectBtn">
+                                                <i class="fas fa-file-upload me-1"></i> Choose File
+                                            </button>
+                                            <span class="form-control" id="fileNameDisplay">No file selected</span>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary ms-2" id="importBtn" disabled>
+                                        <i class="fas fa-upload"></i> Import
+                                    </button>
+                                    <input type="hidden" name="action" value="upload">
+                                </form>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -165,68 +208,74 @@ $sidebar_file = '../includes/sidebar.php';
 
             <!-- Schedules tab -->
             <div class="tab-pane fade" id="schedules" role="tabpanel" aria-labelledby="schedules-tab">
-                <div class="schedule-controls">
-                    <h5 class="mb-3">Create New Schedule</h5>
-                    <form id="scheduleForm" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="frequency" class="form-label">Frequency</label>
-                            <select id="frequency" class="form-select" required>
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-3 day-select" id="weeklyOptions" style="display:none;">
-                            <label for="dayOfWeek" class="form-label">Day of Week</label>
-                            <select id="dayOfWeek" class="form-select">
-                                <option value="0">Sunday</option>
-                                <option value="1">Monday</option>
-                                <option value="2">Tuesday</option>
-                                <option value="3">Wednesday</option>
-                                <option value="4">Thursday</option>
-                                <option value="5">Friday</option>
-                                <option value="6">Saturday</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-3 day-select" id="monthlyOptions" style="display:none;">
-                            <label for="dayOfMonth" class="form-label">Day of Month</label>
-                            <select id="dayOfMonth" class="form-select">
-                                <?php for ($i = 1; $i <= 28; $i++) : ?>
-                                    <option value="<?= $i ?>"><?= $i ?></option>
-                                <?php endfor; ?>
-                            </select>
-                        </div>
-
-                        <div class="col-md-2">
-                            <label for="timeHour" class="form-label">Time</label>
-                            <div class="input-group">
-                                <select id="timeHour" class="form-select">
-                                    <?php for ($i = 0; $i < 24; $i++) : ?>
-                                        <option value="<?= $i ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
-                                    <?php endfor; ?>
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Create New Schedule</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="scheduleForm" class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label for="frequency" class="form-label">Frequency</label>
+                                <select id="frequency" class="form-select" required>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
                                 </select>
-                                <span class="input-group-text">:</span>
-                                <select id="timeMinute" class="form-select">
-                                    <?php for ($i = 0; $i < 60; $i += 5) : ?>
-                                        <option value="<?= $i ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
+                            </div>
+
+                            <div class="col-md-3 day-select" id="weeklyOptions" style="display:none;">
+                                <label for="dayOfWeek" class="form-label">Day of Week</label>
+                                <select id="dayOfWeek" class="form-select">
+                                    <option value="0">Sunday</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3 day-select" id="monthlyOptions" style="display:none;">
+                                <label for="dayOfMonth" class="form-label">Day of Month</label>
+                                <select id="dayOfMonth" class="form-select">
+                                    <?php for ($i = 1; $i <= 28; $i++) : ?>
+                                        <option value="<?= $i ?>"><?= $i ?></option>
                                     <?php endfor; ?>
                                 </select>
                             </div>
-                        </div>
 
-                        <div class="col-md-2">
-                            <label for="retention" class="form-label">Keep for (days)</label>
-                            <input type="number" class="form-control" id="retention" min="1" max="365" value="30">
-                        </div>
+                            <div class="col-md-2">
+                                <label for="timeHour" class="form-label">Time</label>
+                                <div class="input-group">
+                                    <select id="timeHour" class="form-select">
+                                        <?php for ($i = 0; $i < 24; $i++) : ?>
+                                            <option value="<?= $i ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="input-group-text">:</span>
+                                    <select id="timeMinute" class="form-select">
+                                        <?php for ($i = 0; $i < 60; $i += 5) : ?>
+                                            <option value="<?= $i ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </div>
+                            </div>
 
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-plus-circle me-2"></i> Add Schedule
-                            </button>
-                        </div>
-                    </form>
+                            <div class="col-md-2">
+                                <label for="retention" class="form-label">Keep for (days)</label>
+                                <input type="number" class="form-control" id="retention" min="1" max="365" value="30">
+                                <div class="form-text">1-365 days</div>
+                            </div>
+
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-plus-circle me-2"></i> Add Schedule
+                                </button>
+                            </div>
+                            <div id="scheduleErrorContainer"></div>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -301,6 +350,32 @@ $sidebar_file = '../includes/sidebar.php';
         </div>
     </div>
 
+    <!-- Schedule Info Modal -->
+    <div class="modal fade" id="scheduleInfoModal" tabindex="-1" aria-labelledby="scheduleInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleInfoModalLabel">Backup Schedule Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <p><strong>Schedule Limitations:</strong></p>
+                        <ul>
+                            <li>You can have up to 5 active backup schedules.</li>
+                            <li>Duplicate schedules are not allowed.</li>
+                            <li>Each schedule must have a unique combination of frequency, day, and time.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap & jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -311,9 +386,22 @@ $sidebar_file = '../includes/sidebar.php';
             let selectedBackupFile = '';
             let restoreModal = new bootstrap.Modal(document.getElementById('restoreModal'));
             let deleteBackupModal = new bootstrap.Modal(document.getElementById('deleteBackupModal'));
+            let scheduleInfoModal = new bootstrap.Modal(document.getElementById('scheduleInfoModal'));
+            
+            // Show schedule info modal on first visit to schedules tab
+            $('#schedules-tab').on('click', function() {
+                // Check if we've shown the modal before in this session
+                if (!sessionStorage.getItem('scheduleInfoShown')) {
+                    scheduleInfoModal.show();
+                    sessionStorage.setItem('scheduleInfoShown', 'true');
+                }
+            });
 
             // Load backups list
             function loadBackups() {
+                $('#backupSearch').val(''); // Reset search
+                $('.no-results').remove();
+                
                 $('#backupsList').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted mt-2">Loading backup files...</p></div>');
 
                 $.ajax({
@@ -346,11 +434,31 @@ $sidebar_file = '../includes/sidebar.php';
                     html = '<div class="alert alert-info">No backup files found.</div>';
                 } else {
                     for (let backup of backups) {
+                        // Generate badge for backup type
+                        let typeBadge = '';
+                        switch (backup.type) {
+                            case 'manual':
+                                typeBadge = '<span class="badge bg-primary me-2">Manual</span>';
+                                break;
+                            case 'scheduled':
+                                typeBadge = '<span class="badge bg-success me-2">Scheduled</span>';
+                                break;
+                            case 'php':
+                                typeBadge = '<span class="badge bg-info me-2">PHP</span>';
+                                break;
+                            case 'imported':
+                                typeBadge = '<span class="badge bg-warning me-2">Imported</span>';
+                                break;
+                        }
+                        
                         html += `
                         <div class="list-group-item backup-item">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="mb-1">${backup.filename}</h6>
+                                    <div class="d-flex align-items-center">
+                                        ${typeBadge}
+                                        <h6 class="mb-1">${backup.filename}</h6>
+                                    </div>
                                     <small class="text-muted">
                                         <i class="far fa-calendar-alt me-1"></i> ${backup.date} 
                                         <i class="fas fa-file-archive ms-3 me-1"></i> ${backup.size} KB
@@ -371,6 +479,7 @@ $sidebar_file = '../includes/sidebar.php';
                 }
 
                 $('#backupsList').html(html);
+                applyBackupFilters(); // Apply filters after rendering
             }
 
             // Load schedules list
@@ -541,9 +650,6 @@ $sidebar_file = '../includes/sidebar.php';
             function addSchedule(scheduleData) {
                 showToast('Creating Schedule', 'Processing request...', 'info');
 
-                // For debugging
-                console.log('Sending schedule data:', scheduleData);
-
                 $.ajax({
                     url: 'db_backup_schedule.php',
                     type: 'POST',
@@ -553,18 +659,27 @@ $sidebar_file = '../includes/sidebar.php';
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Schedule response:', response);
                         if (response.status === 'success') {
                             showToast('Success', response.message, 'success');
                             loadSchedules(); // Refresh the list
+                            // Reset the form
+                            $('#scheduleForm')[0].reset();
+                            $('#weeklyOptions, #monthlyOptions').hide();
                         } else {
                             showToast('Error', response.message, 'danger');
+                            // Show an error message on the form
+                            $('#scheduleErrorContainer').html(`
+                                <div class="col-12 mt-2">
+                                    <div class="alert alert-danger schedule-error">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> ${response.message}
+                                    </div>
+                                </div>
+                            `);
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX error:', status, error);
-                        console.log('Response text:', xhr.responseText);
-                        showToast('Error', 'Failed to connect to the server. Check console for details.', 'danger');
+                        showToast('Error', 'Failed to connect to the server.', 'danger');
                     }
                 });
             }
@@ -667,6 +782,9 @@ $sidebar_file = '../includes/sidebar.php';
             // Schedule form submission
             $('#scheduleForm').submit(function(e) {
                 e.preventDefault();
+                
+                // Remove any existing error
+                $('#scheduleErrorContainer').empty();
 
                 // Create schedule data object
                 const scheduleData = {
@@ -683,7 +801,6 @@ $sidebar_file = '../includes/sidebar.php';
                     scheduleData.day_of_month = $('#dayOfMonth').val();
                 }
 
-                console.log('Submitting schedule:', scheduleData);
                 addSchedule(scheduleData);
             });
 
@@ -743,6 +860,99 @@ $sidebar_file = '../includes/sidebar.php';
                 }
             });
 
+            // Custom file input handler
+            $('#fileSelectBtn').click(function() {
+                $('#sql_file').click();
+            });
+            
+            $('#sql_file').change(function() {
+                const fileName = $(this).val().split('\\').pop();
+                if (fileName) {
+                    $('#fileNameDisplay').text(fileName).addClass('has-file');
+                    $('#importBtn').prop('disabled', false);
+                } else {
+                    $('#fileNameDisplay').text('No file selected').removeClass('has-file');
+                    $('#importBtn').prop('disabled', true);
+                }
+            });
+            
+            // File upload handling
+            $('#uploadForm').submit(function(e) {
+                e.preventDefault();
+                
+                var formData = new FormData(this);
+                
+                // Show loading toast
+                showToast('Uploading', 'Uploading and importing SQL file...', 'info');
+                
+                $.ajax({
+                    url: 'db_restore.php',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            showToast('Success', response.message, 'success');
+                            // Reset the form
+                            $('#uploadForm')[0].reset();
+                            $('#fileNameDisplay').text('No file selected').removeClass('has-file');
+                            $('#importBtn').prop('disabled', true);
+                            // Refresh the backups list
+                            loadBackups();
+                        } else {
+                            showToast('Error', response.message, 'danger');
+                        }
+                    },
+                    error: function() {
+                        showToast('Error', 'Failed to upload file. Check file size and server permissions.', 'danger');
+                    }
+                });
+            });
+
+            // Simplified filter functionality
+            function applyBackupFilters() {
+                const searchTerm = $('#backupSearch').val().toLowerCase();
+                
+                // If no search term, show all items
+                if (!searchTerm) {
+                    $('.backup-item').show();
+                    $('.no-results').remove();
+                    return;
+                }
+                
+                // Get all backup items
+                let items = $('.backup-item');
+                let found = false;
+                
+                // Hide all items first
+                items.hide();
+                
+                // Show items that match the search term (filename or date)
+                items.each(function() {
+                    const filename = $(this).find('h6').text().toLowerCase();
+                    const dateInfo = $(this).find('small').text().toLowerCase();
+                    
+                    if (filename.includes(searchTerm) || dateInfo.includes(searchTerm)) {
+                        $(this).show();
+                        found = true;
+                    }
+                });
+                
+                // Show message if no results
+                if (!found) {
+                    $('.no-results').remove();
+                    $('#backupsList').append('<div class="alert alert-info no-results">No backup files match your search.</div>');
+                } else {
+                    $('.no-results').remove();
+                }
+            }
+            
+            // Attach search event
+            $('#backupSearch').on('input', function() {
+                applyBackupFilters();
+            });
+            
             // Initial load
             loadBackups();
             loadSchedules();

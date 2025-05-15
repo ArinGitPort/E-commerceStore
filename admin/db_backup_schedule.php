@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
+// Set timezone to Asia/Manila
+date_default_timezone_set('Asia/Manila');
+
 // Check if user is admin
 if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['role'] != 'Super Admin')) {
     header("Location: ../pages/login.php");
@@ -127,6 +130,85 @@ function add_schedule($schedule) {
     }
     
     try {
+        // Check for existing schedules with the same frequency
+        $existingQuery = "SELECT COUNT(*) FROM {$schedule_table} WHERE frequency = :frequency";
+        $params = ['frequency' => $schedule['frequency']];
+        
+        // Add specific parameters based on frequency
+        switch ($schedule['frequency']) {
+            case 'daily':
+                $existingQuery .= " AND hour = :hour AND minute = :minute";
+                $params['hour'] = $schedule['hour'];
+                $params['minute'] = $schedule['minute'];
+                break;
+                
+            case 'weekly':
+                $existingQuery .= " AND day_of_week = :day_of_week AND hour = :hour AND minute = :minute";
+                $params['day_of_week'] = $schedule['day_of_week'];
+                $params['hour'] = $schedule['hour'];
+                $params['minute'] = $schedule['minute'];
+                break;
+                
+            case 'monthly':
+                $existingQuery .= " AND day_of_month = :day_of_month AND hour = :hour AND minute = :minute";
+                $params['day_of_month'] = $schedule['day_of_month'];
+                $params['hour'] = $schedule['hour'];
+                $params['minute'] = $schedule['minute'];
+                break;
+        }
+        
+        $stmt = $pdo->prepare($existingQuery);
+        $stmt->execute($params);
+        $count = $stmt->fetchColumn();
+        
+        if ($count > 0) {
+            return [
+                'status' => 'error',
+                'message' => 'A schedule with these exact settings already exists. Please modify your settings or manage the existing schedule.'
+            ];
+        }
+        
+        // Count total active schedules
+        $countStmt = $pdo->query("SELECT COUNT(*) FROM {$schedule_table} WHERE is_active = 1");
+        $activeCount = $countStmt->fetchColumn();
+        
+        // Limit to a reasonable number to prevent excessive resource usage
+        if ($activeCount >= 5) {
+            return [
+                'status' => 'error',
+                'message' => 'You already have 5 active backup schedules. Please disable or delete an existing schedule before adding a new one.'
+            ];
+        }
+        
+        // Validate schedule parameters
+        if ($schedule['frequency'] === 'weekly' && ($schedule['day_of_week'] < 0 || $schedule['day_of_week'] > 6)) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid day of week. Please select a day between Sunday (0) and Saturday (6).'
+            ];
+        }
+        
+        if ($schedule['frequency'] === 'monthly' && ($schedule['day_of_month'] < 1 || $schedule['day_of_month'] > 28)) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid day of month. Please select a day between 1 and 28 to ensure compatibility with all months.'
+            ];
+        }
+        
+        if ($schedule['hour'] < 0 || $schedule['hour'] > 23 || $schedule['minute'] < 0 || $schedule['minute'] > 59) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid time. Hour must be between 0-23 and minute between 0-59.'
+            ];
+        }
+        
+        if ($schedule['retention_days'] < 1 || $schedule['retention_days'] > 365) {
+            return [
+                'status' => 'error',
+                'message' => 'Retention period must be between 1 and 365 days.'
+            ];
+        }
+        
         // Prepare the insert statement
         $query = "
             INSERT INTO {$schedule_table} (

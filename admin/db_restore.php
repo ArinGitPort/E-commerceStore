@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../includes/session-init.php';
 require_once __DIR__ . '/../config/db_connection.php';
 
+// Set timezone to Asia/Manila
+date_default_timezone_set('Asia/Manila');
+
 // Check if user is admin
 if (!isset($_SESSION['role']) || ($_SESSION['role'] != 'Admin' && $_SESSION['role'] != 'Super Admin')) {
     header("Location: ../pages/login.php");
@@ -299,6 +302,115 @@ function php_restore_database($backup_file) {
 }
 
 /**
+ * Process an uploaded SQL file for restore
+ * 
+ * @return array Array containing status and message
+ */
+function process_upload() {
+    global $pdo, $is_infinity_free;
+    
+    // Check if a file was uploaded
+    if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] != UPLOAD_ERR_OK) {
+        $error = isset($_FILES['sql_file']) ? $_FILES['sql_file']['error'] : 'No file uploaded';
+        error_log("SQL upload error: " . $error);
+        return [
+            'status' => 'error',
+            'message' => 'Upload failed: ' . get_upload_error_message($error)
+        ];
+    }
+    
+    // Validate file type
+    $file_info = pathinfo($_FILES['sql_file']['name']);
+    if (strtolower($file_info['extension']) !== 'sql') {
+        return [
+            'status' => 'error',
+            'message' => 'Only SQL files are allowed'
+        ];
+    }
+    
+    // Create upload directory if it doesn't exist
+    $upload_dir = "../uploads";
+    if (!file_exists($upload_dir)) {
+        if (!mkdir($upload_dir, 0777, true)) {
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create upload directory'
+            ];
+        }
+    }
+    
+    // Generate a unique filename
+    $timestamp = date('Y-m-d-H-i-s');
+    $target_file = $upload_dir . '/imported-' . $timestamp . '-' . basename($_FILES['sql_file']['name']);
+    
+    // Move uploaded file to target location
+    if (move_uploaded_file($_FILES['sql_file']['tmp_name'], $target_file)) {
+        error_log("File uploaded successfully to: " . $target_file);
+        
+        // On InfinityFree, use PHP method directly
+        if ($is_infinity_free) {
+            $response = php_restore_database($target_file);
+        } else {
+            // Try mysql method first on other hosts
+            $response = restore_database($target_file);
+            
+            // If failed, try PHP method
+            if ($response['status'] === 'error') {
+                error_log("MySQL restore failed: " . $response['message'] . ". Trying PHP method.");
+                $response = php_restore_database($target_file);
+            }
+        }
+        
+        // Copy the file to backups folder if import was successful
+        if ($response['status'] === 'success') {
+            // Create backups directory if it doesn't exist
+            $backup_dir = "../backups";
+            if (!file_exists($backup_dir)) {
+                mkdir($backup_dir, 0777, true);
+            }
+            
+            $backup_filename = $backup_dir . '/imported-' . $timestamp . '-' . basename($_FILES['sql_file']['name']);
+            copy($target_file, $backup_filename);
+            error_log("Imported SQL file copied to backups folder: " . $backup_filename);
+        }
+        
+        // Delete the file from uploads regardless of result
+        unlink($target_file);
+        
+        return $response;
+    } else {
+        return [
+            'status' => 'error',
+            'message' => 'Failed to move uploaded file'
+        ];
+    }
+}
+
+/**
+ * Get human-readable error message for upload errors
+ */
+function get_upload_error_message($error_code) {
+    switch ($error_code) {
+        case UPLOAD_ERR_INI_SIZE:
+            return 'The uploaded file exceeds the upload_max_filesize directive in php.ini';
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form';
+        case UPLOAD_ERR_PARTIAL:
+            return 'The uploaded file was only partially uploaded';
+        case UPLOAD_ERR_NO_FILE:
+            return 'No file was uploaded';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'Missing a temporary folder';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'Failed to write file to disk';
+        case UPLOAD_ERR_EXTENSION:
+            return 'A PHP extension stopped the file upload';
+        default:
+            return 'Unknown upload error';
+    }
+}
+
+/**
  * Helper function to split SQL file into individual queries
  */
 function parse_sql_file($sql) {
@@ -361,83 +473,90 @@ function parse_sql_file($sql) {
 }
 
 // Handle AJAX requests
-if (isset($_GET['action'])) {
+if (isset($_GET['action']) || $_SERVER['REQUEST_METHOD'] === 'POST') {
     $response = array();
     
-    switch ($_GET['action']) {
-        case 'restore':
-            if (isset($_GET['file'])) {
-                $backup_file = "../backups/" . basename($_GET['file']); // Prevent path traversal
-                
-                // On InfinityFree, use PHP method directly
-                if ($is_infinity_free) {
-                    $response = php_restore_database($backup_file);
-                } else {
-                    // Try mysql method first on other hosts
-                    $response = restore_database($backup_file);
+    // Check if it's a POST request for file upload
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload') {
+        $response = process_upload();
+    } 
+    // Otherwise handle GET requests
+    else if (isset($_GET['action'])) {
+        switch ($_GET['action']) {
+            case 'restore':
+                if (isset($_GET['file'])) {
+                    $backup_file = "../backups/" . basename($_GET['file']); // Prevent path traversal
                     
-                    // If failed, try PHP method
-                    if ($response['status'] === 'error') {
-                        error_log("MySQL restore failed: " . $response['message'] . ". Trying PHP method.");
+                    // On InfinityFree, use PHP method directly
+                    if ($is_infinity_free) {
                         $response = php_restore_database($backup_file);
+                    } else {
+                        // Try mysql method first on other hosts
+                        $response = restore_database($backup_file);
+                        
+                        // If failed, try PHP method
+                        if ($response['status'] === 'error') {
+                            error_log("MySQL restore failed: " . $response['message'] . ". Trying PHP method.");
+                            $response = php_restore_database($backup_file);
+                        }
                     }
-                }
-            } else {
-                $response = array(
-                    'status' => 'error',
-                    'message' => 'No backup file specified'
-                );
-            }
-            break;
-            
-        case 'delete_backup':
-            if (isset($_GET['file'])) {
-                $backup_file = "../backups/" . basename($_GET['file']); // Prevent path traversal
-                
-                if (file_exists($backup_file) && unlink($backup_file)) {
-                    // Record backup deletion in audit log
-                    try {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
-                            VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
-                        ");
-                        $stmt->execute([
-                            'user_id'       => $_SESSION['user_id'] ?? 0,
-                            'action'        => 'Backup file deleted',
-                            'table_name'    => 'system',
-                            'record_id'     => 0,
-                            'action_type'   => 'DELETE',
-                            'ip_address'    => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-                            'user_agent'    => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                            'affected_data' => json_encode(['file' => basename($backup_file), 'time' => date('Y-m-d H:i:s')])
-                        ]);
-                    } catch (Exception $e) {
-                        error_log("Failed to log backup deletion: " . $e->getMessage());
-                    }
-                    
-                    $response = array(
-                        'status' => 'success',
-                        'message' => 'Backup file was deleted successfully!'
-                    );
                 } else {
                     $response = array(
                         'status' => 'error',
-                        'message' => 'Failed to delete backup file'
+                        'message' => 'No backup file specified'
                     );
                 }
-            } else {
+                break;
+                
+            case 'delete_backup':
+                if (isset($_GET['file'])) {
+                    $backup_file = "../backups/" . basename($_GET['file']); // Prevent path traversal
+                    
+                    if (file_exists($backup_file) && unlink($backup_file)) {
+                        // Record backup deletion in audit log
+                        try {
+                            $stmt = $pdo->prepare("
+                                INSERT INTO audit_logs (user_id, action, table_name, record_id, action_type, ip_address, user_agent, affected_data)
+                                VALUES (:user_id, :action, :table_name, :record_id, :action_type, :ip_address, :user_agent, :affected_data)
+                            ");
+                            $stmt->execute([
+                                'user_id'       => $_SESSION['user_id'] ?? 0,
+                                'action'        => 'Backup file deleted',
+                                'table_name'    => 'system',
+                                'record_id'     => 0,
+                                'action_type'   => 'DELETE',
+                                'ip_address'    => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                                'user_agent'    => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                                'affected_data' => json_encode(['file' => basename($backup_file), 'time' => date('Y-m-d H:i:s')])
+                            ]);
+                        } catch (Exception $e) {
+                            error_log("Failed to log backup deletion: " . $e->getMessage());
+                        }
+                        
+                        $response = array(
+                            'status' => 'success',
+                            'message' => 'Backup file was deleted successfully!'
+                        );
+                    } else {
+                        $response = array(
+                            'status' => 'error',
+                            'message' => 'Failed to delete backup file'
+                        );
+                    }
+                } else {
+                    $response = array(
+                        'status' => 'error',
+                        'message' => 'No backup file specified'
+                    );
+                }
+                break;
+                
+            default:
                 $response = array(
                     'status' => 'error',
-                    'message' => 'No backup file specified'
+                    'message' => 'Invalid action'
                 );
-            }
-            break;
-            
-        default:
-            $response = array(
-                'status' => 'error',
-                'message' => 'Invalid action'
-            );
+        }
     }
     
     // Return JSON response
