@@ -34,7 +34,7 @@
 
 5. **Push your changes to the remote repository:**
    ```sh
-   git push origin feature/Add-file
+   git push -u origin feature/Add-file
    ```
 
 6. **Create a Pull Request on GitHub.**
